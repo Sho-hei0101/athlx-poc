@@ -64,7 +64,7 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
         </button>
 
         <h2 className="text-2xl font-bold mb-6">
-          Trade {athlete.name} ({athlete.symbol})
+          {athlete.name} ({athlete.symbol})
         </h2>
 
         {/* Mode Toggle */}
@@ -108,8 +108,8 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
         {/* Price Breakdown */}
         <div className="bg-slate-700/50 rounded-lg p-4 mb-6 space-y-3">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Current Price:</span>
-            <span className="font-bold price-display">{athlete.currentPrice.toLocaleString()} ATHLX</span>
+            <span className="text-gray-400">Activity Index:</span>
+            <span className="font-bold price-display">{athlete.currentPrice.toLocaleString()} pts</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-400">Quantity:</span>
@@ -117,22 +117,22 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
           </div>
           <div className="border-t border-slate-600 pt-3 flex justify-between">
             <span className="text-gray-400">Subtotal:</span>
-            <span className="font-bold price-display">{subtotal.toLocaleString()} ATHLX</span>
+            <span className="font-bold price-display">{subtotal.toLocaleString()} tATHLX</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Trading Fee (5%):</span>
-            <span className="font-semibold text-orange-400 price-display">{fee.toLocaleString()} ATHLX</span>
+            <span className="text-gray-400">Demo Fee (5%):</span>
+            <span className="font-semibold text-orange-400 price-display">{fee.toLocaleString()} tATHLX</span>
           </div>
           <div className="border-t border-slate-600 pt-3 flex justify-between text-lg">
             <span className="font-bold">Total {mode === 'buy' ? 'Cost' : 'Received'}:</span>
             <span className={`font-bold price-display ${mode === 'buy' ? 'text-red-400' : 'text-green-400'}`}>
-              {total.toLocaleString()} ATHLX
+              {total.toLocaleString()} tATHLX
             </span>
           </div>
         </div>
 
         <p className="text-xs text-gray-400 mb-6">
-          A 5% trading fee is applied to every transaction. 2.5% goes directly to support the athlete, and the remainder supports platform operations and the Athlete Lifetime Support Vault.
+          A 5% demo fee is applied. Simulates distribution: 3% Operations Wallet, 1% Athlete Reward Wallet, 1% Post-Career Support Vault (all demo-only).
         </p>
 
         {error && (
@@ -143,7 +143,7 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
 
         {success && (
           <div className="p-3 bg-green-500/20 border border-green-500 rounded-lg text-sm text-green-200 mb-4">
-            Trade executed successfully! You {mode === 'buy' ? 'bought' : 'sold'} {quantity} {athlete.symbol} for {total.toLocaleString()} ATHLX.
+            Action executed! You {mode === 'buy' ? 'acquired' : 'released'} {quantity} units for {total.toLocaleString()} tATHLX.
           </div>
         )}
 
@@ -170,7 +170,7 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
 
         {state.currentUser && (
           <div className="mt-4 text-center text-sm text-gray-400">
-            Your Balance: <span className="font-bold price-display text-white">{state.currentUser.athlxBalance.toLocaleString()} ATHLX</span>
+            Your Demo Balance: <span className="font-bold price-display text-white">{state.currentUser.athlxBalance.toLocaleString()} tATHLX</span>
           </div>
         )}
       </div>
