@@ -94,21 +94,27 @@ export default function MyPage() {
                     <DollarSign className="text-blue-400" size={24} />
                     <h3 className="text-lg font-semibold">{t.balance}</h3>
                   </div>
-                  <p className="text-3xl font-bold price-display">{formatNumber(state.currentUser.athlxBalance)} tATHLX</p>
+                  <p className="text-3xl font-bold price-display">
+                    {formatNumber(state.currentUser.athlxBalance)} tATHLX
+                  </p>
                 </div>
                 <div className="glass-effect rounded-xl p-6">
                   <div className="flex items-center space-x-3 mb-3">
                     <TrendingUp className="text-green-400" size={24} />
                     <h3 className="text-lg font-semibold">{t.unitHoldingsValue}</h3>
                   </div>
-                  <p className="text-3xl font-bold price-display">{formatNumber(portfolioValue)} tATHLX</p>
+                  <p className="text-3xl font-bold price-display">
+                    {formatNumber(portfolioValue)} tATHLX
+                  </p>
                 </div>
                 <div className="glass-effect rounded-xl p-6">
                   <div className="flex items-center space-x-3 mb-3">
                     <Users className="text-purple-400" size={24} />
                     <h3 className="text-lg font-semibold">{t.unitHoldings}</h3>
                   </div>
-                  <p className="text-3xl font-bold">{portfolio.length} {t.unitHoldingsCountLabel}</p>
+                  <p className="text-3xl font-bold">
+                    {portfolio.length} {t.unitHoldingsCountLabel}
+                  </p>
                 </div>
               </div>
 
@@ -137,7 +143,7 @@ export default function MyPage() {
                           const displayUnitCost = currentPrice > 0 ? currentPrice : fallbackUnitCost;
                           const pnl = (displayUnitCost - avgBuyPrice) * quantity;
                           const pnlPercent = avgBuyPrice ? ((displayUnitCost - avgBuyPrice) / avgBuyPrice) * 100 : 0;
-                          
+
                           return (
                             <tr key={p.athleteSymbol} className="border-b border-slate-700/50 hover:bg-slate-700/30">
                               <td className="py-3 px-4">
@@ -217,7 +223,9 @@ export default function MyPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-400 mb-2">{t.immediateSupportContribution}</p>
-                    <p className="text-2xl font-bold price-display text-green-400">{formatNumber(immediatePayoutContribution)} tATHLX</p>
+                    <p className="text-2xl font-bold price-display text-green-400">
+                      {formatNumber(immediatePayoutContribution)} tATHLX
+                    </p>
                   </div>
                 </div>
                 <p className="mt-4 text-sm text-gray-400">
