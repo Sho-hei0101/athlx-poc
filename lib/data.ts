@@ -45,7 +45,7 @@ const generatePriceHistory = (basePrice: number, volatility: number = 0.1, seed:
   return history;
 };
 
-export const initialAthletes: Athlete[] = [
+const baseAthletes: Array<Omit<Athlete, 'unitCost'>> = [
   {
     id: '1',
     name: 'Marco Silva',
@@ -527,6 +527,11 @@ export const initialAthletes: Athlete[] = [
     createdAt: new Date(REFERENCE_TIME - 45 * 24 * 60 * 60 * 1000).toISOString()
   }
 ].map((athlete) => ({
+  ...athlete,
+  unitCost: getDefaultUnitCost(athlete.category)
+}));
+
+export const initialAthletes: Athlete[] = baseAthletes.map((athlete) => ({
   ...athlete,
   unitCost: getDefaultUnitCost(athlete.category)
 }));
