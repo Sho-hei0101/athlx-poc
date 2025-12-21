@@ -28,7 +28,11 @@ export default function MyPage() {
 
   const portfolio = getPortfolio();
   const userTrades = state.trades.filter(t => t.userId === state.currentUser!.id).reverse();
-  const portfolioValue = portfolio.reduce((sum, p) => sum + (p.quantity * p.currentPrice), 0);
+  const portfolioValue = portfolio.reduce((sum, p) => {
+    const fallbackUnitCost = state.athletes.find(a => a.symbol === p.athleteSymbol)?.unitCost ?? 0;
+    const unitCost = p.currentPrice > 0 ? p.currentPrice : fallbackUnitCost;
+    return sum + (p.quantity * unitCost);
+  }, 0);
   const totalFeesGenerated = userTrades.reduce((sum, t) => sum + t.fee, 0);
   const immediatePayoutContribution = totalFeesGenerated * 0.5; // 2.5% of 5%
   const categoryLabels: Record<Category, string> = {
@@ -135,8 +139,10 @@ export default function MyPage() {
                           const avgBuyPrice = p.avgBuyPrice ?? 0;
                           const currentPrice = p.currentPrice ?? 0;
                           const quantity = p.quantity ?? 0;
-                          const pnl = (currentPrice - avgBuyPrice) * quantity;
-                          const pnlPercent = avgBuyPrice ? ((currentPrice - avgBuyPrice) / avgBuyPrice) * 100 : 0;
+                          const fallbackUnitCost = state.athletes.find(a => a.symbol === p.athleteSymbol)?.unitCost ?? 0;
+                          const displayUnitCost = currentPrice > 0 ? currentPrice : fallbackUnitCost;
+                          const pnl = (displayUnitCost - avgBuyPrice) * quantity;
+                          const pnlPercent = avgBuyPrice ? ((displayUnitCost - avgBuyPrice) / avgBuyPrice) * 100 : 0;
 
                           return (
                             <tr key={p.athleteSymbol} className="border-b border-slate-700/50 hover:bg-slate-700/30">
@@ -147,7 +153,7 @@ export default function MyPage() {
                               </td>
                               <td className="text-right py-3 px-4 font-semibold">{quantity}</td>
                               <td className="text-right py-3 px-4 price-display">{formatNumber(avgBuyPrice)}</td>
-                              <td className="text-right py-3 px-4 price-display">{formatNumber(currentPrice)}</td>
+                              <td className="text-right py-3 px-4 price-display">{formatNumber(displayUnitCost)}</td>
                               <td className={`text-right py-3 px-4 font-bold ${pnl >= 0 ? 'price-up' : 'price-down'}`}>
                                 {pnl >= 0 ? '+' : ''}{formatNumber(pnl)} ({pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(1)}%)
                               </td>
