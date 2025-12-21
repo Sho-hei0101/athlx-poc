@@ -1,0 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .hover-glow {
+    transition: all 0.3s ease;
+  }
+  
+  .hover-glow:hover {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+    transform: translateY(-2px);
+  }
+  
+  .gradient-text {
+    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .price-up {
+    color: #10b981;
+  }
+  
+  .price-down {
+    color: #ef4444;
+  }
+  
+  .badge {
+    @apply px-2 py-1 rounded text-xs font-semibold;
+  }
+  
+  .badge-amateur {
+    @apply bg-gray-700 text-gray-200;
+  }
+  
+  .badge-semi-pro {
+    @apply bg-blue-700 text-blue-200;
+  }
+  
+  .badge-pro {
+    @apply bg-purple-700 text-purple-200;
+  }
+  
+  .badge-elite {
+    @apply bg-yellow-600 text-yellow-100;
+  }
+  
+  .badge-new {
+    @apply bg-green-600 text-white;
+  }
+  
+  .badge-featured {
+    @apply bg-orange-600 text-white;
+  }
+  
+  .badge-promoted {
+    @apply bg-pink-600 text-white;
+  }
+  
+  .badge-fast-growing {
+    @apply bg-red-600 text-white;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.7);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.6);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Number emphasis */
+.price-display {
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
