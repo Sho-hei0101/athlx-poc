@@ -56,7 +56,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
       labels: dataPoints.map(p => new Date(p.time).toLocaleDateString()),
       datasets: [
         {
-          label: 'Price (ATHLX)',
+          label: 'Activity Index (pts)',
           data: dataPoints.map(p => p.price),
           borderColor: 'rgb(59, 130, 246)',
           backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -101,7 +101,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
         },
         ticks: {
           color: '#9ca3af',
-          callback: (value: any) => `${value} ATHLX`
+          callback: (value: any) => `${value} tATHLX`
         }
       }
     }
@@ -166,7 +166,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
                   <div className="mb-4">
                     <p className="text-sm text-gray-400 mb-1">Current Price</p>
                     <p className="text-4xl font-bold price-display">
-                      {athlete.currentPrice.toLocaleString()} ATHLX
+                      {athlete.currentPrice.toLocaleString()} tATHLX
                     </p>
                   </div>
 
@@ -188,7 +188,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-gray-400">Volume</p>
-                      <p className="font-semibold">{athlete.tradingVolume.toLocaleString()} ATHLX</p>
+                      <p className="font-semibold">{athlete.tradingVolume.toLocaleString()} tATHLX</p>
                     </div>
                     <div>
                       <p className="text-gray-400">Holders</p>

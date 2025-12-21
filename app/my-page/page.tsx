@@ -77,14 +77,14 @@ export default function MyPage() {
                     <DollarSign className="text-blue-400" size={24} />
                     <h3 className="text-lg font-semibold">ATHLX Balance</h3>
                   </div>
-                  <p className="text-3xl font-bold price-display">{state.currentUser.athlxBalance.toLocaleString()} ATHLX</p>
+                  <p className="text-3xl font-bold price-display">{state.currentUser.athlxBalance.toLocaleString()} tATHLX</p>
                 </div>
                 <div className="glass-effect rounded-xl p-6">
                   <div className="flex items-center space-x-3 mb-3">
                     <TrendingUp className="text-green-400" size={24} />
                     <h3 className="text-lg font-semibold">Portfolio Value</h3>
                   </div>
-                  <p className="text-3xl font-bold price-display">{portfolioValue.toLocaleString()} ATHLX</p>
+                  <p className="text-3xl font-bold price-display">{portfolioValue.toLocaleString()} tATHLX</p>
                 </div>
                 <div className="glass-effect rounded-xl p-6">
                   <div className="flex items-center space-x-3 mb-3">
@@ -174,8 +174,8 @@ export default function MyPage() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold price-display">{trade.total.toLocaleString()} ATHLX</p>
-                          <p className="text-sm text-gray-400">Fee: {trade.fee.toLocaleString()} ATHLX</p>
+                          <p className="font-bold price-display">{trade.total.toLocaleString()} tATHLX</p>
+                          <p className="text-sm text-gray-400">Fee: {trade.fee.toLocaleString()} tATHLX</p>
                         </div>
                       </div>
                     ))}
@@ -191,15 +191,15 @@ export default function MyPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <p className="text-sm text-gray-400 mb-2">Total Fees Generated</p>
-                    <p className="text-2xl font-bold price-display">{totalFeesGenerated.toLocaleString()} ATHLX</p>
+                    <p className="text-2xl font-bold price-display">{totalFeesGenerated.toLocaleString()} tATHLX</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-400 mb-2">Contribution to Immediate Athlete Support</p>
-                    <p className="text-2xl font-bold price-display text-green-400">{immediatePayoutContribution.toLocaleString()} ATHLX</p>
+                    <p className="text-2xl font-bold price-display text-green-400">{immediatePayoutContribution.toLocaleString()} tATHLX</p>
                   </div>
                 </div>
                 <p className="mt-4 text-sm text-gray-400">
-                  Your trading activity has contributed {immediatePayoutContribution.toLocaleString()} ATHLX directly to athletes through the 2.5% immediate payout mechanism.
+                  Your trading activity has contributed {immediatePayoutContribution.toLocaleString()} tATHLX directly to athletes through the 2.5% immediate payout mechanism.
                 </p>
               </div>
             </div>
@@ -221,7 +221,7 @@ export default function MyPage() {
                       </div>
                       <div>
                         <p className="text-sm text-gray-400 mb-1">Current Price</p>
-                        <p className="text-xl font-bold price-display">{linkedAthlete.currentPrice.toLocaleString()} ATHLX</p>
+                        <p className="text-xl font-bold price-display">{linkedAthlete.currentPrice.toLocaleString()} tATHLX</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-400 mb-1">Holders</p>
@@ -229,7 +229,7 @@ export default function MyPage() {
                       </div>
                       <div>
                         <p className="text-sm text-gray-400 mb-1">Trading Volume</p>
-                        <p className="text-xl font-bold price-display">{linkedAthlete.tradingVolume.toLocaleString()} ATHLX</p>
+                        <p className="text-xl font-bold price-display">{linkedAthlete.tradingVolume.toLocaleString()} tATHLX</p>
                       </div>
                     </div>
                   </div>
@@ -242,12 +242,12 @@ export default function MyPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="bg-slate-700/50 rounded-lg p-6">
                         <p className="text-sm text-gray-400 mb-2">Total Trading Volume</p>
-                        <p className="text-3xl font-bold price-display">{linkedAthlete.tradingVolume.toLocaleString()} ATHLX</p>
+                        <p className="text-3xl font-bold price-display">{linkedAthlete.tradingVolume.toLocaleString()} tATHLX</p>
                       </div>
                       <div className="bg-green-500/20 border border-green-500 rounded-lg p-6">
                         <p className="text-sm text-gray-300 mb-2">Total Immediate Payout (2.5%)</p>
                         <p className="text-3xl font-bold price-display text-green-400">
-                          {(linkedAthlete.tradingVolume * 0.025).toLocaleString()} ATHLX
+                          {(linkedAthlete.tradingVolume * 0.025).toLocaleString()} tATHLX
                         </p>
                         <p className="text-xs text-gray-400 mt-2">
                           Direct support from every trade of your token
