@@ -1,8 +1,7 @@
 'use client';
 
 import { useStore } from '@/lib/store';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, DollarSign, Users, Activity } from 'lucide-react';
 import TradeModal from '@/components/TradeModal';
@@ -12,13 +11,18 @@ import { Category } from '@/lib/types';
 export default function MyPage() {
   const { state, getPortfolio } = useStore();
   const t = translations[state.language];
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'fan' | 'athlete'>('fan');
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [selectedAthlete, setSelectedAthlete] = useState<any>(null);
+  const formatNumber = (value?: number) => (value ?? 0).toLocaleString();
+
+  useEffect(() => {
+    if (!state.currentUser) {
+      window.location.replace('/');
+    }
+  }, [state.currentUser]);
 
   if (!state.currentUser) {
-    router.push('/');
     return null;
   }
 
@@ -86,14 +90,14 @@ export default function MyPage() {
                     <DollarSign className="text-blue-400" size={24} />
                     <h3 className="text-lg font-semibold">{t.balance}</h3>
                   </div>
-                  <p className="text-3xl font-bold price-display">{state.currentUser.athlxBalance.toLocaleString()} tATHLX</p>
+                  <p className="text-3xl font-bold price-display">{formatNumber(state.currentUser.athlxBalance)} tATHLX</p>
                 </div>
                 <div className="glass-effect rounded-xl p-6">
                   <div className="flex items-center space-x-3 mb-3">
                     <TrendingUp className="text-green-400" size={24} />
                     <h3 className="text-lg font-semibold">{t.unitHoldingsValue}</h3>
                   </div>
-                  <p className="text-3xl font-bold price-display">{portfolioValue.toLocaleString()} tATHLX</p>
+                  <p className="text-3xl font-bold price-display">{formatNumber(portfolioValue)} tATHLX</p>
                 </div>
                 <div className="glass-effect rounded-xl p-6">
                   <div className="flex items-center space-x-3 mb-3">
@@ -122,8 +126,11 @@ export default function MyPage() {
                       </thead>
                       <tbody>
                         {portfolio.map(p => {
-                          const pnl = (p.currentPrice - p.avgBuyPrice) * p.quantity;
-                          const pnlPercent = ((p.currentPrice - p.avgBuyPrice) / p.avgBuyPrice) * 100;
+                          const avgBuyPrice = p.avgBuyPrice ?? 0;
+                          const currentPrice = p.currentPrice ?? 0;
+                          const quantity = p.quantity ?? 0;
+                          const pnl = (currentPrice - avgBuyPrice) * quantity;
+                          const pnlPercent = avgBuyPrice ? ((currentPrice - avgBuyPrice) / avgBuyPrice) * 100 : 0;
                           
                           return (
                             <tr key={p.athleteSymbol} className="border-b border-slate-700/50 hover:bg-slate-700/30">
@@ -132,11 +139,11 @@ export default function MyPage() {
                                   {p.athleteName} ({p.athleteSymbol})
                                 </Link>
                               </td>
-                              <td className="text-right py-3 px-4 font-semibold">{p.quantity}</td>
-                              <td className="text-right py-3 px-4 price-display">{p.avgBuyPrice.toLocaleString()}</td>
-                              <td className="text-right py-3 px-4 price-display">{p.currentPrice.toLocaleString()}</td>
+                              <td className="text-right py-3 px-4 font-semibold">{quantity}</td>
+                              <td className="text-right py-3 px-4 price-display">{formatNumber(avgBuyPrice)}</td>
+                              <td className="text-right py-3 px-4 price-display">{formatNumber(currentPrice)}</td>
                               <td className={`text-right py-3 px-4 font-bold ${pnl >= 0 ? 'price-up' : 'price-down'}`}>
-                                {pnl >= 0 ? '+' : ''}{pnl.toLocaleString()} ({pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(1)}%)
+                                {pnl >= 0 ? '+' : ''}{formatNumber(pnl)} ({pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(1)}%)
                               </td>
                               <td className="text-right py-3 px-4">
                                 <button
@@ -183,8 +190,8 @@ export default function MyPage() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold price-display">{trade.total.toLocaleString()} tATHLX</p>
-                          <p className="text-sm text-gray-400">{t.demoFeeShort}: {trade.fee.toLocaleString()} tATHLX</p>
+                          <p className="font-bold price-display">{formatNumber(trade.total)} tATHLX</p>
+                          <p className="text-sm text-gray-400">{t.demoFeeShort}: {formatNumber(trade.fee)} tATHLX</p>
                         </div>
                       </div>
                     ))}
@@ -200,15 +207,15 @@ export default function MyPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <p className="text-sm text-gray-400 mb-2">{t.totalDemoFees}</p>
-                    <p className="text-2xl font-bold price-display">{totalFeesGenerated.toLocaleString()} tATHLX</p>
+                    <p className="text-2xl font-bold price-display">{formatNumber(totalFeesGenerated)} tATHLX</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-400 mb-2">{t.immediateSupportContribution}</p>
-                    <p className="text-2xl font-bold price-display text-green-400">{immediatePayoutContribution.toLocaleString()} tATHLX</p>
+                    <p className="text-2xl font-bold price-display text-green-400">{formatNumber(immediatePayoutContribution)} tATHLX</p>
                   </div>
                 </div>
                 <p className="mt-4 text-sm text-gray-400">
-                  {t.impactNoteStart} {immediatePayoutContribution.toLocaleString()} tATHLX {t.impactNoteEnd}
+                  {t.impactNoteStart} {formatNumber(immediatePayoutContribution)} tATHLX {t.impactNoteEnd}
                 </p>
               </div>
             </div>
@@ -230,7 +237,7 @@ export default function MyPage() {
                       </div>
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.unitCostLabel}</p>
-                        <p className="text-xl font-bold price-display">{linkedAthlete.unitCost.toLocaleString()} tATHLX</p>
+                        <p className="text-xl font-bold price-display">{formatNumber(linkedAthlete.unitCost)} tATHLX</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.participants}</p>
@@ -238,7 +245,7 @@ export default function MyPage() {
                       </div>
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.demoCreditsFlow}</p>
-                        <p className="text-xl font-bold price-display">{linkedAthlete.tradingVolume.toLocaleString()} tATHLX</p>
+                        <p className="text-xl font-bold price-display">{formatNumber(linkedAthlete.tradingVolume)} tATHLX</p>
                       </div>
                     </div>
                   </div>
@@ -251,12 +258,12 @@ export default function MyPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="bg-slate-700/50 rounded-lg p-6">
                         <p className="text-sm text-gray-400 mb-2">{t.totalDemoCreditsFlow}</p>
-                        <p className="text-3xl font-bold price-display">{linkedAthlete.tradingVolume.toLocaleString()} tATHLX</p>
+                        <p className="text-3xl font-bold price-display">{formatNumber(linkedAthlete.tradingVolume)} tATHLX</p>
                       </div>
                       <div className="bg-green-500/20 border border-green-500 rounded-lg p-6">
                         <p className="text-sm text-gray-300 mb-2">{t.totalImmediatePayout}</p>
                         <p className="text-3xl font-bold price-display text-green-400">
-                          {(linkedAthlete.tradingVolume * 0.025).toLocaleString()} tATHLX
+                          {formatNumber(linkedAthlete.tradingVolume * 0.025)} tATHLX
                         </p>
                         <p className="text-xs text-gray-400 mt-2">
                           {t.directSupportNote}
