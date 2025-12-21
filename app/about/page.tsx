@@ -85,7 +85,7 @@ export default function AboutPage() {
                   Aviso importante:
                 </p>
                 <p>
-                  Este es un piloto cerrado para pruebas de UX y participación de la comunidad. No es un producto de inversión, no es una oferta de valores, ni un servicio financiero.
+                  Esto es un piloto cerrado para pruebas de UX e investigación comunitaria. Solo demostración. No es dinero real. No hay retiros. No hay transferencias externas. Nada aquí genera uso o efectos fuera del piloto.
                 </p>
               </div>
             </div>
