@@ -2,7 +2,6 @@
 
 import { useStore } from '@/lib/store';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, DollarSign, Users, Activity } from 'lucide-react';
 import TradeModal from '@/components/TradeModal';
@@ -12,16 +11,15 @@ import { Category } from '@/lib/types';
 export default function MyPage() {
   const { state, getPortfolio } = useStore();
   const t = translations[state.language];
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'fan' | 'athlete'>('fan');
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [selectedAthlete, setSelectedAthlete] = useState<any>(null);
 
   useEffect(() => {
     if (!state.currentUser) {
-      router.replace('/');
+      window.location.replace('/');
     }
-  }, [state.currentUser, router]);
+  }, [state.currentUser]);
 
   if (!state.currentUser) {
     return null;
@@ -91,21 +89,27 @@ export default function MyPage() {
                     <DollarSign className="text-blue-400" size={24} />
                     <h3 className="text-lg font-semibold">{t.balance}</h3>
                   </div>
-                  <p className="text-3xl font-bold price-display">{state.currentUser.athlxBalance.toLocaleString()} tATHLX</p>
+                  <p className="text-3xl font-bold price-display">
+                    {state.currentUser.athlxBalance.toLocaleString()} tATHLX
+                  </p>
                 </div>
                 <div className="glass-effect rounded-xl p-6">
                   <div className="flex items-center space-x-3 mb-3">
                     <TrendingUp className="text-green-400" size={24} />
                     <h3 className="text-lg font-semibold">{t.unitHoldingsValue}</h3>
                   </div>
-                  <p className="text-3xl font-bold price-display">{portfolioValue.toLocaleString()} tATHLX</p>
+                  <p className="text-3xl font-bold price-display">
+                    {portfolioValue.toLocaleString()} tATHLX
+                  </p>
                 </div>
                 <div className="glass-effect rounded-xl p-6">
                   <div className="flex items-center space-x-3 mb-3">
                     <Users className="text-purple-400" size={24} />
                     <h3 className="text-lg font-semibold">{t.unitHoldings}</h3>
                   </div>
-                  <p className="text-3xl font-bold">{portfolio.length} {t.unitHoldingsCountLabel}</p>
+                  <p className="text-3xl font-bold">
+                    {portfolio.length} {t.unitHoldingsCountLabel}
+                  </p>
                 </div>
               </div>
 
@@ -129,7 +133,7 @@ export default function MyPage() {
                         {portfolio.map(p => {
                           const pnl = (p.currentPrice - p.avgBuyPrice) * p.quantity;
                           const pnlPercent = ((p.currentPrice - p.avgBuyPrice) / p.avgBuyPrice) * 100;
-                          
+
                           return (
                             <tr key={p.athleteSymbol} className="border-b border-slate-700/50 hover:bg-slate-700/30">
                               <td className="py-3 px-4">
@@ -209,7 +213,9 @@ export default function MyPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-400 mb-2">{t.immediateSupportContribution}</p>
-                    <p className="text-2xl font-bold price-display text-green-400">{immediatePayoutContribution.toLocaleString()} tATHLX</p>
+                    <p className="text-2xl font-bold price-display text-green-400">
+                      {immediatePayoutContribution.toLocaleString()} tATHLX
+                    </p>
                   </div>
                 </div>
                 <p className="mt-4 text-sm text-gray-400">
@@ -312,3 +318,4 @@ export default function MyPage() {
     </>
   );
 }
+
