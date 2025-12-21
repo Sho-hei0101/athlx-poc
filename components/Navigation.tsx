@@ -40,7 +40,12 @@ export default function Navigation() {
 
   return (
     <>
-      <nav className="bg-slate-900/95 backdrop-blur-md border-b border-blue-500/20 sticky top-0 z-50">
+      {/* Global Disclaimer Banner */}
+      <div className="bg-red-600/90 backdrop-blur-sm text-white py-2 px-4 text-center text-sm font-semibold sticky top-0 z-50">
+        {t.disclaimerBanner}
+      </div>
+      
+      <nav className="bg-slate-900/95 backdrop-blur-md border-b border-blue-500/20 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
@@ -78,7 +83,7 @@ export default function Navigation() {
                 <div className="px-4 py-2 bg-blue-600/20 rounded-lg border border-blue-500/30">
                   <span className="text-sm text-blue-200">{t.balance}:</span>
                   <span className="ml-2 font-bold price-display text-white">
-                    {state.currentUser.athlxBalance.toLocaleString()} ATHLX
+                    {state.currentUser.athlxBalance.toLocaleString()} tATHLX
                   </span>
                 </div>
               )}
@@ -172,7 +177,7 @@ export default function Navigation() {
                 
                 {state.currentUser && (
                   <div className="py-2 text-sm">
-                    {t.balance}: <span className="font-bold price-display">{state.currentUser.athlxBalance.toLocaleString()} ATHLX</span>
+                    {t.balance}: <span className="font-bold price-display">{state.currentUser.athlxBalance.toLocaleString()} tATHLX</span>
                   </div>
                 )}
                 
