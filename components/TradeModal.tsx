@@ -24,23 +24,26 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
 
   if (!isOpen) return null;
 
-  const subtotal = quantity * athlete.currentPrice;
+  const subtotal = quantity * athlete.unitCost;
   const fee = subtotal * 0.05;
   const total = mode === 'buy' ? subtotal + fee : subtotal - fee;
+  const actionLabel = mode === 'buy' ? t.acquireUnits : t.releaseUnits;
+  const actionVerb = mode === 'buy' ? t.acquiredVerb : t.releasedVerb;
+  const totalLabel = mode === 'buy' ? t.totalCostLabel : t.totalReceivedLabel;
 
   const handleConfirm = () => {
     try {
       if (!state.currentUser) {
-        setError('Please login first');
+        setError(t.pleaseLogin);
         return;
       }
 
       if (mode === 'buy' && state.currentUser.athlxBalance < total) {
-        setError('Insufficient balance');
+        setError(t.insufficientBalance);
         return;
       }
 
-      executeTrade(athlete.symbol, mode, quantity, athlete.currentPrice);
+      executeTrade(athlete.symbol, mode, quantity, athlete.unitCost);
       setSuccess(true);
       setTimeout(() => {
         onClose();
@@ -78,7 +81,7 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
             }`}
           >
             <TrendingUp size={20} />
-            <span>{t.buy}</span>
+            <span>{t.acquireUnits}</span>
           </button>
           <button
             onClick={() => setMode('sell')}
@@ -89,13 +92,13 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
             }`}
           >
             <TrendingDown size={20} />
-            <span>{t.sell}</span>
+            <span>{t.releaseUnits}</span>
           </button>
         </div>
 
         {/* Quantity Input */}
         <div className="mb-6">
-          <label className="block text-sm font-medium mb-2">Quantity</label>
+          <label className="block text-sm font-medium mb-2">{t.quantity}</label>
           <input
             type="number"
             min="1"
@@ -108,23 +111,23 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
         {/* Price Breakdown */}
         <div className="bg-slate-700/50 rounded-lg p-4 mb-6 space-y-3">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Activity Index:</span>
-            <span className="font-bold price-display">{athlete.currentPrice.toLocaleString()} pts</span>
+            <span className="text-gray-400">{t.unitCostLabel}:</span>
+            <span className="font-bold price-display">{athlete.unitCost.toLocaleString()} tATHLX</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Quantity:</span>
+            <span className="text-gray-400">{t.quantity}:</span>
             <span className="font-semibold">{quantity}</span>
           </div>
           <div className="border-t border-slate-600 pt-3 flex justify-between">
-            <span className="text-gray-400">Subtotal:</span>
+            <span className="text-gray-400">{t.demoSubtotalLabel}:</span>
             <span className="font-bold price-display">{subtotal.toLocaleString()} tATHLX</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Demo Fee (5%):</span>
+            <span className="text-gray-400">{t.demoFeeLabel}:</span>
             <span className="font-semibold text-orange-400 price-display">{fee.toLocaleString()} tATHLX</span>
           </div>
           <div className="border-t border-slate-600 pt-3 flex justify-between text-lg">
-            <span className="font-bold">Total {mode === 'buy' ? 'Cost' : 'Received'}:</span>
+            <span className="font-bold">{totalLabel}:</span>
             <span className={`font-bold price-display ${mode === 'buy' ? 'text-red-400' : 'text-green-400'}`}>
               {total.toLocaleString()} tATHLX
             </span>
@@ -132,7 +135,7 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
         </div>
 
         <p className="text-xs text-gray-400 mb-6">
-          A 5% demo fee is applied. Simulates distribution: 3% Operations Wallet, 1% Athlete Reward Wallet, 1% Post-Career Support Vault (all demo-only).
+          {t.demoFeeNote}
         </p>
 
         {error && (
@@ -143,7 +146,7 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
 
         {success && (
           <div className="p-3 bg-green-500/20 border border-green-500 rounded-lg text-sm text-green-200 mb-4">
-            Action executed! You {mode === 'buy' ? 'acquired' : 'released'} {quantity} units for {total.toLocaleString()} tATHLX.
+            {t.actionSuccessPrefix} {actionVerb} {quantity} {t.unitsLabel} {t.actionSuccessFor} {total.toLocaleString()} tATHLX.
           </div>
         )}
 
@@ -164,13 +167,13 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
                 : 'bg-red-600 hover:bg-red-700'
             } disabled:opacity-50`}
           >
-            {t.confirm} {mode === 'buy' ? t.buy : t.sell}
+            {t.confirm} {actionLabel}
           </button>
         </div>
 
         {state.currentUser && (
           <div className="mt-4 text-center text-sm text-gray-400">
-            Your Demo Balance: <span className="font-bold price-display text-white">{state.currentUser.athlxBalance.toLocaleString()} tATHLX</span>
+            {t.yourDemoBalance}: <span className="font-bold price-display text-white">{state.currentUser.athlxBalance.toLocaleString()} tATHLX</span>
           </div>
         )}
       </div>

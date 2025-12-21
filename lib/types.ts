@@ -42,6 +42,7 @@ export interface Athlete {
   profileUrl: string;
   highlightVideoUrl: string;
   imageUrl: string;
+  unitCost: number;
   currentPrice: number;
   price24hChange: number;
   price7dChange: number;

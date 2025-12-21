@@ -3,16 +3,50 @@
 import { useStore } from '@/lib/store';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Calendar, Tag } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { Sport } from '@/lib/types';
+import { translations } from '@/lib/translations';
 
 const sportsList: (Sport | 'All')[] = ['All', 'Football', 'Basketball', 'Athletics', 'Swimming', 'Tennis', 'Gymnastics', 'Others'];
 const categories = ['All', 'Transfer', 'Performance', 'Injury', 'Career', 'Others'];
 
 export default function NewsPage() {
   const { state } = useStore();
+  const t = translations[state.language];
   const [selectedSport, setSelectedSport] = useState<Sport | 'All'>('All');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const sportLabels: Record<Sport, string> = {
+    Football: t.sportFootball,
+    Basketball: t.sportBasketball,
+    Athletics: t.sportAthletics,
+    Swimming: t.sportSwimming,
+    Tennis: t.sportTennis,
+    Gymnastics: t.sportGymnastics,
+    Volleyball: t.sportVolleyball,
+    'Rugby Sevens': t.sportRugbySevens,
+    Boxing: t.sportBoxing,
+    Judo: t.sportJudo,
+    Cycling: t.sportCycling,
+    Rowing: t.sportRowing,
+    'Table Tennis': t.sportTableTennis,
+    Badminton: t.sportBadminton,
+    Fencing: t.sportFencing,
+    Weightlifting: t.sportWeightlifting,
+    Wrestling: t.sportWrestling,
+    Taekwondo: t.sportTaekwondo,
+    Archery: t.sportArchery,
+    Shooting: t.sportShooting,
+    Cricket: t.sportCricket,
+    eSports: t.sportEsports,
+    Others: t.sportOthers
+  };
+  const newsCategoryLabels: Record<string, string> = {
+    Transfer: t.newsCategoryTransfer,
+    Performance: t.newsCategoryPerformance,
+    Injury: t.newsCategoryInjury,
+    Career: t.newsCategoryCareer,
+    Others: t.newsCategoryOthers
+  };
 
   const filteredNews = useMemo(() => {
     return state.news.filter(news => {
@@ -25,7 +59,7 @@ export default function NewsPage() {
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-5xl font-bold mb-8 gradient-text">Sports News</h1>
+        <h1 className="text-5xl font-bold mb-8 gradient-text">{t.news}</h1>
 
         {/* Filters */}
         <div className="glass-effect rounded-xl p-6 mb-8">
@@ -36,7 +70,9 @@ export default function NewsPage() {
               className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
             >
               {sportsList.map(sport => (
-                <option key={sport} value={sport}>{sport}</option>
+                <option key={sport} value={sport}>
+                  {sport === 'All' ? t.allSports : sportLabels[sport]}
+                </option>
               ))}
             </select>
 
@@ -46,7 +82,9 @@ export default function NewsPage() {
               className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
             >
               {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat} value={cat}>
+                  {cat === 'All' ? t.allCategories : newsCategoryLabels[cat]}
+                </option>
               ))}
             </select>
 
@@ -57,7 +95,7 @@ export default function NewsPage() {
               }}
               className="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg transition"
             >
-              Clear Filters
+              {t.clearFilters}
             </button>
           </div>
         </div>
@@ -72,8 +110,8 @@ export default function NewsPage() {
             return (
               <div key={news.id} className="glass-effect rounded-xl p-6 hover-glow">
                 <div className="flex items-center space-x-2 mb-3">
-                  <span className="badge badge-new">{news.category}</span>
-                  <span className="text-sm text-gray-400">{news.sport}</span>
+                  <span className="badge badge-new">{newsCategoryLabels[news.category]}</span>
+                  <span className="text-sm text-gray-400">{sportLabels[news.sport]}</span>
                 </div>
 
                 <h3 className="text-2xl font-bold mb-3">{news.title}</h3>
@@ -90,7 +128,7 @@ export default function NewsPage() {
                     rel="noopener noreferrer"
                     className="text-blue-400 hover:text-blue-300 font-semibold text-sm"
                   >
-                    Read more →
+                    {t.readMore} →
                   </a>
                 </div>
 
@@ -104,11 +142,13 @@ export default function NewsPage() {
                       />
                       <div>
                         <p className="font-bold">{relatedAthlete.name}</p>
-                        <p className="text-sm text-gray-400">{relatedAthlete.symbol} • {relatedAthlete.sport}</p>
-                        <p className="text-sm font-semibold price-display">{relatedAthlete.currentPrice.toLocaleString()} ATHLX</p>
+                        <p className="text-sm text-gray-400">{relatedAthlete.symbol} • {sportLabels[relatedAthlete.sport]}</p>
+                        <p className="text-sm font-semibold price-display">
+                          {t.activityIndexLabel}: {relatedAthlete.currentPrice.toLocaleString()} {t.pointsUnit}
+                        </p>
                       </div>
                       <button className="ml-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold transition">
-                        View Token
+                        {t.viewProfile}
                       </button>
                     </Link>
                   </div>
@@ -120,7 +160,7 @@ export default function NewsPage() {
 
         {filteredNews.length === 0 && (
           <div className="text-center py-20">
-            <p className="text-2xl text-gray-400">No news found matching your filters.</p>
+            <p className="text-2xl text-gray-400">{t.noNewsFound}</p>
           </div>
         )}
       </div>

@@ -245,7 +245,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const athlete = state.athletes.find(a => a.symbol === p.athleteSymbol);
       return {
         ...p,
-        currentPrice: athlete?.currentPrice || p.currentPrice
+        currentPrice: athlete?.unitCost || p.currentPrice
       };
     });
 
@@ -288,6 +288,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       profileUrl: pending.profileUrl,
       highlightVideoUrl: pending.highlightVideoUrl,
       imageUrl: `https://i.pravatar.cc/300?img=${Math.floor(Math.random() * 70)}`,
+      unitCost: 0.01,
       currentPrice: initialPrice,
       price24hChange: 0,
       price7dChange: 0,

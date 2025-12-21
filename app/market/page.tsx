@@ -5,6 +5,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Search, Filter } from 'lucide-react';
 import { Sport, Category } from '@/lib/types';
+import { translations } from '@/lib/translations';
 
 const allSports: Sport[] = [
   'Football', 'Basketball', 'Athletics', 'Swimming', 'Tennis', 'Gymnastics',
@@ -17,6 +18,7 @@ const categories: Category[] = ['Amateur', 'Semi-pro', 'Pro', 'Elite'];
 
 export default function MarketPage() {
   const { state } = useStore();
+  const t = translations[state.language];
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSport, setSelectedSport] = useState<Sport | 'All'>('All');
   const [selectedCategory, setSelectedCategory] = useState<Category | 'All'>('All');
@@ -48,11 +50,48 @@ export default function MarketPage() {
     };
     return flags[nationality] || '🏳️';
   };
+  const sportLabels: Record<Sport, string> = {
+    Football: t.sportFootball,
+    Basketball: t.sportBasketball,
+    Athletics: t.sportAthletics,
+    Swimming: t.sportSwimming,
+    Tennis: t.sportTennis,
+    Gymnastics: t.sportGymnastics,
+    Volleyball: t.sportVolleyball,
+    'Rugby Sevens': t.sportRugbySevens,
+    Boxing: t.sportBoxing,
+    Judo: t.sportJudo,
+    Cycling: t.sportCycling,
+    Rowing: t.sportRowing,
+    'Table Tennis': t.sportTableTennis,
+    Badminton: t.sportBadminton,
+    Fencing: t.sportFencing,
+    Weightlifting: t.sportWeightlifting,
+    Wrestling: t.sportWrestling,
+    Taekwondo: t.sportTaekwondo,
+    Archery: t.sportArchery,
+    Shooting: t.sportShooting,
+    Cricket: t.sportCricket,
+    eSports: t.sportEsports,
+    Others: t.sportOthers
+  };
+  const categoryLabels: Record<Category, string> = {
+    Amateur: t.amateur,
+    'Semi-pro': t.semiPro,
+    Pro: t.pro,
+    Elite: t.elite
+  };
+  const tagLabels: Record<string, string> = {
+    Featured: t.tagFeatured,
+    'Fast Growing': t.tagFastGrowing,
+    Promoted: t.tagPromoted,
+    New: t.tagNew
+  };
 
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-5xl font-bold mb-8 gradient-text">Athlete Directory</h1>
+        <h1 className="text-5xl font-bold mb-8 gradient-text">{t.athleteDirectory}</h1>
 
         {/* Filters */}
         <div className="glass-effect rounded-xl p-6 mb-8">
@@ -62,7 +101,7 @@ export default function MarketPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <input
                 type="text"
-                placeholder="Search by athlete name..."
+                placeholder={t.searchAthletePlaceholder}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
@@ -75,9 +114,9 @@ export default function MarketPage() {
               onChange={(e) => setSelectedSport(e.target.value as Sport | 'All')}
               className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
             >
-              <option value="All">All Sports</option>
+              <option value="All">{t.allSports}</option>
               {allSports.map(sport => (
-                <option key={sport} value={sport}>{sport}</option>
+                <option key={sport} value={sport}>{sportLabels[sport]}</option>
               ))}
             </select>
 
@@ -87,9 +126,9 @@ export default function MarketPage() {
               onChange={(e) => setSelectedCategory(e.target.value as Category | 'All')}
               className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
             >
-              <option value="All">All Categories</option>
+              <option value="All">{t.allCategories}</option>
               {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat} value={cat}>{categoryLabels[cat]}</option>
               ))}
             </select>
 
@@ -104,7 +143,7 @@ export default function MarketPage() {
               className="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg transition flex items-center justify-center space-x-2"
             >
               <Filter size={20} />
-              <span>Clear Filters</span>
+              <span>{t.clearFilters}</span>
             </button>
           </div>
         </div>
@@ -112,11 +151,11 @@ export default function MarketPage() {
         {/* Segments */}
         <div className="flex flex-wrap gap-2 mb-8">
           {[
-            { key: 'all', label: 'All Athletes' },
-            { key: 'new', label: 'New Athletes' },
-            { key: 'featured', label: 'Featured' },
-            { key: 'promoted', label: 'Category Promotions' },
-            { key: 'fastGrowing', label: 'Fast Growing' }
+            { key: 'all', label: t.segmentAllAthletes },
+            { key: 'new', label: t.segmentNewAthletes },
+            { key: 'featured', label: t.segmentFeatured },
+            { key: 'promoted', label: t.segmentCategoryPromotions },
+            { key: 'fastGrowing', label: t.segmentFastGrowing }
           ].map(segment => (
             <button
               key={segment.key}
@@ -134,7 +173,7 @@ export default function MarketPage() {
 
         {/* Results Count */}
         <div className="mb-6 text-gray-400">
-          Showing {filteredAthletes.length} athlete{filteredAthletes.length !== 1 ? 's' : ''}
+          {t.showingLabel} {filteredAthletes.length} {filteredAthletes.length !== 1 ? t.athletePlural : t.athleteSingular}
         </div>
 
         {/* Athlete Grid */}
@@ -159,7 +198,7 @@ export default function MarketPage() {
                       key={tag}
                       className={`badge badge-${tag.toLowerCase().replace(' ', '-')}`}
                     >
-                      {tag}
+                      {tagLabels[tag] ?? tag}
                     </span>
                   ))}
                 </div>
@@ -176,21 +215,21 @@ export default function MarketPage() {
                     </p>
                   </div>
                   <span className={`badge badge-${athlete.category.toLowerCase().replace('-', '')}`}>
-                    {athlete.category}
+                    {categoryLabels[athlete.category]}
                   </span>
                 </div>
                 
                 <div className="flex items-center space-x-2 text-sm text-gray-400">
                   <span className="font-semibold text-blue-400">{athlete.symbol}</span>
                   <span>•</span>
-                  <span>{athlete.sport}</span>
+                  <span>{sportLabels[athlete.sport]}</span>
                 </div>
               </div>
 
               {/* Activity Index Info */}
               <div className="border-t border-slate-600 pt-3">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-400">Activity Index</span>
+                  <span className="text-sm text-gray-400">{t.activityIndexLabel}</span>
                   <span className="text-xl font-bold price-display">
                     {athlete.currentPrice.toLocaleString()} pts
                   </span>
@@ -198,13 +237,13 @@ export default function MarketPage() {
                 
                 <div className="flex justify-between items-center text-sm">
                   <div>
-                    <span className="text-gray-400">24h: </span>
+                    <span className="text-gray-400">{t.indexDelta24hShort} </span>
                     <span className={athlete.price24hChange >= 0 ? 'price-up' : 'price-down'}>
                       {athlete.price24hChange >= 0 ? '+' : ''}{athlete.price24hChange.toFixed(1)}%
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-400">7d: </span>
+                    <span className="text-gray-400">{t.indexDelta7dShort} </span>
                     <span className={athlete.price7dChange >= 0 ? 'price-up' : 'price-down'}>
                       {athlete.price7dChange >= 0 ? '+' : ''}{athlete.price7dChange.toFixed(1)}%
                     </span>
@@ -212,7 +251,7 @@ export default function MarketPage() {
                 </div>
                 
                 <div className="mt-2 text-xs text-gray-400">
-                  Activity: {athlete.tradingVolume.toLocaleString()} • {athlete.holders} participants
+                  {t.demoCreditsFlowShort} {athlete.tradingVolume.toLocaleString()} tATHLX • {athlete.holders} {t.participantsLower}
                 </div>
               </div>
 
@@ -236,7 +275,7 @@ export default function MarketPage() {
 
         {filteredAthletes.length === 0 && (
           <div className="text-center py-20">
-            <p className="text-2xl text-gray-400">No athletes found matching your filters.</p>
+            <p className="text-2xl text-gray-400">{t.noAthletesFound}</p>
             <button
               onClick={() => {
                 setSearchTerm('');
@@ -246,7 +285,7 @@ export default function MarketPage() {
               }}
               className="mt-4 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition"
             >
-              Clear All Filters
+              {t.clearAllFilters}
             </button>
           </div>
         )}

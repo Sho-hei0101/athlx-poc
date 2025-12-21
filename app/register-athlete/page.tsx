@@ -5,6 +5,7 @@ import { useStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
 import { Sport } from '@/lib/types';
 import { CheckCircle } from 'lucide-react';
+import { translations } from '@/lib/translations';
 
 const sportsList: Sport[] = [
   'Football', 'Basketball', 'Athletics', 'Swimming', 'Tennis', 'Gymnastics',
@@ -15,6 +16,7 @@ const sportsList: Sport[] = [
 
 export default function RegisterAthletePage() {
   const { state, submitAthleteRegistration } = useStore();
+  const t = translations[state.language];
   const router = useRouter();
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
@@ -33,18 +35,43 @@ export default function RegisterAthletePage() {
     highlightVideoUrl: '',
     agreeTerms: false
   });
+  const sportLabels: Record<Sport, string> = {
+    Football: t.sportFootball,
+    Basketball: t.sportBasketball,
+    Athletics: t.sportAthletics,
+    Swimming: t.sportSwimming,
+    Tennis: t.sportTennis,
+    Gymnastics: t.sportGymnastics,
+    Volleyball: t.sportVolleyball,
+    'Rugby Sevens': t.sportRugbySevens,
+    Boxing: t.sportBoxing,
+    Judo: t.sportJudo,
+    Cycling: t.sportCycling,
+    Rowing: t.sportRowing,
+    'Table Tennis': t.sportTableTennis,
+    Badminton: t.sportBadminton,
+    Fencing: t.sportFencing,
+    Weightlifting: t.sportWeightlifting,
+    Wrestling: t.sportWrestling,
+    Taekwondo: t.sportTaekwondo,
+    Archery: t.sportArchery,
+    Shooting: t.sportShooting,
+    Cricket: t.sportCricket,
+    eSports: t.sportEsports,
+    Others: t.sportOthers
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     if (!state.currentUser) {
-      setError('Please login first to register as an athlete');
+      setError(t.registerLoginFirst);
       return;
     }
 
     if (!formData.agreeTerms) {
-      setError('Please agree to the terms');
+      setError(t.termsAgreementRequired);
       return;
     }
 
@@ -64,12 +91,12 @@ export default function RegisterAthletePage() {
       <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
         <div className="glass-effect rounded-2xl p-12 text-center max-w-2xl animate-fade-in">
           <CheckCircle className="w-20 h-20 text-green-400 mx-auto mb-6" />
-          <h2 className="text-3xl font-bold mb-4">Application Submitted!</h2>
+          <h2 className="text-3xl font-bold mb-4">{t.applicationSubmittedTitle}</h2>
           <p className="text-xl text-gray-300 mb-6">
-            Your athlete profile has been submitted and is awaiting admin approval.
+            {t.applicationSubmittedSubtitle}
           </p>
           <p className="text-gray-400">
-            You will be notified once your application is reviewed. Redirecting to My Page...
+            {t.applicationSubmittedNote}
           </p>
         </div>
       </div>
@@ -79,16 +106,16 @@ export default function RegisterAthletePage() {
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-5xl font-bold mb-8 gradient-text text-center">Register as Athlete</h1>
+        <h1 className="text-5xl font-bold mb-8 gradient-text text-center">{t.registerAthlete}</h1>
 
         <div className="glass-effect rounded-xl p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Info */}
             <section>
-              <h2 className="text-2xl font-bold mb-4">Basic Information</h2>
+              <h2 className="text-2xl font-bold mb-4">{t.basicInformation}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Full Name *</label>
+                  <label className="block text-sm font-medium mb-2">{t.fullName} *</label>
                   <input
                     type="text"
                     required
@@ -98,7 +125,7 @@ export default function RegisterAthletePage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Date of Birth *</label>
+                  <label className="block text-sm font-medium mb-2">{t.dateOfBirth} *</label>
                   <input
                     type="date"
                     required
@@ -108,19 +135,19 @@ export default function RegisterAthletePage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Gender *</label>
+                  <label className="block text-sm font-medium mb-2">{t.genderLabel} *</label>
                   <select
                     value={formData.gender}
                     onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
                     className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
                   >
-                    <option>Male</option>
-                    <option>Female</option>
-                    <option>Other</option>
+                    <option value="Male">{t.genderMale}</option>
+                    <option value="Female">{t.genderFemale}</option>
+                    <option value="Other">{t.genderOther}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Nationality *</label>
+                  <label className="block text-sm font-medium mb-2">{t.nationalityLabel} *</label>
                   <input
                     type="text"
                     required
@@ -134,35 +161,35 @@ export default function RegisterAthletePage() {
 
             {/* Sport Info */}
             <section>
-              <h2 className="text-2xl font-bold mb-4">Sport Information</h2>
+              <h2 className="text-2xl font-bold mb-4">{t.sportInformation}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Sport *</label>
+                  <label className="block text-sm font-medium mb-2">{t.sportLabel} *</label>
                   <select
                     value={formData.sport}
                     onChange={(e) => setFormData({ ...formData, sport: e.target.value as Sport })}
                     className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
                   >
                     {sportsList.map(sport => (
-                      <option key={sport} value={sport}>{sport}</option>
+                      <option key={sport} value={sport}>{sportLabels[sport]}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Requested Category *</label>
+                  <label className="block text-sm font-medium mb-2">{t.requestedCategory} *</label>
                   <select
                     value={formData.requestedCategory}
                     onChange={(e) => setFormData({ ...formData, requestedCategory: e.target.value as any })}
                     className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
                   >
-                    <option>Amateur</option>
-                    <option>Semi-pro</option>
-                    <option>Pro</option>
-                    <option>Elite</option>
+                    <option value="Amateur">{t.amateur}</option>
+                    <option value="Semi-pro">{t.semiPro}</option>
+                    <option value="Pro">{t.pro}</option>
+                    <option value="Elite">{t.elite}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Team / Club *</label>
+                  <label className="block text-sm font-medium mb-2">{t.teamLabel} *</label>
                   <input
                     type="text"
                     required
@@ -172,7 +199,7 @@ export default function RegisterAthletePage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Position / Specialty *</label>
+                  <label className="block text-sm font-medium mb-2">{t.positionLabel} *</label>
                   <input
                     type="text"
                     required
@@ -186,36 +213,36 @@ export default function RegisterAthletePage() {
 
             {/* Profile */}
             <section>
-              <h2 className="text-2xl font-bold mb-4">Profile</h2>
+              <h2 className="text-2xl font-bold mb-4">{t.profileLabel}</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Short Bio *</label>
+                  <label className="block text-sm font-medium mb-2">{t.shortBio} *</label>
                   <textarea
                     required
                     rows={4}
                     value={formData.bio}
                     onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                    placeholder="Tell us about your athletic journey, achievements, and goals..."
+                    placeholder={t.bioPlaceholder}
                     className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Profile URL</label>
+                  <label className="block text-sm font-medium mb-2">{t.profileUrlLabel}</label>
                   <input
                     type="url"
                     value={formData.profileUrl}
                     onChange={(e) => setFormData({ ...formData, profileUrl: e.target.value })}
-                    placeholder="https://example.com/your-profile"
+                    placeholder={t.profileUrlPlaceholder}
                     className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Highlight Video URL (YouTube)</label>
+                  <label className="block text-sm font-medium mb-2">{t.highlightVideoLabel}</label>
                   <input
                     type="url"
                     value={formData.highlightVideoUrl}
                     onChange={(e) => setFormData({ ...formData, highlightVideoUrl: e.target.value })}
-                    placeholder="https://youtube.com/embed/..."
+                    placeholder={t.highlightVideoPlaceholder}
                     className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
                   />
                 </div>
@@ -232,7 +259,7 @@ export default function RegisterAthletePage() {
                 className="mt-1"
               />
               <label htmlFor="terms" className="text-sm text-gray-300">
-                I agree to the terms and understand this is a demo environment. I confirm that the information provided is accurate and I have the right to register on this platform.
+                {t.termsAgreement}
               </label>
             </div>
 
@@ -244,7 +271,7 @@ export default function RegisterAthletePage() {
 
             {!state.currentUser && (
               <div className="p-4 bg-yellow-500/20 border border-yellow-500 rounded-lg text-sm text-yellow-200">
-                Please login first to submit your athlete registration.
+                {t.registerLoginFirst}
               </div>
             )}
 
@@ -253,7 +280,7 @@ export default function RegisterAthletePage() {
               disabled={!state.currentUser}
               className="w-full px-6 py-4 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-lg transition disabled:opacity-50"
             >
-              Submit Application
+              {t.submitApplication}
             </button>
           </form>
         </div>

@@ -172,7 +172,7 @@ export default function Navigation() {
                   className="w-full text-left py-2 hover:text-blue-400 flex items-center space-x-2"
                 >
                   <Globe size={16} />
-                  <span>Language: {state.language}</span>
+                  <span>{t.languageLabel}: {state.language}</span>
                 </button>
                 
                 {state.currentUser && (

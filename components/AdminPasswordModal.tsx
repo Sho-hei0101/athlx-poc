@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
+import { useStore } from '@/lib/store';
+import { translations } from '@/lib/translations';
 
 interface AdminPasswordModalProps {
   isOpen: boolean;
@@ -10,6 +12,8 @@ interface AdminPasswordModalProps {
 }
 
 export default function AdminPasswordModal({ isOpen, onClose }: AdminPasswordModalProps) {
+  const { state } = useStore();
+  const t = translations[state.language];
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
@@ -28,7 +32,7 @@ export default function AdminPasswordModal({ isOpen, onClose }: AdminPasswordMod
       setPassword('');
       setError('');
     } else {
-      setError('Incorrect PIN');
+      setError(t.incorrectPin);
     }
   };
 
@@ -46,16 +50,16 @@ export default function AdminPasswordModal({ isOpen, onClose }: AdminPasswordMod
           <X size={20} />
         </button>
 
-        <h2 className="text-2xl font-bold mb-6">Admin Panel Access</h2>
+        <h2 className="text-2xl font-bold mb-6">{t.adminPanelAccess}</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Admin PIN</label>
+            <label className="block text-sm font-medium mb-2">{t.adminPin}</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter admin PIN"
+              placeholder={t.enterAdminPin}
               className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
               required
               autoFocus
@@ -72,12 +76,12 @@ export default function AdminPasswordModal({ isOpen, onClose }: AdminPasswordMod
             type="submit"
             className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition"
           >
-            Access Admin Panel
+            {t.accessAdminPanel}
           </button>
         </form>
 
         <p className="mt-4 text-xs text-gray-400 text-center">
-          Contact repository owner to set NEXT_PUBLIC_ADMIN_PIN environment variable.
+          {t.adminPinHelp}
         </p>
       </div>
     </div>
