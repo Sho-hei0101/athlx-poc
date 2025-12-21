@@ -5,22 +5,12 @@ import { useStore } from '@/lib/store';
 import { notFound } from 'next/navigation';
 import { TrendingUp, TrendingDown, Calendar, MapPin, User } from 'lucide-react';
 import TradeModal from '@/components/TradeModal';
-import { Line } from 'react-chartjs-2';
 import { translations } from '@/lib/translations';
 import { Category } from '@/lib/types';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js';
+import dynamic from 'next/dynamic';
+import type { ChartData, ChartOptions } from 'chart.js';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
+const AthletePriceChart = dynamic(() => import('@/components/AthletePriceChart'), { ssr: false });
 
 export default function AthletePage({ params }: { params: { symbol: string } }) {
   const { symbol } = params;
@@ -79,7 +69,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
     return flags[nationality] || '🏳️';
   };
 
-  const chartData = useMemo(() => {
+  const chartData = useMemo<ChartData<'line'>>(() => {
     let dataPoints = athlete.priceHistory;
     
     if (timeframe === '1D') dataPoints = athlete.priceHistory.slice(-1);
@@ -101,7 +91,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
     };
   }, [athlete.priceHistory, timeframe, t.activityIndexWithPoints]);
 
-  const chartOptions = {
+  const chartOptions: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -272,7 +262,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
               </div>
             </div>
             <div className="h-96">
-              <Line data={chartData} options={chartOptions} />
+              <AthletePriceChart data={chartData} options={chartOptions} />
             </div>
           </div>
 
