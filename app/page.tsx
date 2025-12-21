@@ -52,11 +52,11 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto text-sm text-gray-300">
               <div className="flex items-start space-x-2">
                 <Heart className="text-red-400 mt-1 flex-shrink-0" size={20} />
-                <p>Fans invest directly in athletes, not only clubs.</p>
+                <p>Fans participate in athlete support simulation, exploring new community models.</p>
               </div>
               <div className="flex items-start space-x-2">
                 <Shield className="text-blue-400 mt-1 flex-shrink-0" size={20} />
-                <p>Every trade generates immediate support and long-term protection for players.</p>
+                <p>Demo credits simulate support allocation and post-career assistance models.</p>
               </div>
             </div>
           </div>
@@ -73,25 +73,25 @@ export default function Home() {
               {
                 step: 1,
                 title: 'Athlete registers profile',
-                description: 'Players submit basic info, career data and proof.',
+                description: 'Players submit basic info and career data for review.',
                 icon: Users
               },
               {
                 step: 2,
-                title: 'Admin approves and creates token',
-                description: 'Approved athletes receive a unique token listed on the market.',
+                title: 'Admin reviews and approves',
+                description: 'Approved athletes appear in the Athlete Directory.',
                 icon: Shield
               },
               {
                 step: 3,
-                title: 'Fans trade athlete tokens',
-                description: 'Fans buy and sell athlete tokens with ATHLX, following a dynamic chart.',
+                title: 'Fans acquire or release units',
+                description: 'Fans acquire and release Athlete Units with demo credits.',
                 icon: TrendingUp
               },
               {
                 step: 4,
-                title: 'Fees support athletes',
-                description: 'Part of each trade supports players immediately and builds long-term protection.',
+                title: 'Demo fees simulate allocation',
+                description: 'Demo fees are distributed across simulated support ledgers.',
                 icon: DollarSign
               }
             ].map((item) => (
@@ -116,33 +116,33 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="glass-effect rounded-xl p-8 hover-glow">
               <Target className="text-purple-400 mb-4" size={32} />
-              <h3 className="text-2xl font-bold mb-4">Young Talent Support</h3>
+              <h3 className="text-2xl font-bold mb-4">Early Career Support Model</h3>
               <p className="text-gray-300 leading-relaxed">
-                Talented young athletes often quit due to lack of funding. ATHLX provides direct financial support during the critical early stages of their careers, allowing them to focus on training and competition instead of financial survival.
+                This pilot explores support models for young athletes during critical early career stages, simulating allocation of demo resources to help test UX and community engagement.
               </p>
             </div>
 
             <div className="glass-effect rounded-xl p-8 hover-glow">
               <Shield className="text-blue-400 mb-4" size={32} />
-              <h3 className="text-2xl font-bold mb-4">Retirement Protection</h3>
+              <h3 className="text-2xl font-bold mb-4">Post-Career Support Simulation</h3>
               <p className="text-gray-300 leading-relaxed">
-                Many players face economic hardship after retirement. The Athlete Lifetime Support Vault accumulates funds from trading fees, transforming their active years into long-term financial stability and dignity after sports.
+                The Post-Career Support Vault is a locked demo ledger that simulates long-term athlete support mechanisms. This tests allocation models for life after active sports careers.
               </p>
             </div>
 
             <div className="glass-effect rounded-xl p-8 hover-glow">
               <Heart className="text-red-400 mb-4" size={32} />
-              <h3 className="text-2xl font-bold mb-4">Direct Fan Support</h3>
+              <h3 className="text-2xl font-bold mb-4">Community Participation</h3>
               <p className="text-gray-300 leading-relaxed">
-                Fans currently have no direct way to support individual players financially. ATHLX creates a transparent mechanism where fan investment translates directly into athlete support, strengthening the bond between supporters and players.
+                Fans participate in a test environment, using demo credits to simulate community-driven athlete support. This helps shape new models for fan-athlete connections.
               </p>
             </div>
 
             <div className="glass-effect rounded-xl p-8 hover-glow">
               <TrendingUp className="text-green-400 mb-4" size={32} />
-              <h3 className="text-2xl font-bold mb-4">New Investor Audience</h3>
+              <h3 className="text-2xl font-bold mb-4">UX Testing & Innovation</h3>
               <p className="text-gray-300 leading-relaxed">
-                ATHLX unlocks a new asset class: Athlete Growth Investments. This innovative market attracts investors who believe in individual talent, creating new opportunities for both financial returns and social impact in the sports industry.
+                This closed pilot tests innovative support allocation models. Participants help improve the platform through real usage and feedback in a safe, demo-only environment.
               </p>
             </div>
           </div>
@@ -185,7 +185,7 @@ export default function Home() {
                   <div className="flex justify-between items-center mt-4">
                     <div>
                       <p className="text-sm text-gray-400">Price</p>
-                      <p className="text-lg font-bold price-display">{athlete.currentPrice.toLocaleString()} ATHLX</p>
+                      <p className="text-lg font-bold price-display">{athlete.currentPrice.toLocaleString()} tATHLX</p>
                     </div>
                     <div className={`text-lg font-bold ${athlete.price24hChange >= 0 ? 'price-up' : 'price-down'}`}>
                       {athlete.price24hChange >= 0 ? '+' : ''}{athlete.price24hChange.toFixed(1)}%
@@ -234,7 +234,7 @@ export default function Home() {
                   <div className="flex justify-between items-center mt-4">
                     <div>
                       <p className="text-sm text-gray-400">Price</p>
-                      <p className="text-lg font-bold price-display">{athlete.currentPrice.toLocaleString()} ATHLX</p>
+                      <p className="text-lg font-bold price-display">{athlete.currentPrice.toLocaleString()} tATHLX</p>
                     </div>
                     <div className="text-lg font-bold price-up">
                       +{athlete.price7dChange.toFixed(1)}% (7d)
@@ -250,16 +250,16 @@ export default function Home() {
       {/* Call to Action */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center glass-effect rounded-2xl p-12">
-          <h2 className="text-4xl font-bold mb-6">Ready to Start?</h2>
+          <h2 className="text-4xl font-bold mb-6">Ready to Participate?</h2>
           <p className="text-xl text-gray-300 mb-8">
-            Join the revolution in athlete support and sports investment.
+            Join the pilot program and help test new athlete support models.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/market"
               className="px-8 py-4 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-lg transition hover-glow"
             >
-              Explore Athletes
+              Explore Athlete Directory
             </Link>
             <Link
               href="/register-athlete"

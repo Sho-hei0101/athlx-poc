@@ -14,7 +14,7 @@ export default function Footer() {
             <div>
               <h3 className="text-xl font-bold gradient-text mb-3">AthleteXchange</h3>
               <p className="text-gray-400 text-sm">
-                Invest in the future of athletes. Support becomes investment, and investment becomes lifelong protection.
+                Pilot program for testing athlete support models. Demo-only environment with no real-world value.
               </p>
             </div>
             
@@ -22,7 +22,7 @@ export default function Footer() {
               <h4 className="font-semibold mb-3">Platform</h4>
               <ul className="space-y-2 text-sm text-gray-400">
                 <li><a href="/" className="hover:text-blue-400 transition">Home</a></li>
-                <li><a href="/market" className="hover:text-blue-400 transition">Market</a></li>
+                <li><a href="/market" className="hover:text-blue-400 transition">Test Environment</a></li>
                 <li><a href="/about" className="hover:text-blue-400 transition">About</a></li>
                 <li><a href="/news" className="hover:text-blue-400 transition">Sports News</a></li>
               </ul>
@@ -47,7 +47,7 @@ export default function Footer() {
           
           <div className="border-t border-blue-500/20 mt-8 pt-6 text-center text-sm text-gray-400">
             <p>&copy; 2024 AthleteXchange (ATHLX). All rights reserved.</p>
-            <p className="mt-1">Demo environment - Not for production use</p>
+            <p className="mt-1 text-red-300 font-semibold">Pilot program - Demo environment only - No real-world value</p>
           </div>
         </div>
       </footer>

@@ -1,0 +1,95 @@
+=========================================
+ATHLX Forbidden Words Scanner
+=========================================
+
+Scanning UI-facing files...
+
+--- Scanning .tsx and .ts files ---
+app/about/page.tsx:10:  return (
+app/about/page.tsx:30:                  This pilot uses Demo Credits (tATHLX) and Athlete Units purely for testing user experience and support allocation logic. Nothing in this pilot represents real money, ownership rights, shares, or any promise of financial return. There are no withdrawals and no external transfers.
+app/about/page.tsx:49:                  This is a closed pilot for UX testing and community participation. It is not an investment product, not a securities offering, and not a financial service.
+app/about/page.tsx:69:                  Este piloto utiliza Créditos Demo (tATHLX) y Unidades del Atleta únicamente para probar la experiencia de usuario y la lógica de asignación de apoyo. Nada en este piloto representa dinero real, derechos de propiedad, acciones, ni promesas de retorno financiero. No hay retiros ni transferencias externas.
+app/about/page.tsx:88:                  Este es un piloto cerrado para pruebas de UX y participación de la comunidad. No es un producto de inversión, no es una oferta de valores, ni un servicio financiero.
+app/admin/page.tsx:64:  return (
+app/athlete/[symbol]/page.tsx:45:    return flags[nationality] || '🏳️';
+app/athlete/[symbol]/page.tsx:55:    return {
+app/athlete/[symbol]/page.tsx:115:  return (
+app/layout.tsx:20:  return (
+app/market/page.tsx:26:    return state.athletes.filter(athlete => {
+app/market/page.tsx:38:      return matchesSearch && matchesSport && matchesCategory && matchesSegment;
+app/market/page.tsx:49:    return flags[nationality] || '🏳️';
+app/market/page.tsx:52:  return (
+app/market/page.tsx:224:                  return (
+app/my-page/page.tsx:19:    return null;
+app/my-page/page.tsx:40:  return (
+app/my-page/page.tsx:119:                          return (
+app/news/page.tsx:18:    return state.news.filter(news => {
+app/news/page.tsx:21:      return matchesSport && matchesCategory;
+app/news/page.tsx:25:  return (
+app/news/page.tsx:72:            return (
+app/page.tsx:20:  return (
+app/register-athlete/page.tsx:43:      return;
+app/register-athlete/page.tsx:48:      return;
+app/register-athlete/page.tsx:63:    return (
+app/register-athlete/page.tsx:79:  return (
+components/AdminPasswordModal.tsx:20:  if (!isOpen) return null;
+components/AdminPasswordModal.tsx:35:  return (
+components/AuthModal.tsx:25:  if (!isOpen) return null;
+components/AuthModal.tsx:39:          return;
+components/AuthModal.tsx:54:  return (
+components/Footer.tsx:9:  return (
+components/Navigation.tsx:41:  return (
+components/TradeModal.tsx:25:  if (!isOpen) return null;
+components/TradeModal.tsx:35:        return;
+components/TradeModal.tsx:40:        return;
+components/TradeModal.tsx:56:  return (
+lib/data.ts:18:  return history;
+lib/data.ts:173:    team: 'Stockholm Gymnastics',
+lib/store.tsx:84:      return loggedInUser;
+lib/store.tsx:122:    return loggedInUser;
+lib/store.tsx:149:    if (!state.currentUser) return;
+lib/store.tsx:165:    if (!athlete) return;
+lib/store.tsx:184:        return {
+lib/store.tsx:190:      return a;
+lib/store.tsx:202:    if (!state.currentUser) return [];
+lib/store.tsx:246:      return {
+lib/store.tsx:252:    return portfolio;
+lib/store.tsx:256:    if (!state.currentUser) return;
+lib/store.tsx:274:    if (!pending) return;
+lib/store.tsx:324:    return state.athletes.find(a => a.symbol === symbol);
+lib/store.tsx:333:          return {
+lib/store.tsx:343:        return a;
+lib/store.tsx:352:  return (
+lib/store.tsx:379:  return context;
+lib/translations.ts:127:    disclaimerBanner: 'Programa Piloto ATHLX — Entorno de prueba. Solo créditos demo. Sin valor en el mundo real.',
+lib/translations.ts:134:    demoOnly: 'Solo demo. Sin valor en el mundo real.',
+lib/translations.ts:141:  return translations[lang][key] || translations.EN[key];
+✗ WARNING: Forbidden words detected above!
+
+--- Scanning README.md ---
+14:- **Not an investment product**, not a securities offering, not a financial service
+16:- Athlete Units are demo-only and represent no ownership rights
+114:- No investment/securities language
+323:## 🔐 Security Notes
+387:8. Return to directory and see new athlete
+406:This build removes all investment/securities language:
+409:- investment, investor, invest, ROI, profit, yield, dividend, earnings, return
+410:- guaranteed, speculation, asset class, financial markets, security, securities
+411:- shares, stock, equity, ownership, pension, retirement income
+✗ WARNING: Forbidden words detected above!
+
+--- Scanning other .md files ---
+✗ WARNING: Forbidden words detected above!
+
+=========================================
+Scan Complete
+=========================================
+
+Note: Review all WARNING items above. Safe terms:
+  EN: Test Environment, Demo Credits (tATHLX), Athlete Units,
+      Activity Index (pts), Acquire/Release Units,
+      Post-Career Support Vault
+  ES: Entorno de Prueba, Créditos Demo (tATHLX),
+      Unidades del Atleta, Índice de Actividad (pts),
+      Adquirir/Liberar Unidades, Fondo de Apoyo Post-Carrera
+

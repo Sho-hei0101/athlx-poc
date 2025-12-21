@@ -8,8 +8,8 @@ import Footer from "@/components/Footer";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "AthleteXchange (ATHLX) - Invest in Athletes",
-  description: "Digital platform where fans and investors can support athletes by trading athlete tokens.",
+  title: "AthleteXchange (ATHLX) - Pilot Program",
+  description: "Closed pilot testing new athlete support models through a demo-only environment. No real-world value.",
 };
 
 export default function RootLayout({

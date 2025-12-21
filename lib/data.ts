@@ -593,12 +593,12 @@ export const initialNews: NewsItem[] = [
   },
   {
     id: 'n10',
-    title: 'Global Sports Investment Reaches Record High',
-    summary: 'A new report shows that sports-related investments have reached an all-time high, with digital platforms driving significant growth.',
+    title: 'Global Sports Support Platforms Reach Record Growth',
+    summary: 'A new report shows that digital sports support platforms have reached an all-time high in participation, with innovative pilot programs driving significant community engagement.',
     sport: 'Others',
     category: 'Others',
     date: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
-    readMoreUrl: 'https://example.com/news/sports-investment-record'
+    readMoreUrl: 'https://example.com/news/sports-support-record'
   },
   {
     id: 'n11',

@@ -1,73 +1,86 @@
-# AthleteXchange (ATHLX)
+# AthleteXchange (ATHLX) - Pilot Program
 
-**A revolutionary digital platform where fans and investors can support athletes by trading athlete tokens**
+**A closed pilot platform exploring new athlete support models through a demo-only test environment**
 
 🌐 **Live Demo**: https://3000-ip0f0nc2ffi4klmmd4lil-cc2fbc16.sandbox.novita.ai
 
 ---
 
+## ⚠️ IMPORTANT DISCLAIMER
+
+**This is a pilot program for UX testing only.**
+
+- Uses **Demo Credits (tATHLX)** with no real-world value
+- **Not an investment product**, not a securities offering, not a financial service
+- No withdrawals, no external transfers, no real money involved
+- Athlete Units are demo-only and represent no ownership rights
+- Closed test environment for community participation and feedback
+
+---
+
 ## 📋 Project Overview
 
-AthleteXchange (ATHLX) is a complete, fully wired demo web application that demonstrates a new financial ecosystem for athletes. The platform enables fans to invest directly in individual athletes through tradeable tokens, creating sustainable support mechanisms for players throughout their careers and beyond.
+AthleteXchange (ATHLX) is a fully functional demo web application that explores new models for athlete support. This pilot uses Demo Credits and Athlete Units purely for testing user experience and support allocation logic.
 
 ### Core Concept
 
-> "Support becomes investment, and investment becomes lifelong protection for athletes."
+> "Testing community-driven athlete support models in a safe, demo-only environment."
 
-Unlike traditional sports investment models focused on clubs and franchises, ATHLX creates a direct connection between fans and individual athletes, solving critical problems:
-- Young talent often quit due to lack of funding
-- Many athletes face economic hardship after retirement
-- Fans have no direct way to financially support individual players
-- Sports investment is limited to institutional opportunities
+This pilot explores:
+- Direct support models for athletes during early career stages
+- Simulated post-career support mechanisms (Post-Career Support Vault)
+- Community participation in athlete support allocation
+- UX testing for new platform features and workflows
 
 ---
 
 ## ✨ Key Features
 
 ### 🏠 Landing Page
-- Compelling hero section with clear value proposition
+- Clear pilot program messaging with disclaimers
 - "How It Works" 4-step flow
-- Why ATHLX exists sections
+- Purpose explanation sections
 - Newly listed and fast-growing athlete showcases
 
-### 🏪 Athlete Token Market
-- **20 diverse athletes** across Olympic sports (Football, Swimming, Tennis, Basketball, Athletics, Gymnastics, Volleyball, Boxing, Judo, Cycling, Rowing, Table Tennis, Badminton, Fencing, Weightlifting, Wrestling, Taekwondo, Archery, Shooting, Cricket, eSports)
+### 🏪 Athlete Directory (Test Environment)
+- **20 diverse athletes** across Olympic sports
 - **Categories**: Amateur, Semi-pro, Pro, Elite
 - Advanced filtering by sport, category, nationality
 - Segments: New Athletes, Featured, Category Promotions, Fast Growing
-- Real-time price display with 24h/7d changes
-- Mini sparkline charts
-- Trading volume and holder counts
+- Activity index display with 24h/7d changes
+- Mini activity charts
+- Activity volume and participant counts
 
 ### 👤 Athlete Detail Pages
 - Comprehensive profile with bio and statistics
-- **Live price chart** with multiple timeframes (1D/1W/1M)
+- **Activity chart** with multiple timeframes (1D/1W/1M)
 - Embedded YouTube highlight videos
 - Related news articles
-- Buy/Sell trading interface with fee breakdown
-- Real-time balance updates
+- Acquire/Release units interface with demo fee breakdown
+- Real-time demo balance updates
 
-### 💱 Trading System
-- **5% trading fee** on all transactions
-  - **2.5% immediate payout** to athletes
-  - Remaining supports operations and Lifetime Support Vault
-- Buy/Sell modal with clear price calculations
-- Instant portfolio updates
-- Trade history tracking
-- Simulated MetaMask integration
+### 💱 Demo Activity System
+- **5% demo fee** on all simulated transactions
+  - **3% Operations Wallet** (platform simulation)
+  - **1% Athlete Reward Wallet** (demo allocation)
+  - **1% Post-Career Support Vault** (locked demo ledger)
+- Acquire/Release modal with clear calculations
+- Instant demo portfolio updates
+- Activity history tracking
+- Simulated session ID (replaces MetaMask display)
 
 ### 👥 User Features
 
 #### Fan Page
-- Portfolio overview with ATHLX balance
-- Holdings table with P/L tracking
-- Trading history with detailed transaction log
-- Impact metrics showing contribution to athletes
+- Demo portfolio overview with tATHLX balance
+- Holdings table with activity tracking
+- Activity history with detailed log
+- Participation metrics
 
 #### Athlete Page
-- Token statistics (price, holders, volume)
-- **Real-time support tracking**
-- Total immediate payout earned (2.5% of trading volume)
+- Activity statistics (index, participants, volume)
+- **Real-time support allocation tracking**
+- Demo reward accumulation display
 - Link to public athlete profile
 
 ### 📝 Athlete Registration
@@ -78,27 +91,27 @@ Unlike traditional sports investment models focused on clubs and franchises, ATH
 - Submission for admin approval
 
 ### 🔐 Admin Panel
-- **Password protected** (password: `1234`)
+- **PIN protected** (configurable via NEXT_PUBLIC_ADMIN_PIN environment variable)
 - Dashboard with summary statistics
 - Pending applications queue
 - Detailed application review
 - Approve/reject with customizable parameters
-- Set initial token price and symbol
-- Automatic market listing upon approval
+- Set initial activity index and symbol
+- Automatic directory listing upon approval
 
 ### 📰 Sports News
 - Curated news feed with athlete connections
 - Filter by sport and category
-- Related athlete token cards
+- Related athlete cards
 - External article links
 
 ### ℹ️ About Page
-- Comprehensive platform explanation
-- Purpose & Vision sections
-- Market opportunity analysis
-- Token economy breakdown with visual diagrams
-- Athlete Lifetime Support Vault details
-- Governance & compliance information
+- **Compliance-first content** (fully rewritten)
+- Pilot program explanation
+- Demo-only disclaimers
+- Support allocation model description
+- Post-Career Support Vault details
+- No investment/securities language
 
 ---
 
@@ -141,6 +154,10 @@ cd webapp
 # Install dependencies
 npm install
 
+# Set up environment variables (optional)
+# Create .env.local and add:
+# NEXT_PUBLIC_ADMIN_PIN=your_secure_pin
+
 # Run development server
 npm run dev
 
@@ -150,6 +167,10 @@ npm run build
 # Start production server
 npm start
 ```
+
+### Environment Variables
+
+- `NEXT_PUBLIC_ADMIN_PIN`: Admin panel PIN (defaults to "1234" if not set)
 
 ### Environment
 The application runs on `http://localhost:3000` by default.
@@ -161,26 +182,26 @@ The application runs on `http://localhost:3000` by default.
 ```
 webapp/
 ├── app/                      # Next.js app directory
-│   ├── page.tsx             # Home page
+│   ├── page.tsx             # Home page (updated with safe copy)
 │   ├── layout.tsx           # Root layout with navigation
-│   ├── market/              # Market listing page
+│   ├── market/              # Test Environment / Athlete Directory
 │   ├── athlete/[symbol]/    # Dynamic athlete detail pages
-│   ├── about/               # About ATHLX page
+│   ├── about/               # About page (fully rewritten)
 │   ├── news/                # Sports news page
 │   ├── my-page/             # User dashboard (Fan + Athlete views)
 │   ├── register-athlete/    # Athlete registration form
-│   └── admin/               # Admin panel (password protected)
+│   └── admin/               # Admin panel (PIN protected)
 ├── components/              # Reusable React components
-│   ├── Navigation.tsx       # Top navigation bar
+│   ├── Navigation.tsx       # Top nav with global disclaimer banner
 │   ├── Footer.tsx           # Footer with admin link
 │   ├── AuthModal.tsx        # Login/Signup modal
-│   ├── TradeModal.tsx       # Buy/Sell trading interface
-│   └── AdminPasswordModal.tsx
+│   ├── TradeModal.tsx       # Acquire/Release units interface
+│   └── AdminPasswordModal.tsx # Admin PIN entry (env-based)
 ├── lib/                     # Core application logic
 │   ├── types.ts             # TypeScript type definitions
 │   ├── data.ts              # Initial athlete and news data
 │   ├── store.tsx            # React Context state management
-│   └── translations.ts      # EN/ES language support
+│   └── translations.ts      # EN/ES language support (updated)
 └── public/                  # Static assets
 ```
 
@@ -188,16 +209,16 @@ webapp/
 
 ## 🎯 User Flows
 
-### Investor/Fan Flow
-1. Browse market and filter athletes
+### Participant/Fan Flow
+1. Browse Athlete Directory and filter athletes
 2. Login/Sign up
-3. Connect MetaMask (simulated)
-4. View athlete details and charts
-5. Execute buy trades (5% fee applied)
-6. Monitor portfolio in My Page (Fan tab)
-7. View P/L and trading history
-8. Execute sell trades
-9. Track impact on athlete support
+3. View demo session ID (simulated)
+4. View athlete details and activity charts
+5. Acquire units (5% demo fee applied)
+6. Monitor demo portfolio in My Page (Fan tab)
+7. View activity history
+8. Release units
+9. Track participation metrics
 
 ### Athlete Flow
 1. Browse platform as fan
@@ -205,18 +226,18 @@ webapp/
 3. Submit application (requires login)
 4. Wait for admin approval
 5. Upon approval, view stats in My Page (Athlete tab)
-6. Monitor token trading volume
-7. See real-time immediate payout accumulation
-8. Track holder growth
+6. Monitor activity volume
+7. See demo allocation accumulation
+8. Track participant growth
 
 ### Admin Flow
 1. Access footer "Admin Panel" link
-2. Enter password: `1234`
+2. Enter PIN (configurable via NEXT_PUBLIC_ADMIN_PIN)
 3. Review dashboard statistics
 4. Navigate to pending applications
 5. Review application details
-6. Set final category, initial price, token symbol
-7. Approve → athlete listed on market
+6. Set final category, initial index, symbol
+7. Approve → athlete listed in directory
 8. OR Reject with reason
 
 ---
@@ -226,9 +247,9 @@ webapp/
 All data is stored in browser **localStorage**:
 - User accounts (email/password)
 - Current user session
-- Athlete tokens (initial 20 + approved registrations)
-- Trading history
-- Portfolio holdings
+- Athletes (initial 20 + approved registrations)
+- Activity history
+- Demo portfolio holdings
 - Pending athlete applications
 - News articles
 
@@ -241,17 +262,18 @@ All data is stored in browser **localStorage**:
 ### Visual Style
 - **Dark futuristic theme** with blue/purple gradients
 - **Glass-morphism effects** for modern card UI
-- **High contrast numbers** - all prices and amounts clearly visible
-- Custom price display fonts with shadows
+- **High contrast numbers** - all values clearly visible
+- Custom display fonts with shadows
 - Smooth hover animations and transitions
 - Responsive design for mobile, tablet, desktop
+- **Global disclaimer banner** (sticky at top, all pages)
 
 ### Color Coding
-- **Green**: Positive price changes, buy actions
-- **Red**: Negative price changes, sell actions
+- **Green**: Positive changes, acquire actions
+- **Red**: Negative changes, release actions
 - **Blue**: Primary actions, platform branding
 - **Purple**: Athlete-specific actions
-- **Orange**: MetaMask connection
+- **Orange**: Demo session ID
 
 ### Category Badges
 - **Amateur**: Gray
@@ -269,8 +291,9 @@ All data is stored in browser **localStorage**:
 
 ## 🌍 Internationalization
 
-- **Language Toggle**: EN / ES in navigation
-- Translations for core UI elements
+- **Language Toggle**: EN / ES in navigation (persistent)
+- Full translations for all UI elements
+- Compliance-safe terminology in both languages
 - Easy to extend to additional languages
 
 ---
@@ -282,29 +305,33 @@ Diverse representation across:
 - 15+ different sports
 - 12+ nationalities
 - All 4 categories (Amateur, Semi-pro, Pro, Elite)
-- Price range: 85 - 850 ATHLX
+- Activity index range: 85 - 850 pts
 - Various tags and segments
 
 ### News (12 articles)
 - Coverage across multiple sports
 - Related to specific athletes
 - Recent dates
-- Mix of performance, transfer, and career news
+- Mix of performance, career news
 
 ### Default User Balance
-- 10,000 ATHLX upon login
-- Updates in real-time with trades
+- 10,000 tATHLX (demo credits) upon login
+- Updates in real-time with activity
 
 ---
 
 ## 🔐 Security Notes
 
 **This is a demo application:**
-- Passwords stored in plain text in localStorage
-- Admin password hardcoded: `1234`
+- Demo-only environment, no real value
+- Passwords stored in plain text in localStorage (not production-ready)
+- Admin PIN configurable via environment variable
 - No real blockchain integration
 - No real payment processing
 - Not production-ready
+
+**Admin PIN Configuration:**
+Set `NEXT_PUBLIC_ADMIN_PIN` in your deployment environment to change the default PIN.
 
 ---
 
@@ -322,13 +349,14 @@ npm start
 ```
 
 ### Export Static Site
-The application is built with Next.js App Router and uses client-side state management. For static export compatibility, remove dynamic routes or implement `generateStaticParams`.
+The application is built with Next.js App Router and uses client-side state management.
 
 ---
 
 ## 📝 Admin Credentials
 
-- **Admin Panel Password**: `1234`
+- **Admin Panel PIN**: Configurable via `NEXT_PUBLIC_ADMIN_PIN` environment variable
+- **Default (fallback)**: "1234"
 - Access via footer link "Admin Panel"
 
 ---
@@ -336,54 +364,57 @@ The application is built with Next.js App Router and uses client-side state mana
 ## 🎮 Testing the Application
 
 ### Basic Flow
-1. Visit the homepage
-2. Click "Explore Market"
+1. Visit the homepage (note global disclaimer banner)
+2. Click "Explore Test Environment"
 3. Browse 20 diverse athletes
 4. Click an athlete card to view details
 5. Click "Login" and create account
-6. Connect MetaMask (simulated)
-7. Execute a buy trade
+6. View demo session ID (simulated)
+7. Acquire units (demo transaction)
 8. Go to "My Page" → Fan Page tab
-9. View portfolio and trading history
-10. Execute a sell trade
-11. Check impact metrics
+9. View demo portfolio and activity history
+10. Release units
+11. Check participation metrics
 
 ### Athlete Registration
 1. Click "Register as Athlete"
 2. Fill out the form completely
 3. Submit (requires login)
 4. Access footer "Admin Panel"
-5. Enter password `1234`
+5. Enter PIN (default: 1234, or your configured PIN)
 6. Review pending application
 7. Approve with custom parameters
-8. Return to market and see new athlete
+8. Return to directory and see new athlete
 9. Login to check "My Page" → Athlete tab
 
 ---
 
 ## 🐛 Known Limitations
 
-1. **No real blockchain** - MetaMask connection is simulated
+1. **No real blockchain** - Session ID is simulated
 2. **LocalStorage only** - data lost on cache clear
 3. **No backend** - all logic runs client-side
-4. **Dummy price charts** - not connected to real market data
+4. **Demo charts** - not connected to real data
 5. **Static news** - articles don't update
 6. **No email verification** - simple auth system
+7. **Demo-only** - no real-world value or transfers
 
 ---
 
-## 🎯 Future Enhancements
+## 🎯 Compliance & Forbidden Terms
 
-- Real blockchain integration (Ethereum, Polygon, etc.)
-- Smart contract deployment for athlete tokens
-- Backend API with database
-- Real-time price feeds
-- Social features (comments, likes, shares)
-- Athlete verification system
-- KYC/AML compliance
-- Mobile apps (iOS/Android)
-- Advanced analytics and charts
-- Multi-chain support
+This build removes all investment/securities language:
+
+**Removed terms:**
+- investment, investor, invest, ROI, profit, yield, dividend, earnings, return
+- guaranteed, speculation, asset class, financial markets, security, securities
+- shares, stock, equity, ownership, pension, retirement income
+- And Spanish equivalents
+
+**Safe terms used:**
+- Test Environment, Demo Credits (tATHLX), Athlete Units
+- Activity Index (pts), Acquire Units, Release Units
+- Post-Career Support Vault, Demo-only environment
 
 ---
 
@@ -395,7 +426,7 @@ This is a demonstration project. All rights reserved.
 
 ## 👥 Contact
 
-For questions or feedback about this demo project, please contact the development team.
+For questions or feedback about this demo pilot, please contact the development team.
 
 ---
 
@@ -409,4 +440,4 @@ For questions or feedback about this demo project, please contact the developmen
 
 ---
 
-**AthleteXchange (ATHLX) - Transforming athlete support through decentralized finance**
+**AthleteXchange (ATHLX) - Pilot Program for Testing Athlete Support Models**

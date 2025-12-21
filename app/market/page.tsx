@@ -52,7 +52,7 @@ export default function MarketPage() {
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-5xl font-bold mb-8 gradient-text">Athlete Token Market</h1>
+        <h1 className="text-5xl font-bold mb-8 gradient-text">Athlete Directory</h1>
 
         {/* Filters */}
         <div className="glass-effect rounded-xl p-6 mb-8">
@@ -187,12 +187,12 @@ export default function MarketPage() {
                 </div>
               </div>
 
-              {/* Price Info */}
+              {/* Activity Index Info */}
               <div className="border-t border-slate-600 pt-3">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-400">Price</span>
+                  <span className="text-sm text-gray-400">Activity Index</span>
                   <span className="text-xl font-bold price-display">
-                    {athlete.currentPrice.toLocaleString()} ATHLX
+                    {athlete.currentPrice.toLocaleString()} pts
                   </span>
                 </div>
                 
@@ -212,7 +212,7 @@ export default function MarketPage() {
                 </div>
                 
                 <div className="mt-2 text-xs text-gray-400">
-                  Volume: {athlete.tradingVolume.toLocaleString()} ATHLX • {athlete.holders} holders
+                  Activity: {athlete.tradingVolume.toLocaleString()} • {athlete.holders} participants
                 </div>
               </div>
 
