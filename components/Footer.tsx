@@ -2,9 +2,13 @@
 
 import { useState } from 'react';
 import AdminPasswordModal from './AdminPasswordModal';
+import { useStore } from '@/lib/store';
+import { translations } from '@/lib/translations';
 
 export default function Footer() {
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const { state } = useStore();
+  const t = translations[state.language];
 
   return (
     <>
@@ -14,31 +18,31 @@ export default function Footer() {
             <div>
               <h3 className="text-xl font-bold gradient-text mb-3">AthleteXchange</h3>
               <p className="text-gray-400 text-sm">
-                Pilot program for testing athlete support models. Demo-only environment with no real-world value.
+                {t.footerMission}
               </p>
             </div>
             
             <div>
-              <h4 className="font-semibold mb-3">Platform</h4>
+              <h4 className="font-semibold mb-3">{t.footerPlatform}</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="/" className="hover:text-blue-400 transition">Home</a></li>
-                <li><a href="/market" className="hover:text-blue-400 transition">Test Environment</a></li>
-                <li><a href="/about" className="hover:text-blue-400 transition">About</a></li>
-                <li><a href="/news" className="hover:text-blue-400 transition">Sports News</a></li>
+                <li><a href="/" className="hover:text-blue-400 transition">{t.home}</a></li>
+                <li><a href="/market" className="hover:text-blue-400 transition">{t.market}</a></li>
+                <li><a href="/about" className="hover:text-blue-400 transition">{t.about}</a></li>
+                <li><a href="/news" className="hover:text-blue-400 transition">{t.news}</a></li>
               </ul>
             </div>
             
             <div>
-              <h4 className="font-semibold mb-3">Resources</h4>
+              <h4 className="font-semibold mb-3">{t.footerResources}</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="/register-athlete" className="hover:text-blue-400 transition">Register as Athlete</a></li>
-                <li><a href="/my-page" className="hover:text-blue-400 transition">My Page</a></li>
+                <li><a href="/register-athlete" className="hover:text-blue-400 transition">{t.registerAthlete}</a></li>
+                <li><a href="/my-page" className="hover:text-blue-400 transition">{t.myPage}</a></li>
                 <li>
                   <button
                     onClick={() => setShowAdminModal(true)}
                     className="hover:text-blue-400 transition text-left"
                   >
-                    Admin Panel
+                    {t.adminPanel}
                   </button>
                 </li>
               </ul>
@@ -46,8 +50,8 @@ export default function Footer() {
           </div>
           
           <div className="border-t border-blue-500/20 mt-8 pt-6 text-center text-sm text-gray-400">
-            <p>&copy; 2024 AthleteXchange (ATHLX). All rights reserved.</p>
-            <p className="mt-1 text-red-300 font-semibold">Pilot program - Demo environment only - No real-world value</p>
+            <p>&copy; 2024 AthleteXchange (ATHLX). {t.footerRights}</p>
+            <p className="mt-1 text-red-300 font-semibold">{t.footerDisclaimer}</p>
           </div>
         </div>
       </footer>

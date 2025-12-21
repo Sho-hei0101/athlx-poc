@@ -8,6 +8,37 @@ import { translations } from '@/lib/translations';
 export default function Home() {
   const { state } = useStore();
   const t = translations[state.language];
+  const sportLabels: Record<string, string> = {
+    Football: t.sportFootball,
+    Basketball: t.sportBasketball,
+    Athletics: t.sportAthletics,
+    Swimming: t.sportSwimming,
+    Tennis: t.sportTennis,
+    Gymnastics: t.sportGymnastics,
+    Volleyball: t.sportVolleyball,
+    'Rugby Sevens': t.sportRugbySevens,
+    Boxing: t.sportBoxing,
+    Judo: t.sportJudo,
+    Cycling: t.sportCycling,
+    Rowing: t.sportRowing,
+    'Table Tennis': t.sportTableTennis,
+    Badminton: t.sportBadminton,
+    Fencing: t.sportFencing,
+    Weightlifting: t.sportWeightlifting,
+    Wrestling: t.sportWrestling,
+    Taekwondo: t.sportTaekwondo,
+    Archery: t.sportArchery,
+    Shooting: t.sportShooting,
+    Cricket: t.sportCricket,
+    eSports: t.sportEsports,
+    Others: t.sportOthers
+  };
+  const categoryLabels: Record<string, string> = {
+    Amateur: t.amateur,
+    'Semi-pro': t.semiPro,
+    Pro: t.pro,
+    Elite: t.elite
+  };
 
   const newAthletes = state.athletes
     .filter(a => a.tags.includes('New'))
@@ -52,11 +83,11 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto text-sm text-gray-300">
               <div className="flex items-start space-x-2">
                 <Heart className="text-red-400 mt-1 flex-shrink-0" size={20} />
-                <p>Fans participate in athlete support simulation, exploring new community models.</p>
+                <p>{t.heroSupportBulletOne}</p>
               </div>
               <div className="flex items-start space-x-2">
                 <Shield className="text-blue-400 mt-1 flex-shrink-0" size={20} />
-                <p>Demo credits simulate support allocation and post-career assistance models.</p>
+                <p>{t.heroSupportBulletTwo}</p>
               </div>
             </div>
           </div>
@@ -66,32 +97,32 @@ export default function Home() {
       {/* How It Works */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-slate-800/30">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl font-bold text-center mb-12">How It Works</h2>
+          <h2 className="text-4xl font-bold text-center mb-12">{t.howItWorksTitle}</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 step: 1,
-                title: 'Athlete registers profile',
-                description: 'Players submit basic info and career data for review.',
+                title: t.howItWorksStepOneTitle,
+                description: t.howItWorksStepOneDescription,
                 icon: Users
               },
               {
                 step: 2,
-                title: 'Admin reviews and approves',
-                description: 'Approved athletes appear in the Athlete Directory.',
+                title: t.howItWorksStepTwoTitle,
+                description: t.howItWorksStepTwoDescription,
                 icon: Shield
               },
               {
                 step: 3,
-                title: 'Fans acquire or release units',
-                description: 'Fans acquire and release Athlete Units with demo credits.',
+                title: t.howItWorksStepThreeTitle,
+                description: t.howItWorksStepThreeDescription,
                 icon: TrendingUp
               },
               {
                 step: 4,
-                title: 'Demo fees simulate allocation',
-                description: 'Demo fees are distributed across simulated support ledgers.',
+                title: t.howItWorksStepFourTitle,
+                description: t.howItWorksStepFourDescription,
                 icon: DollarSign
               }
             ].map((item) => (
@@ -99,7 +130,7 @@ export default function Home() {
                 <div className="flex items-center justify-center w-12 h-12 bg-blue-600 rounded-full mb-4">
                   <item.icon size={24} />
                 </div>
-                <div className="text-sm font-semibold text-blue-400 mb-2">Step {item.step}</div>
+                <div className="text-sm font-semibold text-blue-400 mb-2">{t.stepLabel} {item.step}</div>
                 <h3 className="text-lg font-bold mb-3">{item.title}</h3>
                 <p className="text-gray-400 text-sm">{item.description}</p>
               </div>
@@ -111,38 +142,38 @@ export default function Home() {
       {/* Why ATHLX */}
       <section className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl font-bold text-center mb-12">Why ATHLX Exists</h2>
+          <h2 className="text-4xl font-bold text-center mb-12">{t.whyAthlxTitle}</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="glass-effect rounded-xl p-8 hover-glow">
               <Target className="text-purple-400 mb-4" size={32} />
-              <h3 className="text-2xl font-bold mb-4">Early Career Support Model</h3>
+              <h3 className="text-2xl font-bold mb-4">{t.whyAthlxCardOneTitle}</h3>
               <p className="text-gray-300 leading-relaxed">
-                This pilot explores support models for young athletes during critical early career stages, simulating allocation of demo resources to help test UX and community engagement.
+                {t.whyAthlxCardOneDescription}
               </p>
             </div>
 
             <div className="glass-effect rounded-xl p-8 hover-glow">
               <Shield className="text-blue-400 mb-4" size={32} />
-              <h3 className="text-2xl font-bold mb-4">Post-Career Support Simulation</h3>
+              <h3 className="text-2xl font-bold mb-4">{t.whyAthlxCardTwoTitle}</h3>
               <p className="text-gray-300 leading-relaxed">
-                The Post-Career Support Vault is a locked demo ledger that simulates long-term athlete support mechanisms. This tests allocation models for life after active sports careers.
+                {t.whyAthlxCardTwoDescription}
               </p>
             </div>
 
             <div className="glass-effect rounded-xl p-8 hover-glow">
               <Heart className="text-red-400 mb-4" size={32} />
-              <h3 className="text-2xl font-bold mb-4">Community Participation</h3>
+              <h3 className="text-2xl font-bold mb-4">{t.whyAthlxCardThreeTitle}</h3>
               <p className="text-gray-300 leading-relaxed">
-                Fans participate in a test environment, using demo credits to simulate community-driven athlete support. This helps shape new models for fan-athlete connections.
+                {t.whyAthlxCardThreeDescription}
               </p>
             </div>
 
             <div className="glass-effect rounded-xl p-8 hover-glow">
               <TrendingUp className="text-green-400 mb-4" size={32} />
-              <h3 className="text-2xl font-bold mb-4">UX Testing & Innovation</h3>
+              <h3 className="text-2xl font-bold mb-4">{t.whyAthlxCardFourTitle}</h3>
               <p className="text-gray-300 leading-relaxed">
-                This closed pilot tests innovative support allocation models. Participants help improve the platform through real usage and feedback in a safe, demo-only environment.
+                {t.whyAthlxCardFourDescription}
               </p>
             </div>
           </div>
@@ -154,9 +185,9 @@ export default function Home() {
         <section className="py-16 px-4 sm:px-6 lg:px-8 bg-slate-800/30">
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-8">
-              <h2 className="text-3xl font-bold">Newly Listed Athletes</h2>
+              <h2 className="text-3xl font-bold">{t.newAthletesTitle}</h2>
               <Link href="/market" className="text-blue-400 hover:text-blue-300 flex items-center space-x-1">
-                <span>View All</span>
+                <span>{t.viewAll}</span>
                 <ArrowRight size={20} />
               </Link>
             </div>
@@ -176,19 +207,19 @@ export default function Home() {
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <h3 className="text-xl font-bold">{athlete.name}</h3>
-                      <p className="text-sm text-gray-400">{athlete.symbol} • {athlete.sport}</p>
+                      <p className="text-sm text-gray-400">{athlete.symbol} • {sportLabels[athlete.sport]}</p>
                     </div>
                     <span className={`badge badge-${athlete.category.toLowerCase().replace('-', '')}`}>
-                      {athlete.category}
+                      {categoryLabels[athlete.category]}
                     </span>
                   </div>
                   <div className="flex justify-between items-center mt-4">
                     <div>
-                      <p className="text-sm text-gray-400">Price</p>
-                      <p className="text-lg font-bold price-display">{athlete.currentPrice.toLocaleString()} tATHLX</p>
+                      <p className="text-sm text-gray-400">{t.unitCostShort}</p>
+                      <p className="text-lg font-bold price-display">{athlete.unitCost.toLocaleString()} tATHLX</p>
                     </div>
                     <div className={`text-lg font-bold ${athlete.price24hChange >= 0 ? 'price-up' : 'price-down'}`}>
-                      {athlete.price24hChange >= 0 ? '+' : ''}{athlete.price24hChange.toFixed(1)}%
+                      {t.indexDelta24hShort} {athlete.price24hChange >= 0 ? '+' : ''}{athlete.price24hChange.toFixed(1)}%
                     </div>
                   </div>
                 </Link>
@@ -203,9 +234,9 @@ export default function Home() {
         <section className="py-16 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-8">
-              <h2 className="text-3xl font-bold">Fast Growing Athletes</h2>
+              <h2 className="text-3xl font-bold">{t.fastGrowingTitle}</h2>
               <Link href="/market" className="text-blue-400 hover:text-blue-300 flex items-center space-x-1">
-                <span>View All</span>
+                <span>{t.viewAll}</span>
                 <ArrowRight size={20} />
               </Link>
             </div>
@@ -225,19 +256,19 @@ export default function Home() {
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <h3 className="text-xl font-bold">{athlete.name}</h3>
-                      <p className="text-sm text-gray-400">{athlete.symbol} • {athlete.sport}</p>
+                      <p className="text-sm text-gray-400">{athlete.symbol} • {sportLabels[athlete.sport]}</p>
                     </div>
                     <span className={`badge badge-${athlete.category.toLowerCase().replace('-', '')}`}>
-                      {athlete.category}
+                      {categoryLabels[athlete.category]}
                     </span>
                   </div>
                   <div className="flex justify-between items-center mt-4">
                     <div>
-                      <p className="text-sm text-gray-400">Price</p>
-                      <p className="text-lg font-bold price-display">{athlete.currentPrice.toLocaleString()} tATHLX</p>
+                      <p className="text-sm text-gray-400">{t.unitCostShort}</p>
+                      <p className="text-lg font-bold price-display">{athlete.unitCost.toLocaleString()} tATHLX</p>
                     </div>
                     <div className="text-lg font-bold price-up">
-                      +{athlete.price7dChange.toFixed(1)}% (7d)
+                      {t.indexDelta7dShort} +{athlete.price7dChange.toFixed(1)}%
                     </div>
                   </div>
                 </Link>
@@ -250,22 +281,22 @@ export default function Home() {
       {/* Call to Action */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center glass-effect rounded-2xl p-12">
-          <h2 className="text-4xl font-bold mb-6">Ready to Participate?</h2>
+          <h2 className="text-4xl font-bold mb-6">{t.ctaTitle}</h2>
           <p className="text-xl text-gray-300 mb-8">
-            Join the pilot program and help test new athlete support models.
+            {t.ctaSubtitle}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/market"
               className="px-8 py-4 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-lg transition hover-glow"
             >
-              Explore Athlete Directory
+              {t.exploreDirectory}
             </Link>
             <Link
               href="/register-athlete"
               className="px-8 py-4 bg-purple-600 hover:bg-purple-700 rounded-lg font-bold text-lg transition hover-glow"
             >
-              Register as Athlete
+              {t.registerAthlete}
             </Link>
           </div>
         </div>

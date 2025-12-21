@@ -3,9 +3,11 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '@/lib/store';
 import { notFound } from 'next/navigation';
-import { TrendingUp, TrendingDown, Users, DollarSign, Calendar, MapPin, User } from 'lucide-react';
+import { TrendingUp, TrendingDown, Calendar, MapPin, User } from 'lucide-react';
 import TradeModal from '@/components/TradeModal';
 import { Line } from 'react-chartjs-2';
+import { translations } from '@/lib/translations';
+import { Category } from '@/lib/types';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -23,6 +25,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 export default function AthletePage({ params }: { params: { symbol: string } }) {
   const { symbol } = params;
   const { state } = useStore();
+  const t = translations[state.language];
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
   const [timeframe, setTimeframe] = useState<'1D' | '1W' | '1M'>('1W');
@@ -34,6 +37,37 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
   }
 
   const relatedNews = state.news.filter(n => n.relatedAthleteSymbol === athlete.symbol);
+  const categoryLabels: Record<Category, string> = {
+    Amateur: t.amateur,
+    'Semi-pro': t.semiPro,
+    Pro: t.pro,
+    Elite: t.elite
+  };
+  const sportLabels: Record<string, string> = {
+    Football: t.sportFootball,
+    Basketball: t.sportBasketball,
+    Athletics: t.sportAthletics,
+    Swimming: t.sportSwimming,
+    Tennis: t.sportTennis,
+    Gymnastics: t.sportGymnastics,
+    Volleyball: t.sportVolleyball,
+    'Rugby Sevens': t.sportRugbySevens,
+    Boxing: t.sportBoxing,
+    Judo: t.sportJudo,
+    Cycling: t.sportCycling,
+    Rowing: t.sportRowing,
+    'Table Tennis': t.sportTableTennis,
+    Badminton: t.sportBadminton,
+    Fencing: t.sportFencing,
+    Weightlifting: t.sportWeightlifting,
+    Wrestling: t.sportWrestling,
+    Taekwondo: t.sportTaekwondo,
+    Archery: t.sportArchery,
+    Shooting: t.sportShooting,
+    Cricket: t.sportCricket,
+    eSports: t.sportEsports,
+    Others: t.sportOthers
+  };
 
   const getCountryFlag = (nationality: string) => {
     const flags: Record<string, string> = {
@@ -56,7 +90,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
       labels: dataPoints.map(p => new Date(p.time).toLocaleDateString()),
       datasets: [
         {
-          label: 'Activity Index (pts)',
+          label: t.activityIndexWithPoints,
           data: dataPoints.map(p => p.price),
           borderColor: 'rgb(59, 130, 246)',
           backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -65,7 +99,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
         }
       ]
     };
-  }, [athlete.priceHistory, timeframe]);
+  }, [athlete.priceHistory, timeframe, t.activityIndexWithPoints]);
 
   const chartOptions = {
     responsive: true,
@@ -101,7 +135,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
         },
         ticks: {
           color: '#9ca3af',
-          callback: (value: any) => `${value} tATHLX`
+          callback: (value: any) => `${value} ${t.pointsUnit}`
         }
       }
     }
@@ -136,7 +170,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
                     <span className="font-bold text-blue-400">{athlete.symbol}</span>
                     <span>•</span>
                     <span className={`badge badge-${athlete.category.toLowerCase().replace('-', '')}`}>
-                      {athlete.category}
+                      {categoryLabels[athlete.category]}
                     </span>
                   </div>
                 </div>
@@ -144,7 +178,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
                 <div className="space-y-3 text-gray-300">
                   <div className="flex items-center space-x-2">
                     <User size={18} className="text-gray-400" />
-                    <span>{athlete.sport} • {athlete.position}</span>
+                    <span>{sportLabels[athlete.sport]} • {athlete.position}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <MapPin size={18} className="text-gray-400" />
@@ -155,7 +189,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
                     <span>{athlete.team}</span>
                   </div>
                   <div className="text-sm text-gray-400">
-                    Age: {athlete.age} • Height: {athlete.height}
+                    {t.ageLabel}: {athlete.age} • {t.heightLabel}: {athlete.height}
                   </div>
                 </div>
               </div>
@@ -164,21 +198,21 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
               <div>
                 <div className="bg-slate-700/50 rounded-lg p-6 mb-4">
                   <div className="mb-4">
-                    <p className="text-sm text-gray-400 mb-1">Current Price</p>
+                    <p className="text-sm text-gray-400 mb-1">{t.unitCostLabel}</p>
                     <p className="text-4xl font-bold price-display">
-                      {athlete.currentPrice.toLocaleString()} tATHLX
+                      {athlete.unitCost.toLocaleString()} tATHLX
                     </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                      <p className="text-xs text-gray-400">24h Change</p>
+                      <p className="text-xs text-gray-400">{t.indexDelta24h}</p>
                       <p className={`text-lg font-bold ${athlete.price24hChange >= 0 ? 'price-up' : 'price-down'}`}>
                         {athlete.price24hChange >= 0 ? '+' : ''}{athlete.price24hChange.toFixed(1)}%
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-400">7d Change</p>
+                      <p className="text-xs text-gray-400">{t.indexDelta7d}</p>
                       <p className={`text-lg font-bold ${athlete.price7dChange >= 0 ? 'price-up' : 'price-down'}`}>
                         {athlete.price7dChange >= 0 ? '+' : ''}{athlete.price7dChange.toFixed(1)}%
                       </p>
@@ -187,11 +221,11 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
 
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="text-gray-400">Volume</p>
+                      <p className="text-gray-400">{t.demoCreditsFlow}</p>
                       <p className="font-semibold">{athlete.tradingVolume.toLocaleString()} tATHLX</p>
                     </div>
                     <div>
-                      <p className="text-gray-400">Holders</p>
+                      <p className="text-gray-400">{t.participants}</p>
                       <p className="font-semibold">{athlete.holders}</p>
                     </div>
                   </div>
@@ -203,24 +237,24 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
                     className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition flex items-center justify-center space-x-2"
                   >
                     <TrendingUp size={20} />
-                    <span>Buy</span>
+                    <span>{t.acquireUnits}</span>
                   </button>
                   <button
                     onClick={() => openTrade('sell')}
                     className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-bold transition flex items-center justify-center space-x-2"
                   >
                     <TrendingDown size={20} />
-                    <span>Sell</span>
+                    <span>{t.releaseUnits}</span>
                   </button>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Price Chart */}
+          {/* Activity Index Chart */}
           <div className="glass-effect rounded-xl p-6 mb-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Price Chart</h2>
+              <h2 className="text-2xl font-bold">{t.activityIndexChart}</h2>
               <div className="flex gap-2">
                 {(['1D', '1W', '1M'] as const).map(tf => (
                   <button
@@ -245,7 +279,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
           {/* Profile & Bio */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             <div className="glass-effect rounded-xl p-6">
-              <h2 className="text-2xl font-bold mb-4">Player Profile</h2>
+              <h2 className="text-2xl font-bold mb-4">{t.playerProfile}</h2>
               <p className="text-gray-300 leading-relaxed mb-4">{athlete.bio}</p>
               <a
                 href={athlete.profileUrl}
@@ -253,12 +287,12 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
                 rel="noopener noreferrer"
                 className="text-blue-400 hover:text-blue-300 text-sm"
               >
-                View Full Profile →
+                {t.viewFullProfile} →
               </a>
             </div>
 
             <div className="glass-effect rounded-xl p-6">
-              <h2 className="text-2xl font-bold mb-4">Highlight Video</h2>
+              <h2 className="text-2xl font-bold mb-4">{t.highlightVideo}</h2>
               <div className="aspect-video">
                 <iframe
                   src={athlete.highlightVideoUrl}
@@ -273,7 +307,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
           {/* Latest News */}
           {relatedNews.length > 0 && (
             <div className="glass-effect rounded-xl p-6">
-              <h2 className="text-2xl font-bold mb-6">Latest News</h2>
+              <h2 className="text-2xl font-bold mb-6">{t.latestNews}</h2>
               <div className="space-y-4">
                 {relatedNews.map(news => (
                   <div key={news.id} className="bg-slate-700/50 rounded-lg p-4 hover:bg-slate-700/70 transition">
@@ -289,7 +323,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
                         rel="noopener noreferrer"
                         className="text-blue-400 hover:text-blue-300 text-sm font-semibold"
                       >
-                        Read more →
+                        {t.readMore} →
                       </a>
                     </div>
                   </div>
