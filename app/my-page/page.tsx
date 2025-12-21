@@ -7,6 +7,7 @@ import { TrendingUp, TrendingDown, DollarSign, Users, Activity } from 'lucide-re
 import TradeModal from '@/components/TradeModal';
 import { translations } from '@/lib/translations';
 import { Category } from '@/lib/types';
+import { formatNumber } from '@/lib/format';
 
 export default function MyPage() {
   const { state, getPortfolio } = useStore();
@@ -14,7 +15,6 @@ export default function MyPage() {
   const [activeTab, setActiveTab] = useState<'fan' | 'athlete'>('fan');
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [selectedAthlete, setSelectedAthlete] = useState<any>(null);
-  const formatNumber = (value?: number) => (value ?? 0).toLocaleString();
 
   useEffect(() => {
     if (!state.currentUser) {
@@ -322,4 +322,3 @@ export default function MyPage() {
     </>
   );
 }
-

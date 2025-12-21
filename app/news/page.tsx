@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Calendar } from 'lucide-react';
 import { Sport } from '@/lib/types';
 import { translations } from '@/lib/translations';
+import { formatNumber } from '@/lib/format';
 
 const sportsList: (Sport | 'All')[] = ['All', 'Football', 'Basketball', 'Athletics', 'Swimming', 'Tennis', 'Gymnastics', 'Others'];
 const categories = ['All', 'Transfer', 'Performance', 'Injury', 'Career', 'Others'];
@@ -144,7 +145,7 @@ export default function NewsPage() {
                         <p className="font-bold">{relatedAthlete.name}</p>
                         <p className="text-sm text-gray-400">{relatedAthlete.symbol} • {sportLabels[relatedAthlete.sport]}</p>
                         <p className="text-sm font-semibold price-display">
-                          {t.activityIndexLabel}: {relatedAthlete.currentPrice.toLocaleString()} {t.pointsUnit}
+                          {t.activityIndexLabel}: {formatNumber(relatedAthlete.currentPrice)} {t.pointsUnit}
                         </p>
                       </div>
                       <button className="ml-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold transition">
