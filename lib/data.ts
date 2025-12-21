@@ -1,17 +1,30 @@
 import { Athlete, NewsItem } from './types';
 
-// Generate realistic price history
-const generatePriceHistory = (basePrice: number, volatility: number = 0.1) => {
+const REFERENCE_TIME = Date.UTC(2024, 0, 1, 12, 0, 0);
+
+const seededRandom = (seed: number) => {
+  let value = seed;
+  return () => {
+    value += 0x6D2B79F5;
+    let t = Math.imul(value ^ (value >>> 15), 1 | value);
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+// Generate deterministic price history for consistent SSR/CSR hydration.
+const generatePriceHistory = (basePrice: number, volatility: number = 0.1, seed: number = 1) => {
   const history = [];
   let price = basePrice * 0.8; // Start 20% lower
+  const rand = seededRandom(seed);
   
   for (let i = 0; i < 30; i++) {
-    const change = (Math.random() - 0.5) * volatility * price;
+    const change = (rand() - 0.5) * volatility * price;
     price = Math.max(price + change, basePrice * 0.5);
     history.push({
-      time: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString(),
+      time: new Date(REFERENCE_TIME - (29 - i) * 24 * 60 * 60 * 1000).toISOString(),
       price: Math.round(price * 100) / 100,
-      volume: Math.floor(Math.random() * 50000) + 10000
+      volume: Math.floor(rand() * 50000) + 10000
     });
   }
   
@@ -41,8 +54,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 125000,
     holders: 342,
     tags: ['Featured', 'Fast Growing'],
-    priceHistory: generatePriceHistory(250),
-    createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(250, 0.1, 11),
+    createdAt: new Date(REFERENCE_TIME - 90 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '2',
@@ -66,8 +79,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 450000,
     holders: 892,
     tags: ['Featured', 'Elite'],
-    priceHistory: generatePriceHistory(850),
-    createdAt: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(850, 0.1, 12),
+    createdAt: new Date(REFERENCE_TIME - 180 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '3',
@@ -91,8 +104,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 180000,
     holders: 456,
     tags: ['Fast Growing'],
-    priceHistory: generatePriceHistory(320),
-    createdAt: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(320, 0.1, 13),
+    createdAt: new Date(REFERENCE_TIME - 120 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '4',
@@ -116,8 +129,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 95000,
     holders: 234,
     tags: ['Promoted'],
-    priceHistory: generatePriceHistory(180),
-    createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(180, 0.1, 14),
+    createdAt: new Date(REFERENCE_TIME - 60 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '5',
@@ -141,8 +154,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 235000,
     holders: 567,
     tags: ['Featured'],
-    priceHistory: generatePriceHistory(420),
-    createdAt: new Date(Date.now() - 150 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(420, 0.1, 15),
+    createdAt: new Date(REFERENCE_TIME - 150 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '6',
@@ -166,8 +179,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 380000,
     holders: 723,
     tags: ['Elite'],
-    priceHistory: generatePriceHistory(680),
-    createdAt: new Date(Date.now() - 200 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(680, 0.1, 16),
+    createdAt: new Date(REFERENCE_TIME - 200 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '7',
@@ -191,8 +204,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 165000,
     holders: 412,
     tags: ['Fast Growing', 'New'],
-    priceHistory: generatePriceHistory(290),
-    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(290, 0.1, 17),
+    createdAt: new Date(REFERENCE_TIME - 30 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '8',
@@ -216,8 +229,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 78000,
     holders: 198,
     tags: [],
-    priceHistory: generatePriceHistory(155),
-    createdAt: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(155, 0.1, 18),
+    createdAt: new Date(REFERENCE_TIME - 75 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '9',
@@ -241,8 +254,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 92000,
     holders: 267,
     tags: [],
-    priceHistory: generatePriceHistory(195),
-    createdAt: new Date(Date.now() - 100 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(195, 0.1, 19),
+    createdAt: new Date(REFERENCE_TIME - 100 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '10',
@@ -266,8 +279,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 42000,
     holders: 156,
     tags: ['New'],
-    priceHistory: generatePriceHistory(85),
-    createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(85, 0.1, 20),
+    createdAt: new Date(REFERENCE_TIME - 15 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '11',
@@ -291,8 +304,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 195000,
     holders: 478,
     tags: ['Featured'],
-    priceHistory: generatePriceHistory(340),
-    createdAt: new Date(Date.now() - 135 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(340, 0.1, 21),
+    createdAt: new Date(REFERENCE_TIME - 135 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '12',
@@ -316,8 +329,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 88000,
     holders: 245,
     tags: [],
-    priceHistory: generatePriceHistory(165),
-    createdAt: new Date(Date.now() - 80 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(165, 0.1, 22),
+    createdAt: new Date(REFERENCE_TIME - 80 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '13',
@@ -341,8 +354,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 148000,
     holders: 389,
     tags: ['Fast Growing'],
-    priceHistory: generatePriceHistory(275),
-    createdAt: new Date(Date.now() - 110 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(275, 0.1, 23),
+    createdAt: new Date(REFERENCE_TIME - 110 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '14',
@@ -366,8 +379,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 172000,
     holders: 423,
     tags: ['Featured'],
-    priceHistory: generatePriceHistory(310),
-    createdAt: new Date(Date.now() - 125 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(310, 0.1, 24),
+    createdAt: new Date(REFERENCE_TIME - 125 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '15',
@@ -391,8 +404,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 410000,
     holders: 812,
     tags: ['Elite', 'Featured'],
-    priceHistory: generatePriceHistory(720),
-    createdAt: new Date(Date.now() - 190 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(720, 0.1, 25),
+    createdAt: new Date(REFERENCE_TIME - 190 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '16',
@@ -416,8 +429,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 71000,
     holders: 187,
     tags: ['New'],
-    priceHistory: generatePriceHistory(142),
-    createdAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(142, 0.1, 26),
+    createdAt: new Date(REFERENCE_TIME - 25 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '17',
@@ -441,8 +454,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 48000,
     holders: 168,
     tags: ['New', 'Fast Growing'],
-    priceHistory: generatePriceHistory(95),
-    createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(95, 0.1, 27),
+    createdAt: new Date(REFERENCE_TIME - 20 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '18',
@@ -466,8 +479,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 128000,
     holders: 334,
     tags: [],
-    priceHistory: generatePriceHistory(235),
-    createdAt: new Date(Date.now() - 95 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(235, 0.1, 28),
+    createdAt: new Date(REFERENCE_TIME - 95 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '19',
@@ -491,8 +504,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 84000,
     holders: 212,
     tags: [],
-    priceHistory: generatePriceHistory(168),
-    createdAt: new Date(Date.now() - 70 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(168, 0.1, 29),
+    createdAt: new Date(REFERENCE_TIME - 70 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: '20',
@@ -516,8 +529,8 @@ export const initialAthletes: Athlete[] = [
     tradingVolume: 215000,
     holders: 623,
     tags: ['Featured', 'Fast Growing', 'Promoted'],
-    priceHistory: generatePriceHistory(385),
-    createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString()
+    priceHistory: generatePriceHistory(385, 0.1, 30),
+    createdAt: new Date(REFERENCE_TIME - 45 * 24 * 60 * 60 * 1000).toISOString()
   }
 ];
 
@@ -528,7 +541,7 @@ export const initialNews: NewsItem[] = [
     summary: 'Portuguese midfielder Marco Silva has signed a three-year contract extension, solidifying his future with the club through 2027.',
     sport: 'Football',
     category: 'Career',
-    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    date: new Date(REFERENCE_TIME - 2 * 24 * 60 * 60 * 1000).toISOString(),
     readMoreUrl: 'https://example.com/news/marco-silva-contract',
     relatedAthleteSymbol: 'MSIL'
   },
@@ -538,7 +551,7 @@ export const initialNews: NewsItem[] = [
     summary: 'Japanese swimmer Yuki Tanaka set a new national record at the World Championships qualifiers, finishing with a time of 1:44.23.',
     sport: 'Swimming',
     category: 'Performance',
-    date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    date: new Date(REFERENCE_TIME - 5 * 24 * 60 * 60 * 1000).toISOString(),
     readMoreUrl: 'https://example.com/news/yuki-tanaka-record',
     relatedAthleteSymbol: 'YTAN'
   },
@@ -548,7 +561,7 @@ export const initialNews: NewsItem[] = [
     summary: 'Spanish tennis star Sofia Rodriguez defeated the world number 8 to advance to the quarter-finals in a thrilling three-set match.',
     sport: 'Tennis',
     category: 'Performance',
-    date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    date: new Date(REFERENCE_TIME - 1 * 24 * 60 * 60 * 1000).toISOString(),
     readMoreUrl: 'https://example.com/news/sofia-rodriguez-madrid',
     relatedAthleteSymbol: 'SROD'
   },
@@ -558,7 +571,7 @@ export const initialNews: NewsItem[] = [
     summary: 'Multiple NBA teams have sent scouts to watch point guard James Mitchell as he leads his G League team through the playoffs.',
     sport: 'Basketball',
     category: 'Transfer',
-    date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    date: new Date(REFERENCE_TIME - 3 * 24 * 60 * 60 * 1000).toISOString(),
     readMoreUrl: 'https://example.com/news/james-mitchell-nba',
     relatedAthleteSymbol: 'JMIT'
   },
@@ -568,7 +581,7 @@ export const initialNews: NewsItem[] = [
     summary: 'Nigerian sprinter Amara Okafor secured her spot at the World Championships with a stunning 9.98 second 100m performance.',
     sport: 'Athletics',
     category: 'Performance',
-    date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+    date: new Date(REFERENCE_TIME - 4 * 24 * 60 * 60 * 1000).toISOString(),
     readMoreUrl: 'https://example.com/news/amara-okafor-worlds',
     relatedAthleteSymbol: 'AOKA'
   },
@@ -578,7 +591,7 @@ export const initialNews: NewsItem[] = [
     summary: 'Swedish gymnast Emma Larsson captured gold in the all-around competition at the European Championships with a flawless performance.',
     sport: 'Gymnastics',
     category: 'Performance',
-    date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+    date: new Date(REFERENCE_TIME - 6 * 24 * 60 * 60 * 1000).toISOString(),
     readMoreUrl: 'https://example.com/news/emma-larsson-gold',
     relatedAthleteSymbol: 'ELAR'
   },
@@ -588,7 +601,7 @@ export const initialNews: NewsItem[] = [
     summary: 'South Korean taekwondo champion Min-jun Kim successfully defended his Olympic gold medal with dominant performances throughout the tournament.',
     sport: 'Taekwondo',
     category: 'Performance',
-    date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    date: new Date(REFERENCE_TIME - 7 * 24 * 60 * 60 * 1000).toISOString(),
     readMoreUrl: 'https://example.com/news/minjun-kim-olympic-gold',
     relatedAthleteSymbol: 'MKIM'
   },
@@ -598,7 +611,7 @@ export const initialNews: NewsItem[] = [
     summary: 'Canadian eSports pro Sarah Thompson was named tournament MVP as Team Velocity won the international championship.',
     sport: 'eSports',
     category: 'Performance',
-    date: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+    date: new Date(REFERENCE_TIME - 8 * 24 * 60 * 60 * 1000).toISOString(),
     readMoreUrl: 'https://example.com/news/sarah-thompson-championship',
     relatedAthleteSymbol: 'STHO'
   },
@@ -608,7 +621,7 @@ export const initialNews: NewsItem[] = [
     summary: 'The IOC has confirmed the addition of several new sports to the 2028 Olympic Games, expanding opportunities for athletes worldwide.',
     sport: 'Others',
     category: 'Others',
-    date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    date: new Date(REFERENCE_TIME - 10 * 24 * 60 * 60 * 1000).toISOString(),
     readMoreUrl: 'https://example.com/news/ioc-2028-sports'
   },
   {
@@ -617,7 +630,7 @@ export const initialNews: NewsItem[] = [
     summary: 'A new report shows that digital sports support platforms have reached an all-time high in participation, with innovative pilot programs driving significant community engagement.',
     sport: 'Others',
     category: 'Others',
-    date: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
+    date: new Date(REFERENCE_TIME - 12 * 24 * 60 * 60 * 1000).toISOString(),
     readMoreUrl: 'https://example.com/news/sports-support-record'
   },
   {
@@ -626,7 +639,7 @@ export const initialNews: NewsItem[] = [
     summary: 'Mexican boxer Diego Mendez will make his professional debut next month after an impressive semi-pro record.',
     sport: 'Boxing',
     category: 'Transfer',
-    date: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
+    date: new Date(REFERENCE_TIME - 9 * 24 * 60 * 60 * 1000).toISOString(),
     readMoreUrl: 'https://example.com/news/diego-mendez-pro',
     relatedAthleteSymbol: 'DMEN'
   },
@@ -636,7 +649,7 @@ export const initialNews: NewsItem[] = [
     summary: 'Italian cyclist Isabella Ferrari showcased her climbing prowess with a stage victory in the mountainous terrain of the Giro d\'Italia.',
     sport: 'Cycling',
     category: 'Performance',
-    date: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000).toISOString(),
+    date: new Date(REFERENCE_TIME - 11 * 24 * 60 * 60 * 1000).toISOString(),
     readMoreUrl: 'https://example.com/news/isabella-ferrari-giro',
     relatedAthleteSymbol: 'IFER'
   }
