@@ -46,7 +46,7 @@ export default function AboutPage() {
                   Important notice:
                 </p>
                 <p>
-                  This is a closed pilot for UX testing and community participation. It is not an investment product, not a securities offering, and not a financial service.
+                  This is a closed pilot for UX testing and community research. Demo-only. No real-world money. No withdrawals. No external transfers. Nothing here represents real money or any real-world entitlement.
                 </p>
               </div>
             </div>
@@ -143,7 +143,7 @@ export default function AboutPage() {
               <p className="text-gray-300 leading-relaxed">
                 {isEnglish 
                   ? 'This closed pilot gathers user experience data and feedback to improve support allocation models and platform design.'
-                  : 'Este piloto cerrado recopila datos de experiencia de usuario y retroalimentación para mejorar los modelos de asignación de apoyo y el diseño de la plataforma.'}
+                  : 'Esto es un piloto cerrado para pruebas de UX e investigación comunitaria. Solo demostración. No es dinero real. No hay retiros. No hay transferencias externas. Nada aquí genera uso o efectos fuera del piloto.'}
               </p>
             </div>
           </div>
