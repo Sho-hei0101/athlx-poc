@@ -124,14 +124,14 @@ export const translations = {
     readMore: 'Leer más',
     
     // Disclaimer
-    disclaimerBanner: 'Programa Piloto ATHLX — Entorno de prueba. Solo créditos demo. Sin valor en el mundo real.',
+    disclaimerBanner: 'Programa Piloto ATHLX — Entorno de prueba. Solo créditos demo. Sin uso fuera del piloto.',
     
     // Additional Terms
     athleteUnits: 'Unidades del Atleta',
     demoCredits: 'Créditos Demo (tATHLX)',
     activityIndex: 'Índice de Actividad (pts)',
     postCareerSupport: 'Fondo de Apoyo Post-Carrera',
-    demoOnly: 'Solo demo. Sin valor en el mundo real.',
+    demoOnly: 'Solo demo. Sin uso fuera del piloto.',
     testEnvironment: 'Entorno de Prueba',
     athleteDirectory: 'Directorio de Atletas'
   }
