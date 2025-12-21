@@ -9,6 +9,7 @@ import { translations } from '@/lib/translations';
 import { Category } from '@/lib/types';
 import dynamic from 'next/dynamic';
 import type { ChartData, ChartOptions } from 'chart.js';
+import { formatNumber } from '@/lib/format';
 
 const AthletePriceChart = dynamic(() => import('@/components/AthletePriceChart'), { ssr: false });
 
@@ -190,7 +191,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
                   <div className="mb-4">
                     <p className="text-sm text-gray-400 mb-1">{t.unitCostLabel}</p>
                     <p className="text-4xl font-bold price-display">
-                      {athlete.unitCost.toLocaleString()} tATHLX
+                      {formatNumber(athlete.unitCost)} tATHLX
                     </p>
                   </div>
 
@@ -212,7 +213,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-gray-400">{t.demoCreditsFlow}</p>
-                      <p className="font-semibold">{athlete.tradingVolume.toLocaleString()} tATHLX</p>
+                      <p className="font-semibold">{formatNumber(athlete.tradingVolume)} tATHLX</p>
                     </div>
                     <div>
                       <p className="text-gray-400">{t.participants}</p>

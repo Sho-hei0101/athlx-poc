@@ -1,4 +1,4 @@
-import { Athlete, NewsItem } from './types';
+import { Athlete, Category, NewsItem } from './types';
 
 const REFERENCE_TIME = Date.UTC(2024, 0, 1, 12, 0, 0);
 
@@ -10,6 +10,20 @@ const seededRandom = (seed: number) => {
     t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+};
+
+const getDefaultUnitCost = (category?: Category) => {
+  switch (category) {
+    case 'Elite':
+      return 0.2;
+    case 'Pro':
+      return 0.1;
+    case 'Semi-pro':
+      return 0.05;
+    case 'Amateur':
+    default:
+      return 0.01;
+  }
 };
 
 // Generate deterministic price history for consistent SSR/CSR hydration.
@@ -31,7 +45,7 @@ const generatePriceHistory = (basePrice: number, volatility: number = 0.1, seed:
   return history;
 };
 
-export const initialAthletes: Athlete[] = [
+const baseAthletes = [
   {
     id: '1',
     name: 'Marco Silva',
@@ -47,7 +61,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/marco-silva',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=12',
-    unitCost: 0.01,
     currentPrice: 250,
     price24hChange: 5.2,
     price7dChange: 12.8,
@@ -72,7 +85,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/yuki-tanaka',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=33',
-    unitCost: 0.01,
     currentPrice: 850,
     price24hChange: 8.5,
     price7dChange: 22.3,
@@ -97,7 +109,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/sofia-rodriguez',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=45',
-    unitCost: 0.01,
     currentPrice: 320,
     price24hChange: 3.8,
     price7dChange: 15.2,
@@ -122,7 +133,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/james-mitchell',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=15',
-    unitCost: 0.01,
     currentPrice: 180,
     price24hChange: 2.1,
     price7dChange: 8.5,
@@ -147,7 +157,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/amara-okafor',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=28',
-    unitCost: 0.01,
     currentPrice: 420,
     price24hChange: 6.7,
     price7dChange: 18.9,
@@ -172,7 +181,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/chen-wei',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=51',
-    unitCost: 0.01,
     currentPrice: 680,
     price24hChange: 4.2,
     price7dChange: 11.5,
@@ -197,7 +205,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/emma-larsson',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=47',
-    unitCost: 0.01,
     currentPrice: 290,
     price24hChange: 7.3,
     price7dChange: 20.1,
@@ -222,7 +229,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/diego-mendez',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=13',
-    unitCost: 0.01,
     currentPrice: 155,
     price24hChange: 1.8,
     price7dChange: 5.4,
@@ -247,7 +253,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/lea-dubois',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=26',
-    unitCost: 0.01,
     currentPrice: 195,
     price24hChange: -1.2,
     price7dChange: 3.7,
@@ -272,7 +277,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/kwame-mensah',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=60',
-    unitCost: 0.01,
     currentPrice: 85,
     price24hChange: 4.5,
     price7dChange: 12.3,
@@ -297,7 +301,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/anna-kowalski',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=25',
-    unitCost: 0.01,
     currentPrice: 340,
     price24hChange: 2.9,
     price7dChange: 9.8,
@@ -322,7 +325,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/raj-patel',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=32',
-    unitCost: 0.01,
     currentPrice: 165,
     price24hChange: 3.2,
     price7dChange: 7.8,
@@ -347,7 +349,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/isabella-ferrari',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=44',
-    unitCost: 0.01,
     currentPrice: 275,
     price24hChange: 5.1,
     price7dChange: 14.6,
@@ -372,7 +373,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/liam-obrien',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=11',
-    unitCost: 0.01,
     currentPrice: 310,
     price24hChange: 4.7,
     price7dChange: 16.2,
@@ -397,7 +397,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/minjun-kim',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=52',
-    unitCost: 0.01,
     currentPrice: 720,
     price24hChange: 6.8,
     price7dChange: 19.4,
@@ -422,7 +421,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/fatima-alrashid',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=27',
-    unitCost: 0.01,
     currentPrice: 142,
     price24hChange: 2.3,
     price7dChange: 6.9,
@@ -447,7 +445,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/lucas-santos',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=14',
-    unitCost: 0.01,
     currentPrice: 95,
     price24hChange: 6.2,
     price7dChange: 15.7,
@@ -472,7 +469,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/zara-hassan',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=41',
-    unitCost: 0.01,
     currentPrice: 235,
     price24hChange: 3.6,
     price7dChange: 11.2,
@@ -497,7 +493,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/andre-ivanov',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=53',
-    unitCost: 0.01,
     currentPrice: 168,
     price24hChange: 1.9,
     price7dChange: 4.8,
@@ -522,7 +517,6 @@ export const initialAthletes: Athlete[] = [
     profileUrl: 'https://example.com/sarah-thompson',
     highlightVideoUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
     imageUrl: 'https://i.pravatar.cc/300?img=38',
-    unitCost: 0.01,
     currentPrice: 385,
     price24hChange: 8.9,
     price7dChange: 24.5,
@@ -532,7 +526,12 @@ export const initialAthletes: Athlete[] = [
     priceHistory: generatePriceHistory(385, 0.1, 30),
     createdAt: new Date(REFERENCE_TIME - 45 * 24 * 60 * 60 * 1000).toISOString()
   }
-];
+] satisfies Array<Omit<Athlete, 'unitCost'>>;
+
+export const initialAthletes: Athlete[] = baseAthletes.map((athlete) => ({
+  ...athlete,
+  unitCost: getDefaultUnitCost(athlete.category)
+}));
 
 export const initialNews: NewsItem[] = [
   {

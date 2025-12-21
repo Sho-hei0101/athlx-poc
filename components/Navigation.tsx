@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Menu, X, Globe, Wallet } from 'lucide-react';
 import AuthModal from './AuthModal';
 import { translations } from '@/lib/translations';
+import { formatNumber } from '@/lib/format';
 
 export default function Navigation() {
   const { state, logout, connectMetaMask, disconnectMetaMask, setLanguage } = useStore();
@@ -83,7 +84,7 @@ export default function Navigation() {
                 <div className="px-4 py-2 bg-blue-600/20 rounded-lg border border-blue-500/30">
                   <span className="text-sm text-blue-200">{t.balance}:</span>
                   <span className="ml-2 font-bold price-display text-white">
-                    {state.currentUser.athlxBalance.toLocaleString()} tATHLX
+                    {formatNumber(state.currentUser.athlxBalance)} tATHLX
                   </span>
                 </div>
               )}
@@ -177,7 +178,7 @@ export default function Navigation() {
                 
                 {state.currentUser && (
                   <div className="py-2 text-sm">
-                    {t.balance}: <span className="font-bold price-display">{state.currentUser.athlxBalance.toLocaleString()} tATHLX</span>
+                    {t.balance}: <span className="font-bold price-display">{formatNumber(state.currentUser.athlxBalance)} tATHLX</span>
                   </div>
                 )}
                 
