@@ -14,18 +14,21 @@ export default function AdminPasswordModal({ isOpen, onClose }: AdminPasswordMod
   const [error, setError] = useState('');
   const router = useRouter();
 
+  // Get admin PIN from environment variable or use fallback
+  const ADMIN_PIN = process.env.NEXT_PUBLIC_ADMIN_PIN || '1234';
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (password === '1234') {
+    if (password === ADMIN_PIN) {
       onClose();
       router.push('/admin');
       setPassword('');
       setError('');
     } else {
-      setError('Incorrect password');
+      setError('Incorrect PIN');
     }
   };
 
@@ -47,12 +50,12 @@ export default function AdminPasswordModal({ isOpen, onClose }: AdminPasswordMod
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Admin Password</label>
+            <label className="block text-sm font-medium mb-2">Admin PIN</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter admin password"
+              placeholder="Enter admin PIN"
               className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
               required
               autoFocus
@@ -74,7 +77,7 @@ export default function AdminPasswordModal({ isOpen, onClose }: AdminPasswordMod
         </form>
 
         <p className="mt-4 text-xs text-gray-400 text-center">
-          Demo password: 1234
+          Contact repository owner to set NEXT_PUBLIC_ADMIN_PIN environment variable.
         </p>
       </div>
     </div>
