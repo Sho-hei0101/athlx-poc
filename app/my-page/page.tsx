@@ -1,7 +1,7 @@
 'use client';
 
 import { useStore } from '@/lib/store';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, DollarSign, Users, Activity } from 'lucide-react';
@@ -17,8 +17,13 @@ export default function MyPage() {
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [selectedAthlete, setSelectedAthlete] = useState<any>(null);
 
+  useEffect(() => {
+    if (!state.currentUser) {
+      router.replace('/');
+    }
+  }, [state.currentUser, router]);
+
   if (!state.currentUser) {
-    router.push('/');
     return null;
   }
 
