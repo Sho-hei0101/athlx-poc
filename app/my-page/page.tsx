@@ -1,8 +1,7 @@
 'use client';
 
 import { useStore } from '@/lib/store';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, DollarSign, Users, Activity } from 'lucide-react';
 import TradeModal from '@/components/TradeModal';
@@ -12,13 +11,17 @@ import { Category } from '@/lib/types';
 export default function MyPage() {
   const { state, getPortfolio } = useStore();
   const t = translations[state.language];
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'fan' | 'athlete'>('fan');
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [selectedAthlete, setSelectedAthlete] = useState<any>(null);
 
+  useEffect(() => {
+    if (!state.currentUser) {
+      window.location.replace('/');
+    }
+  }, [state.currentUser]);
+
   if (!state.currentUser) {
-    router.push('/');
     return null;
   }
 
