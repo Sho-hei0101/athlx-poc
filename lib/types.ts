@@ -2,6 +2,31 @@
 
 export type Category = 'Amateur' | 'Semi-pro' | 'Pro' | 'Elite';
 
+export type MatchHomeAway = 'Home' | 'Away';
+export type MatchExpectedRole = 'Starter' | 'Bench' | 'Not in squad';
+export type MatchCondition = '100%' | 'Minor' | 'Not 100%';
+export type MatchImportance = 'League' | 'Cup' | 'Friendly';
+export type MatchMinutesBucket = '0' | '1-30' | '31-60' | '61-90';
+export type MatchResult = 'Win' | 'Draw' | 'Loss';
+
+export interface NextMatchInfo {
+  date: string;
+  opponent: string;
+  homeAway: MatchHomeAway;
+  expectedRole: MatchExpectedRole;
+  condition: MatchCondition;
+  importance: MatchImportance;
+}
+
+export interface LastMatchInfo {
+  date: string;
+  minutesBucket: MatchMinutesBucket;
+  result: MatchResult;
+  goals?: number;
+  assists?: number;
+  injury?: boolean;
+}
+
 export type Sport = 
   | 'Football' 
   | 'Basketball' 
@@ -43,7 +68,11 @@ export interface Athlete {
   highlightVideoUrl: string;
   imageUrl: string;
   unitCost: number;
+  activityIndex: number;
   currentPrice: number;
+  nextMatch?: NextMatchInfo;
+  lastMatch?: LastMatchInfo;
+  lastUpdateReason?: string;
   price24hChange: number;
   price7dChange: number;
   tradingVolume: number;
