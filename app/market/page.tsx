@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Search, Filter } from 'lucide-react';
 import { Sport, Category } from '@/lib/types';
 import { translations } from '@/lib/translations';
+import { formatNumber } from '@/lib/format';
 
 const allSports: Sport[] = [
   'Football', 'Basketball', 'Athletics', 'Swimming', 'Tennis', 'Gymnastics',
@@ -178,7 +179,9 @@ export default function MarketPage() {
 
         {/* Athlete Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAthletes.map(athlete => (
+          {filteredAthletes.map(athlete => {
+            const activityIndex = athlete.activityIndex ?? athlete.currentPrice;
+            return (
             <Link
               key={athlete.id}
               href={`/athlete/${athlete.symbol}`}
@@ -231,8 +234,12 @@ export default function MarketPage() {
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm text-gray-400">{t.activityIndexLabel}</span>
                   <span className="text-xl font-bold price-display">
-                    {athlete.currentPrice.toLocaleString()} pts
+                    {formatNumber(activityIndex)} pts
                   </span>
+                </div>
+                <div className="flex justify-between items-center mb-2 text-sm">
+                  <span className="text-gray-400">{t.unitCostShort}</span>
+                  <span className="font-semibold price-display">{formatNumber(athlete.unitCost)} tATHLX</span>
                 </div>
                 
                 <div className="flex justify-between items-center text-sm">
@@ -251,8 +258,13 @@ export default function MarketPage() {
                 </div>
                 
                 <div className="mt-2 text-xs text-gray-400">
-                  {t.demoCreditsFlowShort} {athlete.tradingVolume.toLocaleString()} tATHLX • {athlete.holders} {t.participantsLower}
+                  {t.demoCreditsFlowShort} {formatNumber(athlete.tradingVolume)} tATHLX • {athlete.holders} {t.participantsLower}
                 </div>
+                {athlete.nextMatch && (
+                  <div className="mt-2 text-xs text-gray-400">
+                    {t.nextMatchShort}: {athlete.nextMatch.date} · {athlete.nextMatch.opponent}
+                  </div>
+                )}
               </div>
 
               {/* Mini Sparkline */}
@@ -270,7 +282,8 @@ export default function MarketPage() {
                 })}
               </div>
             </Link>
-          ))}
+            );
+          })}
         </div>
 
         {filteredAthletes.length === 0 && (

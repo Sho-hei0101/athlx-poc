@@ -9,6 +9,7 @@ import { translations } from '@/lib/translations';
 import { Category } from '@/lib/types';
 import dynamic from 'next/dynamic';
 import type { ChartData, ChartOptions } from 'chart.js';
+import { formatNumber } from '@/lib/format';
 
 const AthletePriceChart = dynamic(() => import('@/components/AthletePriceChart'), { ssr: false });
 
@@ -90,6 +91,8 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
       ]
     };
   }, [athlete.priceHistory, timeframe, t.activityIndexWithPoints]);
+
+  const activityIndex = athlete.activityIndex ?? athlete.currentPrice;
 
   const chartOptions: ChartOptions<'line'> = {
     responsive: true,
@@ -190,7 +193,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
                   <div className="mb-4">
                     <p className="text-sm text-gray-400 mb-1">{t.unitCostLabel}</p>
                     <p className="text-4xl font-bold price-display">
-                      {athlete.unitCost.toLocaleString()} tATHLX
+                      {formatNumber(athlete.unitCost)} tATHLX
                     </p>
                   </div>
 
@@ -211,10 +214,14 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
 
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="text-gray-400">{t.demoCreditsFlow}</p>
-                      <p className="font-semibold">{athlete.tradingVolume.toLocaleString()} tATHLX</p>
+                      <p className="text-gray-400">{t.activityIndexLabel}</p>
+                      <p className="font-semibold">{formatNumber(activityIndex)} {t.pointsUnit}</p>
                     </div>
                     <div>
+                      <p className="text-gray-400">{t.demoCreditsFlow}</p>
+                      <p className="font-semibold">{formatNumber(athlete.tradingVolume)} tATHLX</p>
+                    </div>
+                    <div className="col-span-2">
                       <p className="text-gray-400">{t.participants}</p>
                       <p className="font-semibold">{athlete.holders}</p>
                     </div>
@@ -240,6 +247,31 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
               </div>
             </div>
           </div>
+
+          {(athlete.nextMatch || athlete.lastUpdateReason) && (
+            <div className="glass-effect rounded-xl p-6 mb-8">
+              <h2 className="text-2xl font-bold mb-4">{t.matchUpdateTitle}</h2>
+              {athlete.nextMatch && (
+                <div className="mb-4">
+                  <p className="text-sm text-gray-400 mb-2">{t.nextMatch}</p>
+                  <p className="font-semibold">
+                    {athlete.nextMatch.date} · {athlete.nextMatch.opponent} ({athlete.nextMatch.homeAway})
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-2 text-xs">
+                    <span className="px-2 py-1 rounded-full bg-blue-600/20 text-blue-200">{athlete.nextMatch.expectedRole}</span>
+                    <span className="px-2 py-1 rounded-full bg-purple-600/20 text-purple-200">{athlete.nextMatch.condition}</span>
+                    <span className="px-2 py-1 rounded-full bg-slate-700/60 text-gray-200">{athlete.nextMatch.importance}</span>
+                  </div>
+                </div>
+              )}
+              {athlete.lastUpdateReason && (
+                <div className="text-sm text-gray-300">
+                  <span className="text-gray-400">{t.lastUpdateReasonLabel}: </span>
+                  {athlete.lastUpdateReason}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Activity Index Chart */}
           <div className="glass-effect rounded-xl p-6 mb-8">
