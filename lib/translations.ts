@@ -63,6 +63,7 @@ export const translations: Record<Language, Record<string, string>> = {
     adminOnly: 'Admin access required.',
     imageTooLarge: 'Image must be 2MB or smaller.',
     updateRequiredFields: 'Please complete all required fields.',
+    updateFailed: 'Failed to submit update. Please try again.',
     noUpdatesYet: 'No updates submitted yet.',
     recentUpdates: 'Recent updates',
 
@@ -86,6 +87,17 @@ export const translations: Record<Language, Record<string, string>> = {
     resetConfirmPlaceholder: 'Type RESET to confirm',
     resetConfirmError: 'Please type RESET to continue.',
     resetDemoDataSuccess: 'Demo data cleared.',
+
+    // Admin data tools (keep for compatibility)
+    adminDataTools: 'Admin data tools',
+    exportJson: 'Export JSON',
+    importJson: 'Import JSON',
+    exportSuccess: 'Export ready. Download started.',
+    importSuccess: 'Import complete. Reloading...',
+    importFailed: 'Import failed. Please check the file.',
+    importConfirmWarning: 'Type IMPORT to confirm restoring demo data from this file.',
+    importConfirmPlaceholder: 'Type IMPORT to confirm',
+    importConfirmError: 'Please type IMPORT to continue.',
 
     // News
     newsTitle: 'Sports News',
@@ -391,7 +403,7 @@ export const translations: Record<Language, Record<string, string>> = {
     aboutCtaTitle: 'Join the Pilot',
     aboutCtaSubtitle: 'Participate in testing this closed demo environment.',
 
-    // News
+    // News (legacy keys used elsewhere)
     newsCategoryTransfer: 'Transfer',
     newsCategoryPerformance: 'Performance',
     newsCategoryInjury: 'Injury',
@@ -482,6 +494,7 @@ export const translations: Record<Language, Record<string, string>> = {
     adminOnly: 'Acceso de administrador requerido.',
     imageTooLarge: 'La imagen debe ser de 2MB o menos.',
     updateRequiredFields: 'Completa todos los campos obligatorios.',
+    updateFailed: 'No se pudo enviar la actualización. Inténtalo de nuevo.',
     noUpdatesYet: 'Aún no hay actualizaciones.',
     recentUpdates: 'Actualizaciones recientes',
 
@@ -507,6 +520,17 @@ export const translations: Record<Language, Record<string, string>> = {
     resetConfirmPlaceholder: 'Escribe RESET para confirmar',
     resetConfirmError: 'Escribe RESET para continuar.',
     resetDemoDataSuccess: 'Datos demo eliminados.',
+
+    // Admin data tools (keep for compatibility)
+    adminDataTools: 'Herramientas de datos de admin',
+    exportJson: 'Exportar JSON',
+    importJson: 'Importar JSON',
+    exportSuccess: 'Exportación lista. Descarga iniciada.',
+    importSuccess: 'Importación completa. Recargando...',
+    importFailed: 'Error al importar. Verifica el archivo.',
+    importConfirmWarning: 'Escribe IMPORT para confirmar la restauración desde este archivo.',
+    importConfirmPlaceholder: 'Escribe IMPORT para confirmar',
+    importConfirmError: 'Escribe IMPORT para continuar.',
 
     // News
     newsTitle: 'Noticias Deportivas',
@@ -801,7 +825,7 @@ export const translations: Record<Language, Record<string, string>> = {
       'Piloto cerrado. Solo demostración. No es dinero real. No hay retiros. No hay transferencias externas.',
     aboutPurposeTitle: 'Propósito y Visión',
 
-    // News
+    // News (legacy keys used elsewhere)
     newsCategoryTransfer: 'Transferencias',
     newsCategoryPerformance: 'Rendimiento',
     newsCategoryInjury: 'Lesiones',

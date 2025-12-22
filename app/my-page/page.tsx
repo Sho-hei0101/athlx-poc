@@ -1,7 +1,7 @@
 'use client';
 
 import { useStore } from '@/lib/store';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, DollarSign, Users, Activity } from 'lucide-react';
 import TradeModal from '@/components/TradeModal';
@@ -12,13 +12,13 @@ import { formatNumber } from '@/lib/format';
 export default function MyPage() {
   const { state, getPortfolio, submitAthletePerformanceUpdate } = useStore();
   const t = translations[state.language];
+
   const [activeTab, setActiveTab] = useState<'fan' | 'athlete'>('fan');
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [selectedAthlete, setSelectedAthlete] = useState<any>(null);
 
   const [updateMessage, setUpdateMessage] = useState('');
   const [updateError, setUpdateError] = useState('');
-
   const [updateForm, setUpdateForm] = useState<{
     matchDate: string;
     opponent: string;
@@ -59,7 +59,7 @@ export default function MyPage() {
   }, 0);
 
   const totalFeesGenerated = userTrades.reduce((sum, tr) => sum + tr.fee, 0);
-  const immediatePayoutContribution = totalFeesGenerated * 0.5; // 2.5% of 5%
+  const immediatePayoutContribution = totalFeesGenerated * 0.5; // demo
 
   const categoryLabels: Record<Category, string> = {
     Amateur: t.amateur,
@@ -89,7 +89,7 @@ export default function MyPage() {
     }
   };
 
-  const handleUpdateSubmit = (event: React.FormEvent) => {
+  const handleUpdateSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!linkedAthlete) return;
 
@@ -138,7 +138,9 @@ export default function MyPage() {
             <button
               onClick={() => setActiveTab('fan')}
               className={`px-6 py-3 rounded-lg font-semibold transition ${
-                activeTab === 'fan' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                activeTab === 'fan'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
               }`}
             >
               {t.participantViewTab}
@@ -213,7 +215,8 @@ export default function MyPage() {
                           const currentPrice = p.currentPrice ?? 0;
                           const quantity = p.quantity ?? 0;
 
-                          const fallbackUnitCost = state.athletes.find(a => a.symbol === p.athleteSymbol)?.unitCost ?? 0;
+                          const fallbackUnitCost =
+                            state.athletes.find(a => a.symbol === p.athleteSymbol)?.unitCost ?? 0;
                           const displayUnitCost = currentPrice > 0 ? currentPrice : fallbackUnitCost;
 
                           const pnl = (displayUnitCost - avgBuyPrice) * quantity;
@@ -222,18 +225,30 @@ export default function MyPage() {
                             : 0;
 
                           return (
-                            <tr key={p.athleteSymbol} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+                            <tr
+                              key={p.athleteSymbol}
+                              className="border-b border-slate-700/50 hover:bg-slate-700/30"
+                            >
                               <td className="py-3 px-4">
-                                <Link href={`/athlete/${p.athleteSymbol}`} className="font-semibold hover:text-blue-400">
+                                <Link
+                                  href={`/athlete/${p.athleteSymbol}`}
+                                  className="font-semibold hover:text-blue-400"
+                                >
                                   {p.athleteName} ({p.athleteSymbol})
                                 </Link>
                               </td>
 
                               <td className="text-right py-3 px-4 font-semibold">{quantity}</td>
                               <td className="text-right py-3 px-4 price-display">{formatNumber(avgBuyPrice)}</td>
-                              <td className="text-right py-3 px-4 price-display">{formatNumber(displayUnitCost)}</td>
+                              <td className="text-right py-3 px-4 price-display">
+                                {formatNumber(displayUnitCost)}
+                              </td>
 
-                              <td className={`text-right py-3 px-4 font-bold ${pnl >= 0 ? 'price-up' : 'price-down'}`}>
+                              <td
+                                className={`text-right py-3 px-4 font-bold ${
+                                  pnl >= 0 ? 'price-up' : 'price-down'
+                                }`}
+                              >
                                 {pnl >= 0 ? '+' : ''}
                                 {formatNumber(pnl)} ({pnlPercent >= 0 ? '+' : ''}
                                 {pnlPercent.toFixed(1)}%)
@@ -279,7 +294,10 @@ export default function MyPage() {
                 {userTrades.length > 0 ? (
                   <div className="space-y-3">
                     {userTrades.map(tr => (
-                      <div key={tr.id} className="bg-slate-700/50 rounded-lg p-4 flex items-center justify-between">
+                      <div
+                        key={tr.id}
+                        className="bg-slate-700/50 rounded-lg p-4 flex items-center justify-between"
+                      >
                         <div className="flex items-center space-x-4">
                           {tr.type === 'buy' ? (
                             <TrendingUp className="text-green-400" size={24} />
@@ -288,7 +306,8 @@ export default function MyPage() {
                           )}
                           <div>
                             <p className="font-semibold">
-                              {tr.type === 'buy' ? t.acquireUnits : t.releaseUnits} {tr.quantity} {tr.athleteSymbol}
+                              {tr.type === 'buy' ? t.acquireUnits : t.releaseUnits} {tr.quantity}{' '}
+                              {tr.athleteSymbol}
                             </p>
                             <p className="text-sm text-gray-400">{new Date(tr.timestamp).toLocaleString()}</p>
                           </div>
@@ -314,7 +333,9 @@ export default function MyPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <p className="text-sm text-gray-400 mb-2">{t.totalDemoFees}</p>
-                    <p className="text-2xl font-bold price-display">{formatNumber(totalFeesGenerated)} tATHLX</p>
+                    <p className="text-2xl font-bold price-display">
+                      {formatNumber(totalFeesGenerated)} tATHLX
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-400 mb-2">{t.immediateSupportContribution}</p>
@@ -351,7 +372,9 @@ export default function MyPage() {
 
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.unitCostLabel}</p>
-                        <p className="text-xl font-bold price-display">{formatNumber(linkedAthlete.unitCost)} tATHLX</p>
+                        <p className="text-xl font-bold price-display">
+                          {formatNumber(linkedAthlete.unitCost)} tATHLX
+                        </p>
                       </div>
 
                       <div>
@@ -458,7 +481,9 @@ export default function MyPage() {
                           <label className="block text-sm font-medium mb-2">{t.resultLabel}</label>
                           <select
                             value={updateForm.result}
-                            onChange={event => setUpdateForm(prev => ({ ...prev, result: event.target.value as MatchResult }))}
+                            onChange={event =>
+                              setUpdateForm(prev => ({ ...prev, result: event.target.value as MatchResult }))
+                            }
                             className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
                             required
                           >
@@ -487,7 +512,9 @@ export default function MyPage() {
                             min="0"
                             max="10"
                             value={updateForm.assists}
-                            onChange={event => setUpdateForm(prev => ({ ...prev, assists: Number(event.target.value) }))}
+                            onChange={event =>
+                              setUpdateForm(prev => ({ ...prev, assists: Number(event.target.value) }))
+                            }
                             className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
                           />
                         </div>
@@ -523,16 +550,20 @@ export default function MyPage() {
                         </div>
                       )}
 
-                      <button type="submit" className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition">
+                      <button
+                        type="submit"
+                        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition"
+                      >
                         {t.submitAthleteUpdate}
                       </button>
                     </form>
 
-                    {/* Live results after update */}
                     <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.unitCostLabel}</p>
-                        <p className="text-xl font-bold price-display">{formatNumber(linkedAthlete.unitCost)} tATHLX</p>
+                        <p className="text-xl font-bold price-display">
+                          {formatNumber(linkedAthlete.unitCost)} tATHLX
+                        </p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.activityIndexLabel}</p>
@@ -542,7 +573,9 @@ export default function MyPage() {
                       </div>
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.lastUpdateReasonLabel}</p>
-                        <p className="text-sm text-gray-300">{linkedAthlete.lastUpdateReason ?? t.noUpdatesYet}</p>
+                        <p className="text-sm text-gray-300">
+                          {linkedAthlete.lastUpdateReason ?? t.noUpdatesYet}
+                        </p>
                       </div>
                     </div>
 
@@ -556,7 +589,9 @@ export default function MyPage() {
                                 <span>
                                   {update.matchDate} · {update.opponent}
                                 </span>
-                                <span className="text-gray-400">{new Date(update.submittedAt).toLocaleDateString()}</span>
+                                <span className="text-gray-400">
+                                  {new Date(update.submittedAt).toLocaleDateString()}
+                                </span>
                               </div>
                               {update.notes && <p className="text-xs text-gray-400 mt-1">{update.notes}</p>}
                             </div>
