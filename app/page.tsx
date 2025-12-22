@@ -4,6 +4,7 @@ import { useStore } from '@/lib/store';
 import Link from 'next/link';
 import { TrendingUp, Shield, Users, Rocket, ArrowRight, DollarSign, Heart, Target } from 'lucide-react';
 import { translations } from '@/lib/translations';
+import { formatNumber } from '@/lib/format';
 
 export default function Home() {
   const { state } = useStore();
@@ -216,7 +217,7 @@ export default function Home() {
                   <div className="flex justify-between items-center mt-4">
                     <div>
                       <p className="text-sm text-gray-400">{t.unitCostShort}</p>
-                      <p className="text-lg font-bold price-display">{athlete.unitCost.toLocaleString()} tATHLX</p>
+                      <p className="text-lg font-bold price-display">{formatNumber(athlete.unitCost)} tATHLX</p>
                     </div>
                     <div className={`text-lg font-bold ${athlete.price24hChange >= 0 ? 'price-up' : 'price-down'}`}>
                       {t.indexDelta24hShort} {athlete.price24hChange >= 0 ? '+' : ''}{athlete.price24hChange.toFixed(1)}%
@@ -265,7 +266,7 @@ export default function Home() {
                   <div className="flex justify-between items-center mt-4">
                     <div>
                       <p className="text-sm text-gray-400">{t.unitCostShort}</p>
-                      <p className="text-lg font-bold price-display">{athlete.unitCost.toLocaleString()} tATHLX</p>
+                      <p className="text-lg font-bold price-display">{formatNumber(athlete.unitCost)} tATHLX</p>
                     </div>
                     <div className="text-lg font-bold price-up">
                       {t.indexDelta7dShort} +{athlete.price7dChange.toFixed(1)}%

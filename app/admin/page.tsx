@@ -132,6 +132,12 @@ export default function AdminPage() {
               </span>
             )}
           </button>
+          <a
+            href="/admin/match-update"
+            className="px-6 py-3 rounded-lg font-semibold transition bg-slate-700 text-gray-300 hover:bg-slate-600"
+          >
+            {t.matchUpdateTitle}
+          </a>
         </div>
 
         {/* Dashboard View */}
