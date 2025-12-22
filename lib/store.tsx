@@ -1,10 +1,23 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { AppState, User, Athlete, Trade, Portfolio, PendingAthlete, NewsItem } from './types';
+import { AppState, User, Athlete, Trade, Portfolio, PendingAthlete, NewsItem, Category } from './types';
 import { initialAthletes, initialNews } from './data';
 
 const STORAGE_KEY = 'athlx_state';
+const getDefaultUnitCost = (category?: Category) => {
+  switch (category) {
+    case 'Elite':
+      return 0.2;
+    case 'Pro':
+      return 0.1;
+    case 'Semi-pro':
+      return 0.05;
+    case 'Amateur':
+    default:
+      return 0.01;
+  }
+};
 
 const defaultState: AppState = {
   currentUser: null,
@@ -44,7 +57,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        setState({ ...defaultState, ...parsed });
+        const hydratedAthletes = (parsed.athletes ?? defaultState.athletes).map((athlete: Athlete) => ({
+          ...athlete,
+          unitCost: athlete.unitCost && athlete.unitCost > 0
+            ? athlete.unitCost
+            : getDefaultUnitCost(athlete.category)
+        }));
+        setState({ ...defaultState, ...parsed, athletes: hydratedAthletes });
       } catch (e) {
         console.error('Failed to parse stored state', e);
       }
@@ -288,7 +307,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       profileUrl: pending.profileUrl,
       highlightVideoUrl: pending.highlightVideoUrl,
       imageUrl: `https://i.pravatar.cc/300?img=${Math.floor(Math.random() * 70)}`,
-      unitCost: 0.01,
+      unitCost: getDefaultUnitCost(finalCategory as Category),
       currentPrice: initialPrice,
       price24hChange: 0,
       price7dChange: 0,
