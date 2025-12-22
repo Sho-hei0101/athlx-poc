@@ -1,756 +1,635 @@
-export const translations = {
-  EN: {
-    // Navigation
-    home: 'Home',
-    market: 'Test Environment',
-    marketSubtitle: 'Browse athletes and demo unit activity.',
-    resetDemoData: 'Reset Demo Data',
-    about: 'About AthleteXchange',
-    news: 'Sports News',
-    myPage: 'My Page',
-    languageLabel: 'Language',
+'use client';
 
-    // Auth
-    login: 'Login',
-    signup: 'Sign Up',
-    logout: 'Logout',
-    email: 'Email',
-    password: 'Password',
-    name: 'Name',
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import {
+  AppState,
+  User,
+  Athlete,
+  Trade,
+  Portfolio,
+  PendingAthlete,
+  Category,
+  NextMatchInfo,
+  LastMatchInfo,
+  MatchHomeAway,
+  MatchResult
+} from './types';
+import { initialAthletes, initialNews } from './data';
+import { buildUpdateReason, computeEventScore } from './match';
+import {
+  authenticateAccount,
+  clearSession,
+  createAccount,
+  loadAccounts,
+  loadSession,
+  resetDemoStorage,
+  saveSession,
+  updateAccount,
+  StoredAccount
+} from './demoAccountStorage';
 
-    // MetaMask / Demo Session
-    connectMetaMask: 'Demo Session ID',
-    disconnect: 'Disconnect',
-    connected: 'Session',
-    balance: 'Demo Balance',
+const STORAGE_KEY = 'athlx_state';
 
-    // Common
-    confirm: 'Confirm',
-    cancel: 'Cancel',
-    acquireUnits: 'Acquire Units',
-    releaseUnits: 'Release Units',
-    acquiredVerb: 'acquired',
-    releasedVerb: 'released',
-    quantity: 'Quantity',
-    unitsLabel: 'units',
-    unitCostLabel: 'Unit Cost (tATHLX)',
-    unitCostShort: 'Unit Cost (tATHLX)',
-    avgUnitCost: 'Avg Unit Cost (tATHLX)',
-    currentUnitCost: 'Unit Cost (tATHLX)',
-    unitDeltaLabel: 'Unit Delta',
-    activityIndexLabel: 'Activity Index',
-    activityIndexWithPoints: 'Activity Index (pts)',
-    activityIndexChart: 'Activity Index Chart',
-    indexDelta24h: '24h Index Delta',
-    indexDelta7d: '7d Index Delta',
-    indexDelta24hShort: '24h:',
-    indexDelta7dShort: '7d:',
-    demoCreditsFlow: 'Demo Credits Flow',
-    demoCreditsFlowShort: 'Flow:',
-    participants: 'Participants',
-    participantsLower: 'participants',
-    pointsUnit: 'pts',
-    featured: 'Featured',
-    fastGrowing: 'Fast Growing',
-    promoted: 'Promoted',
-    newLabel: 'New',
-    searchAthletes: 'Search athletes...',
-    filterBy: 'Filter by',
-    sortByUnitCost: 'Sort by unit cost',
-    sortByName: 'Sort by name',
-    sortByVolume: 'Sort by flow',
-    sortByChange: 'Sort by 24h delta',
-    resetFilters: 'Reset filters',
-    matchUpdateTitle: 'Match Update',
-    athleteUpdateTitle: 'Athlete Update',
-    athleteUpdateSubtitle: 'Submit match activity to refresh the demo activity index and unit cost.',
-    athleteUpdateSubmitted: 'Update submitted. Activity index and unit cost refreshed.',
-    newsTitle: 'Sports News',
-    viewAthleteProfile: 'View athlete profile',
-    categoryTransfer: 'Transfer',
-    categoryPerformance: 'Performance',
-    categoryInjury: 'Injury',
-    categoryCareer: 'Career',
-    categoryOthers: 'Others',
-    nextMatch: 'Next Match',
-    matchDateLabel: 'Match date',
-    homeAwayLabel: 'Home/Away',
-    minutesPlayedLabel: 'Minutes played',
-    resultLabel: 'Result',
-    notesLabel: 'Notes',
-    notesPlaceholder: 'Optional: short context for this update.',
-    submitAthleteUpdate: 'Submit athlete update',
-    nextMatchShort: 'Next',
-    lastMatch: 'Last Match',
-    lastUpdateReasonLabel: 'Reason for last change',
-    relatedNews: 'Related News',
-    opponentLabel: 'Opponent',
-    homeLabel: 'Home',
-    awayLabel: 'Away',
-    roleStarter: 'Starter',
-    roleBench: 'Bench',
-    roleNotInSquad: 'Not in squad',
-    conditionFull: '100%',
-    conditionMinor: 'Minor issue',
-    conditionNotFull: 'Not 100%',
-    importanceLeague: 'League',
-    importanceCup: 'Cup',
-    importanceFriendly: 'Friendly',
-    resultWin: 'Win',
-    resultDraw: 'Draw',
-    resultLoss: 'Loss',
-    minutesHigh: '61-90 mins',
-    minutesMid: '31-60 mins',
-    minutesLow: '1-30 mins',
-    minutesNone: '0 mins',
-    goalsLabel: 'Goals',
-    assistsLabel: 'Assists',
-    injuryLabel: 'Injury reported',
-    applyUpdateNow: 'Apply update now',
-    submitMatchUpdate: 'Submit update',
-    matchUpdateApplied: 'Update applied to activity index and unit cost.',
-    matchUpdateQueued: 'Update queued for review.',
-    demoSubtotalLabel: 'Demo Subtotal',
-    demoFeeLabel: 'Demo Fee (5%)',
-    demoFeeShort: 'Demo Fee',
-    totalCostLabel: 'Total Cost',
-    totalReceivedLabel: 'Total Received',
-    demoFeeNote: 'A 5% demo fee is applied. Simulates distribution: 3% Operations Wallet, 1% Athlete Reward Wallet, 1% Post-Career Support Vault (all demo-only).',
-    pleaseLogin: 'Please login first',
-    insufficientBalance: 'Insufficient balance',
-    actionSuccessPrefix: 'Action complete! You',
-    actionSuccessFor: 'for',
-    yourDemoBalance: 'Your Demo Balance',
-    exploreTestEnvironment: 'Explore Test Environment',
-
-    // Categories
-    amateur: 'Amateur',
-    semiPro: 'Semi-pro',
-    pro: 'Pro',
-    elite: 'Elite',
-
-    // Sports
-    sportFootball: 'Football',
-    sportBasketball: 'Basketball',
-    sportAthletics: 'Athletics',
-    sportSwimming: 'Swimming',
-    sportTennis: 'Tennis',
-    sportGymnastics: 'Gymnastics',
-    sportVolleyball: 'Volleyball',
-    sportRugbySevens: 'Rugby Sevens',
-    sportBoxing: 'Boxing',
-    sportJudo: 'Judo',
-    sportCycling: 'Cycling',
-    sportRowing: 'Rowing',
-    sportTableTennis: 'Table Tennis',
-    sportBadminton: 'Badminton',
-    sportFencing: 'Fencing',
-    sportWeightlifting: 'Weightlifting',
-    sportWrestling: 'Wrestling',
-    sportTaekwondo: 'Taekwondo',
-    sportArchery: 'Archery',
-    sportShooting: 'Shooting',
-    sportCricket: 'Cricket',
-    sportEsports: 'eSports',
-    sportOthers: 'Others',
-
-    // Hero
-    heroTitle: 'Support athletes directly.',
-    heroSubtitle: 'A closed pilot demo where participation helps simulate athlete support allocation — demo credits only.',
-    heroSupportBulletOne: 'Fans participate in athlete support simulation, exploring new community models.',
-    heroSupportBulletTwo: 'Demo credits simulate support allocation and post-career assistance models.',
-    exploreMarket: 'Explore Test Environment',
-    registerAthlete: 'Register as Athlete',
-
-    // How it works
-    howItWorksTitle: 'How It Works',
-    howItWorksStepOneTitle: 'Athlete registers profile',
-    howItWorksStepOneDescription: 'Players submit basic info and career data for review.',
-    howItWorksStepTwoTitle: 'Admin reviews and approves',
-    howItWorksStepTwoDescription: 'Approved athletes appear in the Athlete Directory.',
-    howItWorksStepThreeTitle: 'Fans acquire or release units',
-    howItWorksStepThreeDescription: 'Fans acquire and release Athlete Units with demo credits.',
-    howItWorksStepFourTitle: 'Demo fees simulate allocation',
-    howItWorksStepFourDescription: 'Demo fees are distributed across simulated support ledgers.',
-    stepLabel: 'Step',
-
-    // Why ATHLX
-    whyAthlxTitle: 'Why ATHLX Exists',
-    whyAthlxCardOneTitle: 'Early Career Support Model',
-    whyAthlxCardOneDescription: 'This pilot explores support models for young athletes during critical early career stages, simulating allocation of demo resources to help test UX and community engagement.',
-    whyAthlxCardTwoTitle: 'Post-Career Support Simulation',
-    whyAthlxCardTwoDescription: 'The Post-Career Support Vault is a locked demo ledger that simulates long-term athlete support mechanisms. This tests allocation models for life after active sports careers.',
-    whyAthlxCardThreeTitle: 'Community Participation',
-    whyAthlxCardThreeDescription: 'Fans participate in a test environment, using demo credits to simulate community-driven athlete support. This helps shape new models for fan-athlete connections.',
-    whyAthlxCardFourTitle: 'UX Testing & Innovation',
-    whyAthlxCardFourDescription: 'This closed pilot tests innovative support allocation models. Participants help improve the platform through real usage and feedback in a safe, demo-only environment.',
-
-    // Athlete highlights
-    newAthletesTitle: 'Newly Listed Athletes',
-    fastGrowingTitle: 'Fast Growing Athletes',
-    viewAll: 'View All',
-
-    // CTA
-    ctaTitle: 'Ready to Participate?',
-    ctaSubtitle: 'Join the pilot program and help test new athlete support models.',
-    exploreDirectory: 'Explore Athlete Directory',
-
-    // Market
-    athleteDirectory: 'Athlete Directory',
-    searchAthletePlaceholder: 'Search by athlete name...',
-    allSports: 'All Sports',
-    allCategories: 'All Categories',
-    clearFilters: 'Clear Filters',
-    clearAllFilters: 'Clear All Filters',
-    segmentAllAthletes: 'All Athletes',
-    segmentNewAthletes: 'New Athletes',
-    segmentFeatured: 'Featured',
-    segmentCategoryPromotions: 'Category Promotions',
-    segmentFastGrowing: 'Fast Growing',
-    showingLabel: 'Showing',
-    athleteSingular: 'athlete',
-    athletePlural: 'athletes',
-    noAthletesFound: 'No athletes found matching your filters.',
-    tagFeatured: 'Featured',
-    tagFastGrowing: 'Fast Growing',
-    tagPromoted: 'Promoted',
-    tagNew: 'New',
-
-    // Athlete detail
-    ageLabel: 'Age',
-    heightLabel: 'Height',
-    playerProfile: 'Player Profile',
-    viewFullProfile: 'View Full Profile',
-    highlightVideo: 'Highlight Video',
-    latestNews: 'Latest News',
-
-    // My Page
-    participantViewTab: 'Participant View',
-    athleteViewTab: 'Athlete View',
-    unitHoldingsValue: 'Unit Holdings Value',
-    unitHoldings: 'Unit Holdings',
-    unitHoldingsCountLabel: 'Units',
-    myUnits: 'My Units',
-    athleteLabel: 'Athlete',
-    actionLabel: 'Action',
-    noUnitsMessage: "You don't have any athlete units yet.",
-    activityHistory: 'Activity History',
-    noActivityHistory: 'No activity history yet.',
-    yourImpact: 'Your Impact',
-    totalDemoFees: 'Total Demo Fees',
-    immediateSupportContribution: 'Contribution to Immediate Athlete Support',
-    impactNoteStart: 'Your activity has contributed',
-    impactNoteEnd: 'directly to athletes through the 2.5% immediate payout mechanism.',
-    yourAthleteProfile: 'Your Athlete Profile',
-    categoryLabel: 'Category',
-    realTimeSupport: 'Real-time Support',
-    totalDemoCreditsFlow: 'Total Demo Credits Flow',
-    totalImmediatePayout: 'Total Immediate Payout (2.5%)',
-    directSupportNote: 'Direct support from every unit exchange',
-    realTimeSupportNote: 'Every time units are exchanged, 2.5% of the demo credits flow is allocated to you as immediate support. This mechanism ensures you receive real-time benefits from participation.',
-    viewPublicProfile: 'View Your Public Profile',
-    noAthleteProfileLinked: 'No Athlete Profile Linked',
-    noAthleteProfileLinkedDetail: "You don't have an athlete profile associated with your account yet.",
-
-    // Admin
-    adminPanel: 'Admin Panel',
-    adminDashboard: 'Dashboard',
-    pendingApplications: 'Pending Applications',
-    pendingLabel: 'Pending',
-    approvedLabel: 'Approved',
-    rejectedLabel: 'Rejected',
-    totalAthletesLabel: 'Total Athletes',
-    athletesByCategory: 'Athletes by Category',
-    viewPendingApplications: 'View Pending Applications',
-    applicationsAwaitingReview: 'applications awaiting review',
-    allAthletes: 'All Athletes',
-    athletesInDirectory: 'athletes in the directory',
-    pendingAthleteApplications: 'Pending Athlete Applications',
-    sportLabel: 'Sport',
-    nationalityLabel: 'Nationality',
-    requestedCategory: 'Requested Category',
-    submittedLabel: 'Submitted',
-    reviewLabel: 'Review',
-    noPendingApplications: 'No pending applications at the moment.',
-    backToPending: 'Back to Pending Applications',
-    reviewApplication: 'Review Application',
-    personalInformation: 'Personal Information',
-    dateOfBirth: 'Date of Birth',
-    genderLabel: 'Gender',
-    sportInformation: 'Sport Information',
-    teamLabel: 'Team',
-    positionLabel: 'Position',
-    bioLabel: 'Bio',
-    profileUrlLabel: 'Profile URL',
-    setAthleteParameters: 'Set Athlete Parameters',
-    finalCategory: 'Final Category',
-    initialActivityIndex: 'Initial Activity Index (pts)',
-    tokenSymbolLabel: 'Token Symbol (3-4 chars)',
-    approveAndAddToDirectory: 'Approve and Add to Directory',
-    rejectApplication: 'Reject Application',
-    rejectionReason: 'Rejection Reason',
-    rejectionReasonPlaceholder: 'Provide a reason for rejection...',
-
-    // Admin PIN modal
-    adminPanelAccess: 'Admin Panel Access',
-    adminPin: 'Admin PIN',
-    enterAdminPin: 'Enter admin PIN',
-    accessAdminPanel: 'Access Admin Panel',
-    adminPinHelp: 'Contact repository owner to set NEXT_PUBLIC_ADMIN_PIN environment variable.',
-    incorrectPin: 'Incorrect PIN',
-
-    // Registration
-    registerLoginFirst: 'Please login first to submit your athlete registration.',
-    termsAgreementRequired: 'Please agree to the terms',
-    applicationSubmittedTitle: 'Application Submitted!',
-    applicationSubmittedSubtitle: 'Your athlete profile has been submitted and is awaiting admin approval.',
-    applicationSubmittedNote: 'You will be notified once your application is reviewed. Redirecting to My Page...',
-    basicInformation: 'Basic Information',
-    fullName: 'Full Name',
-    genderMale: 'Male',
-    genderFemale: 'Female',
-    genderOther: 'Other',
-    profileLabel: 'Profile',
-    shortBio: 'Short Bio',
-    bioPlaceholder: 'Tell us about your athletic journey, achievements, and goals...',
-    profileUrlPlaceholder: 'https://example.com/your-profile',
-    highlightVideoLabel: 'Highlight Video URL (YouTube)',
-    highlightVideoPlaceholder: 'https://youtube.com/embed/...',
-    termsAgreement: 'I agree to the terms and understand this is a demo environment. I confirm that the information provided is accurate and I have the right to register on this platform.',
-    submitApplication: 'Submit Application',
-
-    // About
-    aboutTitle: 'About AthleteXchange (ATHLX)',
-    aboutSubtitle: 'About AthleteXchange (ATHLX)',
-    aboutIntroOne: 'AthleteXchange (ATHLX) is a pilot platform designed to explore new ways for fans to support athletes through a simulated, demo-only environment.',
-    aboutIntroTwo: 'This pilot uses Demo Credits (tATHLX) and Athlete Units purely for testing user experience and support allocation logic. Nothing in this pilot represents real money, ownership rights, shares, or any promise of financial return. There are no withdrawals and no external transfers.',
-    aboutHowItWorksTitle: 'How the pilot works:',
-    aboutHowItWorksStepOne: 'Athletes can apply and are reviewed by an operator.',
-    aboutHowItWorksStepTwo: 'Approved athletes appear in the Athlete Directory.',
-    aboutHowItWorksStepThree: 'Fans can acquire or release Athlete Units using demo credits inside the Test Environment.',
-    aboutHowItWorksStepFour: 'A fixed demo fee model distributes demo credits into three ledgers:',
-    aboutLedgerOperations: 'Operations Wallet (platform costs simulation)',
-    aboutLedgerRewards: 'Athlete Reward Wallet (demo-only allocation)',
-    aboutLedgerSupport: 'Post-Career Support Vault (locked demo ledger)',
-    aboutNoticeTitle: 'Important notice:',
-    aboutNoticeBody: 'This is a closed pilot for UX testing and community research. Demo-only. No real-world money. No withdrawals. No external transfers. Nothing here represents real money or any real-world entitlement.',
-    aboutPurposeTitle: 'Purpose & Vision',
-    aboutPurposeCardOneTitle: 'Support for Young Talents',
-    aboutPurposeCardOneDescription: 'This pilot explores direct support models for athletes during early career stages, when traditional funding is often unavailable.',
-    aboutPurposeCardTwoTitle: 'Post-Career Support Simulation',
-    aboutPurposeCardTwoDescription: 'The Post-Career Support Vault is a locked demo ledger concept designed to simulate long-term support mechanisms for athletes.',
-    aboutPurposeCardThreeTitle: 'Community Participation',
-    aboutPurposeCardThreeDescription: 'Fans participate in a closed test environment to help shape new community-driven athlete support models.',
-    aboutPurposeCardFourTitle: 'UX Testing & Feedback',
-    aboutPurposeCardFourDescription: 'This closed pilot gathers user experience data and feedback to improve support allocation models and platform design.',
-    aboutCtaTitle: 'Join the Pilot',
-    aboutCtaSubtitle: 'Participate in testing this closed demo environment.',
-
-    // News
-    newsCategoryTransfer: 'Transfer',
-    newsCategoryPerformance: 'Performance',
-    newsCategoryInjury: 'Injury',
-    newsCategoryCareer: 'Career',
-    newsCategoryOthers: 'Others',
-    viewProfile: 'View Profile',
-    noNewsFound: 'No news found matching your filters.',
-    readMore: 'Read more',
-
-    // Footer
-    footerMission: 'Pilot program for testing athlete support models. Demo-only environment with no real-world value.',
-    footerPlatform: 'Platform',
-    footerResources: 'Resources',
-    footerRights: 'All rights reserved.',
-    footerDisclaimer: 'Pilot program - Demo environment only - No real-world value',
-
-    // Disclaimer
-    disclaimerBanner: 'ATHLX Pilot Program — Test environment. Demo credits only. No real-world value.',
-
-    // Additional Terms
-    athleteUnits: 'Athlete Units',
-    demoCredits: 'Demo Credits (tATHLX)',
-    activityIndex: 'Activity Index (pts)',
-    postCareerSupport: 'Post-Career Support Vault',
-    demoOnly: 'Demo-only. No real-world value.',
-    testEnvironment: 'Test Environment'
-  },
-  ES: {
-    // Navigation
-    home: 'Inicio',
-    market: 'Entorno de Prueba',
-    marketSubtitle: 'Explora atletas y la actividad de unidades demo.',
-    resetDemoData: 'Restablecer datos demo',
-    about: 'Sobre AthleteXchange',
-    news: 'Noticias Deportivas',
-    myPage: 'Mi Página',
-    languageLabel: 'Idioma',
-
-    // Auth
-    login: 'Iniciar Sesión',
-    signup: 'Registrarse',
-    logout: 'Cerrar Sesión',
-    email: 'Correo',
-    password: 'Contraseña',
-    name: 'Nombre',
-
-    // MetaMask / Demo Session
-    connectMetaMask: 'ID de Sesión Demo',
-    disconnect: 'Desconectar',
-    connected: 'Sesión',
-    balance: 'Saldo Demo',
-
-    // Common
-    confirm: 'Confirmar',
-    cancel: 'Cancelar',
-    acquireUnits: 'Adquirir Unidades',
-    releaseUnits: 'Liberar Unidades',
-    acquiredVerb: 'adquirido',
-    releasedVerb: 'liberado',
-    quantity: 'Cantidad',
-    unitsLabel: 'unidades',
-    unitCostLabel: 'Costo por Unidad (tATHLX)',
-    unitCostShort: 'Costo por Unidad (tATHLX)',
-    avgUnitCost: 'Costo Promedio por Unidad (tATHLX)',
-    currentUnitCost: 'Costo por Unidad (tATHLX)',
-    unitDeltaLabel: 'Delta de Unidades',
-    activityIndexLabel: 'Índice de Actividad',
-    activityIndexWithPoints: 'Índice de Actividad (pts)',
-    activityIndexChart: 'Gráfico del Índice de Actividad',
-    indexDelta24h: 'Delta del Índice (24h)',
-    indexDelta7d: 'Delta del Índice (7d)',
-    indexDelta24hShort: '24h:',
-    indexDelta7dShort: '7d:',
-    demoCreditsFlow: 'Flujo de Créditos Demo',
-    demoCreditsFlowShort: 'Flujo:',
-    participants: 'Participantes',
-    participantsLower: 'participantes',
-    pointsUnit: 'pts',
-    featured: 'Destacado',
-    fastGrowing: 'Crecimiento rápido',
-    promoted: 'Promocionado',
-    newLabel: 'Nuevo',
-    searchAthletes: 'Buscar atletas...',
-    filterBy: 'Filtrar por',
-    sortByUnitCost: 'Ordenar por costo por unidad',
-    sortByName: 'Ordenar por nombre',
-    sortByVolume: 'Ordenar por flujo',
-    sortByChange: 'Ordenar por delta 24h',
-    resetFilters: 'Restablecer filtros',
-    matchUpdateTitle: 'Actualización de partido',
-    athleteUpdateTitle: 'Actualización del atleta',
-    athleteUpdateSubtitle: 'Envía actividad del partido para actualizar el índice de actividad y el costo por unidad demo.',
-    athleteUpdateSubmitted: 'Actualización enviada. Índice de actividad y costo por unidad actualizados.',
-    newsTitle: 'Noticias Deportivas',
-    viewAthleteProfile: 'Ver perfil del atleta',
-    categoryTransfer: 'Transferencia',
-    categoryPerformance: 'Rendimiento',
-    categoryInjury: 'Lesión',
-    categoryCareer: 'Carrera',
-    categoryOthers: 'Otros',
-    nextMatch: 'Próximo partido',
-    matchDateLabel: 'Fecha del partido',
-    homeAwayLabel: 'Local/Visitante',
-    minutesPlayedLabel: 'Minutos jugados',
-    resultLabel: 'Resultado',
-    notesLabel: 'Notas',
-    notesPlaceholder: 'Opcional: contexto breve para esta actualización.',
-    submitAthleteUpdate: 'Enviar actualización del atleta',
-    nextMatchShort: 'Próximo',
-    lastMatch: 'Último partido',
-    lastUpdateReasonLabel: 'Motivo del último cambio',
-    relatedNews: 'Noticias relacionadas',
-    opponentLabel: 'Rival',
-    homeLabel: 'Local',
-    awayLabel: 'Visitante',
-    roleStarter: 'Titular',
-    roleBench: 'Suplente',
-    roleNotInSquad: 'No convocado',
-    conditionFull: '100%',
-    conditionMinor: 'Molestia menor',
-    conditionNotFull: 'No al 100%',
-    importanceLeague: 'Liga',
-    importanceCup: 'Copa',
-    importanceFriendly: 'Amistoso',
-    resultWin: 'Victoria',
-    resultDraw: 'Empate',
-    resultLoss: 'Derrota',
-    minutesHigh: '61-90 min',
-    minutesMid: '31-60 min',
-    minutesLow: '1-30 min',
-    minutesNone: '0 min',
-    goalsLabel: 'Goles',
-    assistsLabel: 'Asistencias',
-    injuryLabel: 'Lesión reportada',
-    applyUpdateNow: 'Aplicar actualización ahora',
-    submitMatchUpdate: 'Enviar actualización',
-    matchUpdateApplied: 'Actualización aplicada al índice de actividad y costo por unidad.',
-    matchUpdateQueued: 'Actualización en cola para revisión.',
-    demoSubtotalLabel: 'Subtotal Demo',
-    demoFeeLabel: 'Comisión Demo (5%)',
-    demoFeeShort: 'Comisión Demo',
-    totalCostLabel: 'Costo Total',
-    totalReceivedLabel: 'Total Recibido',
-    demoFeeNote: 'Se aplica una comisión demo del 5%. Simula distribución: 3% Cartera de Operaciones, 1% Cartera de Recompensa del Atleta, 1% Fondo de Apoyo Post-Carrera (todo demo).',
-    pleaseLogin: 'Por favor inicia sesión primero',
-    insufficientBalance: 'Saldo insuficiente',
-    actionSuccessPrefix: 'Acción completada. Has',
-    actionSuccessFor: 'por',
-    yourDemoBalance: 'Tu Saldo Demo',
-    exploreTestEnvironment: 'Explorar Entorno de Prueba',
-
-    // Categories
-    amateur: 'Amateur',
-    semiPro: 'Semi-profesional',
-    pro: 'Profesional',
-    elite: 'Élite',
-
-    // Sports
-    sportFootball: 'Fútbol',
-    sportBasketball: 'Baloncesto',
-    sportAthletics: 'Atletismo',
-    sportSwimming: 'Natación',
-    sportTennis: 'Tenis',
-    sportGymnastics: 'Gimnasia',
-    sportVolleyball: 'Voleibol',
-    sportRugbySevens: 'Rugby Sevens',
-    sportBoxing: 'Boxeo',
-    sportJudo: 'Judo',
-    sportCycling: 'Ciclismo',
-    sportRowing: 'Remo',
-    sportTableTennis: 'Tenis de Mesa',
-    sportBadminton: 'Bádminton',
-    sportFencing: 'Esgrima',
-    sportWeightlifting: 'Halterofilia',
-    sportWrestling: 'Lucha',
-    sportTaekwondo: 'Taekwondo',
-    sportArchery: 'Tiro con Arco',
-    sportShooting: 'Tiro Deportivo',
-    sportCricket: 'Críquet',
-    sportEsports: 'eSports',
-    sportOthers: 'Otros',
-
-    // Hero
-    heroTitle: 'Apoya a los atletas directamente.',
-    heroSubtitle: 'Un piloto cerrado donde la participación ayuda a simular la asignación de apoyo a atletas — solo créditos demo.',
-    heroSupportBulletOne: 'Los fans participan en una simulación de apoyo a atletas, explorando nuevos modelos comunitarios.',
-    heroSupportBulletTwo: 'Los créditos demo simulan la asignación de apoyo y los modelos de asistencia post-carrera.',
-    exploreMarket: 'Explorar Entorno de Prueba',
-    registerAthlete: 'Registrarse como Atleta',
-
-    // How it works
-    howItWorksTitle: 'Cómo Funciona',
-    howItWorksStepOneTitle: 'El atleta registra su perfil',
-    howItWorksStepOneDescription: 'Los jugadores envían información básica y datos de carrera para revisión.',
-    howItWorksStepTwoTitle: 'El equipo revisa y aprueba',
-    howItWorksStepTwoDescription: 'Los atletas aprobados aparecen en el Directorio de Atletas.',
-    howItWorksStepThreeTitle: 'Los fans adquieren o liberan unidades',
-    howItWorksStepThreeDescription: 'Los fans adquieren y liberan Unidades del Atleta con créditos demo.',
-    howItWorksStepFourTitle: 'Las comisiones demo simulan la asignación',
-    howItWorksStepFourDescription: 'Las comisiones demo se distribuyen en registros de apoyo simulados.',
-    stepLabel: 'Paso',
-
-    // Why ATHLX
-    whyAthlxTitle: 'Por Qué Existe ATHLX',
-    whyAthlxCardOneTitle: 'Modelo de Apoyo Temprano',
-    whyAthlxCardOneDescription: 'Este piloto explora modelos de apoyo para atletas jóvenes en etapas críticas, simulando la asignación de recursos demo para probar UX y participación comunitaria.',
-    whyAthlxCardTwoTitle: 'Simulación de Apoyo Post-Carrera',
-    whyAthlxCardTwoDescription: 'El Fondo de Apoyo Post-Carrera es un registro demo bloqueado que simula mecanismos de apoyo a largo plazo. Esto prueba modelos de asignación para la vida después del deporte activo.',
-    whyAthlxCardThreeTitle: 'Participación Comunitaria',
-    whyAthlxCardThreeDescription: 'Los fans participan en un entorno de prueba, usando créditos demo para simular apoyo comunitario a atletas. Esto ayuda a crear nuevos modelos de conexión fan-atleta.',
-    whyAthlxCardFourTitle: 'Pruebas de UX e Innovación',
-    whyAthlxCardFourDescription: 'Este piloto cerrado prueba modelos innovadores de asignación de apoyo. Los participantes ayudan a mejorar la plataforma con uso real y retroalimentación en un entorno seguro y demo.',
-
-    // Athlete highlights
-    newAthletesTitle: 'Atletas Nuevos',
-    fastGrowingTitle: 'Atletas con Crecimiento Rápido',
-    viewAll: 'Ver Todos',
-
-    // CTA
-    ctaTitle: '¿Listo para Participar?',
-    ctaSubtitle: 'Únete al programa piloto y ayuda a probar nuevos modelos de apoyo a atletas.',
-    exploreDirectory: 'Explorar Directorio de Atletas',
-
-    // Market
-    athleteDirectory: 'Directorio de Atletas',
-    searchAthletePlaceholder: 'Buscar por nombre del atleta...',
-    allSports: 'Todos los Deportes',
-    allCategories: 'Todas las Categorías',
-    clearFilters: 'Limpiar Filtros',
-    clearAllFilters: 'Limpiar Todos los Filtros',
-    segmentAllAthletes: 'Todos los Atletas',
-    segmentNewAthletes: 'Atletas Nuevos',
-    segmentFeatured: 'Destacados',
-    segmentCategoryPromotions: 'Promociones de Categoría',
-    segmentFastGrowing: 'Crecimiento Rápido',
-    showingLabel: 'Mostrando',
-    athleteSingular: 'atleta',
-    athletePlural: 'atletas',
-    noAthletesFound: 'No se encontraron atletas que coincidan con tus filtros.',
-    tagFeatured: 'Destacados',
-    tagFastGrowing: 'Crecimiento Rápido',
-    tagPromoted: 'Promocionados',
-    tagNew: 'Nuevos',
-
-    // Athlete detail
-    ageLabel: 'Edad',
-    heightLabel: 'Altura',
-    playerProfile: 'Perfil del Jugador',
-    viewFullProfile: 'Ver Perfil Completo',
-    highlightVideo: 'Video Destacado',
-    latestNews: 'Últimas Noticias',
-
-    // My Page
-    participantViewTab: 'Vista de Participante',
-    athleteViewTab: 'Vista de Atleta',
-    unitHoldingsValue: 'Valor de Unidades',
-    unitHoldings: 'Unidades',
-    unitHoldingsCountLabel: 'Unidades',
-    myUnits: 'Mis Unidades',
-    athleteLabel: 'Atleta',
-    actionLabel: 'Acción',
-    noUnitsMessage: 'Aún no tienes unidades de atletas.',
-    activityHistory: 'Historial de Actividad',
-    noActivityHistory: 'Sin historial de actividad todavía.',
-    yourImpact: 'Tu Impacto',
-    totalDemoFees: 'Comisiones Demo Totales',
-    immediateSupportContribution: 'Contribución al Apoyo Inmediato',
-    impactNoteStart: 'Tu actividad ha contribuido',
-    impactNoteEnd: 'directamente a los atletas mediante el mecanismo de pago inmediato del 2.5%.',
-    yourAthleteProfile: 'Tu Perfil de Atleta',
-    categoryLabel: 'Categoría',
-    realTimeSupport: 'Apoyo en Tiempo Real',
-    totalDemoCreditsFlow: 'Flujo Total de Créditos Demo',
-    totalImmediatePayout: 'Pago Inmediato Total (2.5%)',
-    directSupportNote: 'Apoyo directo por cada intercambio de unidades',
-    realTimeSupportNote: 'Cada vez que se intercambian unidades, el 2.5% del flujo de créditos demo se asigna como apoyo inmediato. Este mecanismo asegura beneficios en tiempo real por la participación.',
-    viewPublicProfile: 'Ver Tu Perfil Público',
-    noAthleteProfileLinked: 'Sin Perfil de Atleta Vinculado',
-    noAthleteProfileLinkedDetail: 'Aún no tienes un perfil de atleta asociado a tu cuenta.',
-
-    // Admin
-    adminPanel: 'Panel de Administración',
-    adminDashboard: 'Panel Principal',
-    pendingApplications: 'Solicitudes Pendientes',
-    pendingLabel: 'Pendientes',
-    approvedLabel: 'Aprobadas',
-    rejectedLabel: 'Rechazadas',
-    totalAthletesLabel: 'Total de Atletas',
-    athletesByCategory: 'Atletas por Categoría',
-    viewPendingApplications: 'Ver Solicitudes Pendientes',
-    applicationsAwaitingReview: 'solicitudes en revisión',
-    allAthletes: 'Todos los Atletas',
-    athletesInDirectory: 'atletas en el directorio',
-    pendingAthleteApplications: 'Solicitudes de Atletas Pendientes',
-    sportLabel: 'Deporte',
-    nationalityLabel: 'Nacionalidad',
-    requestedCategory: 'Categoría Solicitada',
-    submittedLabel: 'Enviada',
-    reviewLabel: 'Revisar',
-    noPendingApplications: 'No hay solicitudes pendientes en este momento.',
-    backToPending: 'Volver a Solicitudes Pendientes',
-    reviewApplication: 'Revisar Solicitud',
-    personalInformation: 'Información Personal',
-    dateOfBirth: 'Fecha de Nacimiento',
-    genderLabel: 'Género',
-    sportInformation: 'Información Deportiva',
-    teamLabel: 'Equipo',
-    positionLabel: 'Posición',
-    bioLabel: 'Biografía',
-    profileUrlLabel: 'URL del Perfil',
-    setAthleteParameters: 'Configurar Parámetros del Atleta',
-    finalCategory: 'Categoría Final',
-    initialActivityIndex: 'Índice de Actividad Inicial (pts)',
-    tokenSymbolLabel: 'Símbolo del Token (3-4 caracteres)',
-    approveAndAddToDirectory: 'Aprobar y Añadir al Directorio',
-    rejectApplication: 'Rechazar Solicitud',
-    rejectionReason: 'Motivo de Rechazo',
-    rejectionReasonPlaceholder: 'Proporciona un motivo de rechazo...',
-
-    // Admin PIN modal
-    adminPanelAccess: 'Acceso al Panel de Administración',
-    adminPin: 'PIN de Admin',
-    enterAdminPin: 'Introducir PIN de Admin',
-    accessAdminPanel: 'Acceder al Panel de Administración',
-    adminPinHelp: 'Contacta al propietario del repositorio para configurar la variable NEXT_PUBLIC_ADMIN_PIN.',
-    incorrectPin: 'PIN incorrecto',
-
-    // Registration
-    registerLoginFirst: 'Por favor inicia sesión para enviar tu registro de atleta.',
-    termsAgreementRequired: 'Por favor acepta los términos',
-    applicationSubmittedTitle: '¡Solicitud Enviada!',
-    applicationSubmittedSubtitle: 'Tu perfil de atleta ha sido enviado y está en espera de aprobación.',
-    applicationSubmittedNote: 'Te notificaremos cuando tu solicitud sea revisada. Redirigiendo a Mi Página...',
-    basicInformation: 'Información Básica',
-    fullName: 'Nombre Completo',
-    genderMale: 'Masculino',
-    genderFemale: 'Femenino',
-    genderOther: 'Otro',
-    profileLabel: 'Perfil',
-    shortBio: 'Biografía Corta',
-    bioPlaceholder: 'Cuéntanos sobre tu trayectoria deportiva, logros y metas...',
-    profileUrlPlaceholder: 'https://example.com/tu-perfil',
-    highlightVideoLabel: 'URL de Video Destacado (YouTube)',
-    highlightVideoPlaceholder: 'https://youtube.com/embed/...',
-    termsAgreement: 'Acepto los términos y entiendo que este es un entorno demo. Confirmo que la información proporcionada es precisa y que tengo derecho a registrarme en esta plataforma.',
-    submitApplication: 'Enviar Solicitud',
-
-    // About
-    aboutTitle: 'Sobre AthleteXchange (ATHLX)',
-    aboutSubtitle: 'Sobre AthleteXchange (ATHLX)',
-    aboutIntroOne: 'AthleteXchange (ATHLX) es un piloto diseñado para explorar nuevas formas de apoyo a atletas mediante un entorno simulado, solo para demostración.',
-    aboutIntroTwo: 'Este piloto utiliza Créditos Demo (tATHLX) y Unidades del Atleta únicamente para probar la experiencia de usuario y la lógica de asignación de apoyo. Nada en este piloto representa dinero real, derechos de propiedad, acciones, ni promesas de retorno financiero. No hay retiros ni transferencias externas.',
-    aboutHowItWorksTitle: 'Cómo funciona el piloto:',
-    aboutHowItWorksStepOne: 'Los atletas pueden solicitar y son revisados por un operador.',
-    aboutHowItWorksStepTwo: 'Los atletas aprobados aparecen en el Directorio de Atletas.',
-    aboutHowItWorksStepThree: 'Los fans pueden adquirir o liberar Unidades del Atleta usando créditos demo dentro del Entorno de Prueba.',
-    aboutHowItWorksStepFour: 'Un modelo fijo de comisión demo distribuye créditos demo en tres registros:',
-    aboutLedgerOperations: 'Cartera de Operaciones (simulación de costes de la plataforma)',
-    aboutLedgerRewards: 'Cartera de Recompensas del Atleta (asignación solo demo)',
-    aboutLedgerSupport: 'Fondo de Apoyo Post-Carrera (registro demo bloqueado)',
-    aboutNoticeTitle: 'Aviso importante:',
-    aboutNoticeBody: 'Esto es un piloto cerrado para pruebas de UX e investigación comunitaria. Solo demostración. No es dinero real. No hay retiros. No hay transferencias externas. Nada aquí genera uso o efectos fuera del piloto.',
-    aboutPurposeTitle: 'Propósito y Visión',
-    aboutPurposeCardOneTitle: 'Apoyo a Jóvenes Talentos',
-    aboutPurposeCardOneDescription: 'Este piloto explora modelos de apoyo directo para atletas en etapas tempranas de su carrera, cuando el financiamiento tradicional suele ser inaccesible.',
-    aboutPurposeCardTwoTitle: 'Simulación de Apoyo Post-Carrera',
-    aboutPurposeCardTwoDescription: 'El Fondo de Apoyo Post-Carrera es un concepto de registro demo bloqueado diseñado para simular mecanismos de apoyo a largo plazo para atletas.',
-    aboutPurposeCardThreeTitle: 'Participación Comunitaria',
-    aboutPurposeCardThreeDescription: 'Los fans participan en un entorno de prueba cerrado para ayudar a dar forma a nuevos modelos de apoyo a atletas impulsados por la comunidad.',
-    aboutPurposeCardFourTitle: 'Pruebas de UX y Retroalimentación',
-    aboutPurposeCardFourDescription: 'Este piloto cerrado reúne datos de experiencia y retroalimentación para mejorar los modelos de apoyo y el diseño de la plataforma.',
-    aboutCtaTitle: 'Únete al Piloto',
-    aboutCtaSubtitle: 'Participa en las pruebas de este entorno demo cerrado.',
-
-    // News
-    newsCategoryTransfer: 'Transferencias',
-    newsCategoryPerformance: 'Rendimiento',
-    newsCategoryInjury: 'Lesiones',
-    newsCategoryCareer: 'Carrera',
-    newsCategoryOthers: 'Otros',
-    viewProfile: 'Ver Perfil',
-    noNewsFound: 'No se encontraron noticias con esos filtros.',
-    readMore: 'Leer más',
-
-    // Footer
-    footerMission: 'Programa piloto para probar modelos de apoyo a atletas. Entorno demo sin valor real.',
-    footerPlatform: 'Plataforma',
-    footerResources: 'Recursos',
-    footerRights: 'Todos los derechos reservados.',
-    footerDisclaimer: 'Programa piloto - Solo entorno demo - Sin valor real',
-
-    // Disclaimer
-    disclaimerBanner: 'Programa Piloto ATHLX — Entorno de prueba. Solo créditos demo. Sin valor real.',
-
-    // Additional Terms
-    athleteUnits: 'Unidades del Atleta',
-    demoCredits: 'Créditos Demo (tATHLX)',
-    activityIndex: 'Índice de Actividad (pts)',
-    postCareerSupport: 'Fondo de Apoyo Post-Carrera',
-    demoOnly: 'Solo demo. Sin valor real.',
-    testEnvironment: 'Entorno de Prueba'
+const getDefaultUnitCost = (category?: Category) => {
+  switch (category) {
+    case 'Elite':
+      return 0.2;
+    case 'Pro':
+      return 0.1;
+    case 'Semi-pro':
+      return 0.05;
+    case 'Amateur':
+    default:
+      return 0.01;
   }
 };
 
-export const t = (key: keyof typeof translations.EN, lang: 'EN' | 'ES' = 'EN'): string => {
-  return translations[lang][key] || translations.EN[key];
+const defaultState: AppState = {
+  currentUser: null,
+  athletes: initialAthletes,
+  pendingAthletes: [],
+  trades: [],
+  athleteUpdates: [],
+  news: initialNews,
+  language: 'EN'
+};
+
+interface StoreContextType {
+  state: AppState;
+  login: (email: string, password: string) => Promise<User>;
+  signup: (email: string, password: string, name: string) => Promise<User>;
+  logout: () => void;
+  connectMetaMask: () => void;
+  disconnectMetaMask: () => void;
+  executeTrade: (athleteSymbol: string, type: 'buy' | 'sell', quantity: number, price: number) => void;
+  getPortfolio: () => Portfolio[];
+  submitAthleteRegistration: (data: Omit<PendingAthlete, 'id' | 'userId' | 'submittedAt' | 'status'>) => void;
+  approveAthlete: (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => void;
+  rejectAthlete: (pendingId: string, reason: string) => void;
+  getAthleteBySymbol: (symbol: string) => Athlete | undefined;
+  updateAthletePrice: (symbol: string, newPrice: number) => void;
+
+  submitMatchUpdate: (
+    athleteSymbol: string,
+    nextMatch?: NextMatchInfo,
+    lastMatch?: LastMatchInfo,
+    approved?: boolean
+  ) => void;
+
+  submitAthletePerformanceUpdate: (payload: {
+    athleteSymbol: string;
+    matchDate: string;
+    opponent: string;
+    homeAway: MatchHomeAway;
+    minutesPlayed: number;
+    result: MatchResult;
+    goals: number;
+    assists: number;
+    injury: boolean;
+    notes: string;
+  }) => void;
+
+  resetDemoData: () => void;
+  setLanguage: (lang: 'EN' | 'ES') => void;
+}
+
+const StoreContext = createContext<StoreContextType | undefined>(undefined);
+
+export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [state, setState] = useState<AppState>(defaultState);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  const buildPortfolioFromTrades = (trades: Trade[], athletes: Athlete[]): Portfolio[] => {
+    const portfolioMap = new Map<string, Portfolio>();
+
+    trades.forEach(trade => {
+      const existing = portfolioMap.get(trade.athleteSymbol);
+
+      if (trade.type === 'buy') {
+        if (existing) {
+          const totalQuantity = existing.quantity + trade.quantity;
+          const totalCost = existing.avgBuyPrice * existing.quantity + trade.price * trade.quantity;
+          portfolioMap.set(trade.athleteSymbol, {
+            ...existing,
+            quantity: totalQuantity,
+            avgBuyPrice: totalCost / totalQuantity
+          });
+        } else {
+          portfolioMap.set(trade.athleteSymbol, {
+            athleteSymbol: trade.athleteSymbol,
+            athleteName: trade.athleteName,
+            quantity: trade.quantity,
+            avgBuyPrice: trade.price,
+            currentPrice: trade.price
+          });
+        }
+      } else if (existing) {
+        const newQuantity = existing.quantity - trade.quantity;
+        if (newQuantity > 0) {
+          portfolioMap.set(trade.athleteSymbol, {
+            ...existing,
+            quantity: newQuantity
+          });
+        } else {
+          portfolioMap.delete(trade.athleteSymbol);
+        }
+      }
+    });
+
+    return Array.from(portfolioMap.values()).map(portfolio => {
+      const athlete = athletes.find(a => a.symbol === portfolio.athleteSymbol);
+      return {
+        ...portfolio,
+        currentPrice: athlete?.unitCost || portfolio.currentPrice
+      };
+    });
+  };
+
+  const persistCurrentAccount = (email: string, updater: (account: StoredAccount) => StoredAccount) => {
+    updateAccount(localStorage, email, updater);
+  };
+
+  // Load state from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    const storedUser = loadSession(localStorage);
+    let persistedState = defaultState;
+
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        const hydratedAthletes = (parsed.athletes ?? defaultState.athletes).map((athlete: Athlete) => ({
+          ...athlete,
+          unitCost:
+            athlete.unitCost && athlete.unitCost > 0 ? athlete.unitCost : getDefaultUnitCost(athlete.category)
+        }));
+        persistedState = { ...defaultState, ...parsed, athletes: hydratedAthletes };
+      } catch (e) {
+        console.error('Failed to parse stored state', e);
+      }
+    }
+
+    if (storedUser?.email) {
+      const accounts = loadAccounts(localStorage);
+      const account = accounts[storedUser.email];
+      if (account) {
+        persistedState = {
+          ...persistedState,
+          currentUser: {
+            id: account.id,
+            email: account.email,
+            name: account.name,
+            athlxBalance: account.athlxBalance,
+            metaMaskAddress: undefined,
+            linkedAthleteId: account.linkedAthleteId
+          },
+          trades: account.trades ?? []
+        };
+      }
+    }
+
+    setState(persistedState);
+    setIsHydrated(true);
+  }, []);
+
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
+    if (isHydrated) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+  }, [state, isHydrated]);
+
+  const login = async (email: string, password: string): Promise<User> => {
+    const account = authenticateAccount(localStorage, { email, password });
+
+    if (account) {
+      const loggedInUser: User = {
+        id: account.id,
+        email: account.email,
+        name: account.name,
+        athlxBalance: account.athlxBalance,
+        metaMaskAddress: undefined,
+        linkedAthleteId: account.linkedAthleteId
+      };
+
+      setState(prev => ({
+        ...prev,
+        currentUser: loggedInUser,
+        trades: account.trades ?? []
+      }));
+      saveSession(localStorage, account.email);
+      return loggedInUser;
+    }
+
+    throw new Error('Invalid credentials');
+  };
+
+  const signup = async (email: string, password: string, name: string): Promise<User> => {
+    const newAccount = createAccount(localStorage, { email, password, name });
+
+    const loggedInUser: User = {
+      id: newAccount.id,
+      email: newAccount.email,
+      name: newAccount.name,
+      athlxBalance: newAccount.athlxBalance,
+      metaMaskAddress: undefined,
+      linkedAthleteId: undefined
+    };
+
+    setState(prev => ({ ...prev, currentUser: loggedInUser, trades: [] }));
+    saveSession(localStorage, loggedInUser.email);
+    return loggedInUser;
+  };
+
+  const logout = () => {
+    setState(prev => ({ ...prev, currentUser: null, trades: [] }));
+    clearSession(localStorage);
+  };
+
+  const connectMetaMask = () => {
+    if (state.currentUser) {
+      const address = `0x${Math.random().toString(16).substring(2, 10)}...${Math.random()
+        .toString(16)
+        .substring(2, 6)}`;
+      setState(prev => ({
+        ...prev,
+        currentUser: prev.currentUser ? { ...prev.currentUser, metaMaskAddress: address } : null
+      }));
+    }
+  };
+
+  const disconnectMetaMask = () => {
+    if (state.currentUser) {
+      setState(prev => ({
+        ...prev,
+        currentUser: prev.currentUser ? { ...prev.currentUser, metaMaskAddress: undefined } : null
+      }));
+    }
+  };
+
+  const executeTrade = (athleteSymbol: string, type: 'buy' | 'sell', quantity: number, price: number) => {
+    if (!state.currentUser) return;
+
+    const subtotal = quantity * price;
+    const fee = subtotal * 0.05;
+    const total = type === 'buy' ? subtotal + fee : subtotal - fee;
+
+    const newBalance = type === 'buy' ? state.currentUser.athlxBalance - total : state.currentUser.athlxBalance + total;
+
+    if (type === 'buy' && newBalance < 0) {
+      throw new Error('Insufficient balance');
+    }
+
+    const athlete = state.athletes.find(a => a.symbol === athleteSymbol);
+    if (!athlete) return;
+
+    const trade: Trade = {
+      id: `trade_${Date.now()}`,
+      userId: state.currentUser.id,
+      athleteSymbol,
+      athleteName: athlete.name,
+      type,
+      quantity,
+      price,
+      fee,
+      total,
+      timestamp: new Date().toISOString()
+    };
+
+    const updatedAthletes = state.athletes.map(a => {
+      if (a.symbol === athleteSymbol) {
+        return {
+          ...a,
+          tradingVolume: a.tradingVolume + subtotal,
+          holders: type === 'buy' ? a.holders + 1 : Math.max(a.holders - 1, 0)
+        };
+      }
+      return a;
+    });
+
+    const updatedTrades = [...state.trades, trade];
+
+    setState(prev => ({
+      ...prev,
+      currentUser: prev.currentUser ? { ...prev.currentUser, athlxBalance: newBalance } : null,
+      trades: updatedTrades,
+      athletes: updatedAthletes
+    }));
+
+    persistCurrentAccount(state.currentUser.email, account => {
+      const updatedPortfolio = buildPortfolioFromTrades(updatedTrades, updatedAthletes);
+      return {
+        ...account,
+        athlxBalance: newBalance,
+        trades: updatedTrades,
+        portfolio: updatedPortfolio
+      };
+    });
+  };
+
+  const getPortfolio = (): Portfolio[] => {
+    if (!state.currentUser) return [];
+
+    const userTrades = state.trades.filter(t => t.userId === state.currentUser!.id);
+    const portfolioMap = new Map<string, Portfolio>();
+
+    userTrades.forEach(trade => {
+      const existing = portfolioMap.get(trade.athleteSymbol);
+
+      if (trade.type === 'buy') {
+        if (existing) {
+          const totalQuantity = existing.quantity + trade.quantity;
+          const totalCost = existing.avgBuyPrice * existing.quantity + trade.price * trade.quantity;
+          portfolioMap.set(trade.athleteSymbol, {
+            ...existing,
+            quantity: totalQuantity,
+            avgBuyPrice: totalCost / totalQuantity
+          });
+        } else {
+          portfolioMap.set(trade.athleteSymbol, {
+            athleteSymbol: trade.athleteSymbol,
+            athleteName: trade.athleteName,
+            quantity: trade.quantity,
+            avgBuyPrice: trade.price,
+            currentPrice: trade.price
+          });
+        }
+      } else if (existing) {
+        const newQuantity = existing.quantity - trade.quantity;
+        if (newQuantity > 0) {
+          portfolioMap.set(trade.athleteSymbol, { ...existing, quantity: newQuantity });
+        } else {
+          portfolioMap.delete(trade.athleteSymbol);
+        }
+      }
+    });
+
+    return Array.from(portfolioMap.values()).map(p => {
+      const athlete = state.athletes.find(a => a.symbol === p.athleteSymbol);
+      return {
+        ...p,
+        currentPrice: athlete?.unitCost || p.currentPrice
+      };
+    });
+  };
+
+  const submitAthleteRegistration = (data: Omit<PendingAthlete, 'id' | 'userId' | 'submittedAt' | 'status'>) => {
+    if (!state.currentUser) return;
+
+    const pending: PendingAthlete = {
+      ...data,
+      id: `pending_${Date.now()}`,
+      userId: state.currentUser.id,
+      submittedAt: new Date().toISOString(),
+      status: 'pending'
+    };
+
+    setState(prev => ({
+      ...prev,
+      pendingAthletes: [...prev.pendingAthletes, pending]
+    }));
+  };
+
+  const approveAthlete = (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => {
+    const pending = state.pendingAthletes.find(p => p.id === pendingId);
+    if (!pending) return;
+
+    const newAthlete: Athlete = {
+      id: `athlete_${Date.now()}`,
+      name: pending.name,
+      symbol: symbol.toUpperCase(),
+      sport: pending.sport,
+      category: finalCategory as any,
+      nationality: pending.nationality,
+      team: pending.team,
+      position: pending.position,
+      age: new Date().getFullYear() - new Date(pending.dateOfBirth).getFullYear(),
+      height: '1.75m',
+      bio: pending.bio,
+      profileUrl: pending.profileUrl,
+      highlightVideoUrl: pending.highlightVideoUrl,
+      imageUrl: `https://i.pravatar.cc/300?img=${Math.floor(Math.random() * 70)}`,
+      unitCost: getDefaultUnitCost(finalCategory as Category),
+      currentPrice: initialPrice,
+      activityIndex: initialPrice,
+      price24hChange: 0,
+      price7dChange: 0,
+      tradingVolume: 0,
+      holders: 0,
+      tags: ['New'],
+      priceHistory: [{ time: new Date().toISOString(), price: initialPrice, volume: 0 }],
+      createdAt: new Date().toISOString(),
+      userId: pending.userId
+    };
+
+    setState(prev => ({
+      ...prev,
+      athletes: [...prev.athletes, newAthlete],
+      pendingAthletes: prev.pendingAthletes.map(p => (p.id === pendingId ? { ...p, status: 'approved' as const } : p)),
+      currentUser:
+        prev.currentUser?.id === pending.userId ? { ...prev.currentUser, linkedAthleteId: newAthlete.id } : prev.currentUser
+    }));
+
+    if (pending.userId && state.currentUser?.id === pending.userId) {
+      persistCurrentAccount(state.currentUser.email, account => ({
+        ...account,
+        linkedAthleteId: newAthlete.id
+      }));
+    }
+  };
+
+  const rejectAthlete = (pendingId: string, reason: string) => {
+    setState(prev => ({
+      ...prev,
+      pendingAthletes: prev.pendingAthletes.map(p =>
+        p.id === pendingId ? { ...p, status: 'rejected' as const, rejectionReason: reason } : p
+      )
+    }));
+  };
+
+  const getAthleteBySymbol = (symbol: string): Athlete | undefined => {
+    return state.athletes.find(a => a.symbol === symbol);
+  };
+
+  const updateAthletePrice = (symbol: string, newPrice: number) => {
+    setState(prev => ({
+      ...prev,
+      athletes: prev.athletes.map(a => {
+        if (a.symbol === symbol) {
+          const change24h = ((newPrice - a.currentPrice) / a.currentPrice) * 100;
+          return {
+            ...a,
+            currentPrice: newPrice,
+            price24hChange: change24h,
+            priceHistory: [
+              ...a.priceHistory,
+              { time: new Date().toISOString(), price: newPrice, volume: Math.floor(Math.random() * 10000) }
+            ]
+          };
+        }
+        return a;
+      })
+    }));
+  };
+
+  const submitMatchUpdate = (athleteSymbol: string, nextMatch?: NextMatchInfo, lastMatch?: LastMatchInfo, approved = true) => {
+    setState(prev => ({
+      ...prev,
+      athletes: prev.athletes.map(athlete => {
+        if (athlete.symbol !== athleteSymbol) return athlete;
+
+        const updateScore = computeEventScore(nextMatch, lastMatch);
+        const updatedActivityIndex = approved ? Math.max(0, athlete.activityIndex + updateScore) : athlete.activityIndex;
+        const updatedUnitCost = approved
+          ? Math.max(getDefaultUnitCost(athlete.category), athlete.unitCost + updateScore * 0.01)
+          : athlete.unitCost;
+
+        return {
+          ...athlete,
+          nextMatch,
+          lastMatch,
+          activityIndex: updatedActivityIndex,
+          unitCost: updatedUnitCost,
+          lastUpdateReason: approved ? buildUpdateReason(nextMatch, lastMatch) : athlete.lastUpdateReason,
+          priceHistory: approved
+            ? [...athlete.priceHistory, { time: new Date().toISOString(), price: updatedUnitCost, volume: 0 }]
+            : athlete.priceHistory
+        };
+      })
+    }));
+  };
+
+  const submitAthletePerformanceUpdate = (payload: {
+    athleteSymbol: string;
+    matchDate: string;
+    opponent: string;
+    homeAway: MatchHomeAway;
+    minutesPlayed: number;
+    result: MatchResult;
+    goals: number;
+    assists: number;
+    injury: boolean;
+    notes: string;
+  }) => {
+    setState(prev => {
+      const targetAthlete = prev.athletes.find(athlete => athlete.symbol === payload.athleteSymbol);
+      if (!targetAthlete) return prev;
+
+      const resultDelta = payload.result === 'Win' ? 0.4 : payload.result === 'Draw' ? 0.1 : -0.2;
+      const baseDelta =
+        (payload.minutesPlayed / 90) * 0.5 +
+        payload.goals * 0.8 +
+        payload.assists * 0.5 +
+        resultDelta +
+        (payload.injury ? -1.0 : 0);
+
+      const noise = Math.random() * 0.02 - 0.01;
+
+      const updatedUnitCost = Math.min(5, Math.max(0.001, targetAthlete.unitCost * (1 + baseDelta / 10 + noise)));
+      const updatedActivityIndex = Math.max(0, targetAthlete.activityIndex + baseDelta);
+
+      const minutesBucket =
+        payload.minutesPlayed >= 61 ? '61-90' : payload.minutesPlayed >= 31 ? '31-60' : payload.minutesPlayed >= 1 ? '1-30' : '0';
+
+      const updateReason =
+        payload.notes ||
+        buildUpdateReason(undefined, {
+          date: payload.matchDate,
+          minutesBucket,
+          result: payload.result,
+          goals: payload.goals || undefined,
+          assists: payload.assists || undefined,
+          injury: payload.injury
+        });
+
+      return {
+        ...prev,
+        athletes: prev.athletes.map(athlete => {
+          if (athlete.symbol !== payload.athleteSymbol) return athlete;
+          return {
+            ...athlete,
+            lastMatch: {
+              date: payload.matchDate,
+              minutesBucket,
+              result: payload.result,
+              goals: payload.goals || undefined,
+              assists: payload.assists || undefined,
+              injury: payload.injury
+            },
+            activityIndex: updatedActivityIndex,
+            unitCost: updatedUnitCost,
+            lastUpdateReason: updateReason,
+            priceHistory: [
+              ...athlete.priceHistory,
+              { time: new Date().toISOString(), price: updatedUnitCost, volume: Math.floor(Math.random() * 10000) }
+            ]
+          };
+        }),
+        athleteUpdates: [
+          ...prev.athleteUpdates,
+          {
+            id: `update_${Date.now()}`,
+            athleteSymbol: payload.athleteSymbol,
+            matchDate: payload.matchDate,
+            opponent: payload.opponent,
+            homeAway: payload.homeAway,
+            minutesPlayed: payload.minutesPlayed,
+            result: payload.result,
+            goals: payload.goals,
+            assists: payload.assists,
+            injury: payload.injury,
+            notes: payload.notes,
+            submittedAt: new Date().toISOString(),
+            baseDelta,
+            newUnitCost: updatedUnitCost,
+            newActivityIndex: updatedActivityIndex
+          }
+        ]
+      };
+    });
+  };
+
+  const resetDemoData = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    resetDemoStorage(localStorage);
+    setState(defaultState);
+  };
+
+  const setLanguage = (lang: 'EN' | 'ES') => {
+    setState(prev => ({ ...prev, language: lang }));
+  };
+
+  return (
+    <StoreContext.Provider
+      value={{
+        state,
+        login,
+        signup,
+        logout,
+        connectMetaMask,
+        disconnectMetaMask,
+        executeTrade,
+        getPortfolio,
+        submitAthleteRegistration,
+        approveAthlete,
+        rejectAthlete,
+        getAthleteBySymbol,
+        updateAthletePrice,
+        submitMatchUpdate,
+        submitAthletePerformanceUpdate,
+        resetDemoData,
+        setLanguage
+      }}
+    >
+      {children}
+    </StoreContext.Provider>
+  );
+};
+
+export const useStore = () => {
+  const context = useContext(StoreContext);
+  if (context === undefined) {
+    throw new Error('useStore must be used within StoreProvider');
+  }
+  return context;
 };
