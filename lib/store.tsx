@@ -1,8 +1,20 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { AppState, User, Athlete, Trade, Portfolio, PendingAthlete, NewsItem, Category } from './types';
+import {
+  AppState,
+  User,
+  Athlete,
+  Trade,
+  Portfolio,
+  PendingAthlete,
+  NewsItem,
+  Category,
+  NextMatchInfo,
+  LastMatchInfo
+} from './types';
 import { initialAthletes, initialNews } from './data';
+import { buildUpdateReason, computeEventScore } from './match';
 
 const STORAGE_KEY = 'athlx_state';
 const USERS_KEY = 'athlx_users';
@@ -45,6 +57,12 @@ interface StoreContextType {
   rejectAthlete: (pendingId: string, reason: string) => void;
   getAthleteBySymbol: (symbol: string) => Athlete | undefined;
   updateAthletePrice: (symbol: string, newPrice: number) => void;
+  submitMatchUpdate: (
+    athleteSymbol: string,
+    nextMatch?: NextMatchInfo,
+    lastMatch?: LastMatchInfo,
+    approved?: boolean
+  ) => void;
   setLanguage: (lang: 'EN' | 'ES') => void;
 }
 
@@ -329,6 +347,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       imageUrl: `https://i.pravatar.cc/300?img=${Math.floor(Math.random() * 70)}`,
       unitCost: getDefaultUnitCost(finalCategory as Category),
       currentPrice: initialPrice,
+      activityIndex: initialPrice,
       price24hChange: 0,
       price7dChange: 0,
       tradingVolume: 0,
@@ -385,6 +404,44 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }));
   };
 
+  const submitMatchUpdate = (
+    athleteSymbol: string,
+    nextMatch?: NextMatchInfo,
+    lastMatch?: LastMatchInfo,
+    approved = true
+  ) => {
+    setState(prev => ({
+      ...prev,
+      athletes: prev.athletes.map(athlete => {
+        if (athlete.symbol !== athleteSymbol) {
+          return athlete;
+        }
+
+        const updateScore = computeEventScore(nextMatch, lastMatch);
+        const updatedActivityIndex = approved
+          ? Math.max(0, athlete.activityIndex + updateScore)
+          : athlete.activityIndex;
+        const updatedUnitCost = approved
+          ? Math.max(getDefaultUnitCost(athlete.category), athlete.unitCost + updateScore * 0.01)
+          : athlete.unitCost;
+        return {
+          ...athlete,
+          nextMatch,
+          lastMatch,
+          activityIndex: updatedActivityIndex,
+          unitCost: updatedUnitCost,
+          lastUpdateReason: approved ? buildUpdateReason(nextMatch, lastMatch) : athlete.lastUpdateReason,
+          priceHistory: approved
+            ? [
+                ...athlete.priceHistory,
+                { time: new Date().toISOString(), price: updatedActivityIndex, volume: 0 }
+              ]
+            : athlete.priceHistory
+        };
+      })
+    }));
+  };
+
   const setLanguage = (lang: 'EN' | 'ES') => {
     setState(prev => ({ ...prev, language: lang }));
   };
@@ -404,6 +461,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       rejectAthlete,
       getAthleteBySymbol,
       updateAthletePrice,
+      submitMatchUpdate,
       setLanguage
     }}>
       {children}
