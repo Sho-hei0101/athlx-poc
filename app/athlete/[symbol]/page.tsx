@@ -92,8 +92,6 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
     };
   }, [athlete.priceHistory, timeframe, t.activityIndexWithPoints]);
 
-  const activityIndex = athlete.activityIndex ?? athlete.currentPrice;
-
   const chartOptions: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
@@ -127,8 +125,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
           color: 'rgba(255, 255, 255, 0.05)'
         },
         ticks: {
-          color: '#9ca3af',
-          callback: (value: any) => `${value} ${t.pointsUnit}`
+          color: '#9ca3af'
         }
       }
     }
@@ -139,47 +136,43 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
     setTradeModalOpen(true);
   };
 
+  const activityIndex = athlete.activityIndex ?? athlete.currentPrice;
+
   return (
-    <>
-      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Header Section */}
-          <div className="glass-effect rounded-xl p-8 mb-8">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Left: Image */}
-              <div>
+    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="glass-effect rounded-2xl p-8 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left: Athlete Info */}
+            <div className="lg:col-span-2">
+              <div className="flex items-start space-x-6 mb-6">
                 <img
                   src={athlete.imageUrl}
                   alt={athlete.name}
-                  className="w-full h-80 object-cover rounded-lg"
+                  className="w-32 h-32 rounded-xl object-cover"
                 />
-              </div>
-
-              {/* Center: Info */}
-              <div className="lg:col-span-1">
-                <div className="mb-4">
+                <div>
                   <h1 className="text-4xl font-bold mb-2">{athlete.name}</h1>
-                  <div className="flex items-center space-x-2 text-xl text-gray-400 mb-3">
-                    <span className="font-bold text-blue-400">{athlete.symbol}</span>
+                  <div className="flex items-center space-x-4 text-sm text-gray-400 mb-3">
+                    <span className="font-semibold text-blue-400">{athlete.symbol}</span>
                     <span>•</span>
-                    <span className={`badge badge-${athlete.category.toLowerCase().replace('-', '')}`}>
-                      {categoryLabels[athlete.category]}
+                    <span>{categoryLabels[athlete.category]}</span>
+                    <span>•</span>
+                    <span>{sportLabels[athlete.sport]}</span>
+                  </div>
+                  <div className="flex items-center space-x-4 text-sm">
+                    <span className="flex items-center space-x-1">
+                      <MapPin size={14} />
+                      <span>{getCountryFlag(athlete.nationality)} {athlete.nationality}</span>
                     </span>
-                  </div>
-                </div>
-
-                <div className="space-y-3 text-gray-300">
-                  <div className="flex items-center space-x-2">
-                    <User size={18} className="text-gray-400" />
-                    <span>{sportLabels[athlete.sport]} • {athlete.position}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <MapPin size={18} className="text-gray-400" />
-                    <span>{getCountryFlag(athlete.nationality)} {athlete.nationality}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Calendar size={18} className="text-gray-400" />
-                    <span>{athlete.team}</span>
+                    <span className="flex items-center space-x-1">
+                      <Calendar size={14} />
+                      <span>{athlete.team}</span>
+                    </span>
+                    <span className="flex items-center space-x-1">
+                      <User size={14} />
+                      <span>{athlete.position}</span>
+                    </span>
                   </div>
                   <div className="text-sm text-gray-400">
                     {t.ageLabel}: {athlete.age} • {t.heightLabel}: {athlete.height}
@@ -187,63 +180,79 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
                 </div>
               </div>
 
-              {/* Right: Price & Actions */}
-              <div>
-                <div className="bg-slate-700/50 rounded-lg p-6 mb-4">
-                  <div className="mb-4">
-                    <p className="text-sm text-gray-400 mb-1">{t.unitCostLabel}</p>
-                    <p className="text-4xl font-bold price-display">
-                      {formatNumber(athlete.unitCost)} tATHLX
+              <p className="text-gray-300 leading-relaxed mb-6">{athlete.bio}</p>
+
+              {relatedNews.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">{t.relatedNews}</h3>
+                  <div className="space-y-2">
+                    {relatedNews.map(news => (
+                      <div key={news.id} className="bg-slate-700/50 rounded-lg p-3">
+                        <p className="text-sm font-semibold">{news.title}</p>
+                        <p className="text-xs text-gray-400">{news.date}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right: Price & Actions */}
+            <div>
+              <div className="bg-slate-700/50 rounded-lg p-6 mb-4">
+                <div className="mb-4">
+                  <p className="text-sm text-gray-400 mb-1">{t.unitCostLabel}</p>
+                  <p className="text-4xl font-bold price-display">
+                    {formatNumber(athlete.unitCost)} tATHLX
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <p className="text-xs text-gray-400">{t.indexDelta24h}</p>
+                    <p className={`text-lg font-bold ${athlete.price24hChange >= 0 ? 'price-up' : 'price-down'}`}>
+                      {athlete.price24hChange >= 0 ? '+' : ''}{athlete.price24hChange.toFixed(1)}%
                     </p>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <p className="text-xs text-gray-400">{t.indexDelta24h}</p>
-                      <p className={`text-lg font-bold ${athlete.price24hChange >= 0 ? 'price-up' : 'price-down'}`}>
-                        {athlete.price24hChange >= 0 ? '+' : ''}{athlete.price24hChange.toFixed(1)}%
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">{t.indexDelta7d}</p>
-                      <p className={`text-lg font-bold ${athlete.price7dChange >= 0 ? 'price-up' : 'price-down'}`}>
-                        {athlete.price7dChange >= 0 ? '+' : ''}{athlete.price7dChange.toFixed(1)}%
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-400">{t.activityIndexLabel}</p>
-                      <p className="font-semibold">{formatNumber(activityIndex)} {t.pointsUnit}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400">{t.demoCreditsFlow}</p>
-                      <p className="font-semibold">{formatNumber(athlete.tradingVolume)} tATHLX</p>
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-gray-400">{t.participants}</p>
-                      <p className="font-semibold">{athlete.holders}</p>
-                    </div>
+                  <div>
+                    <p className="text-xs text-gray-400">{t.indexDelta7d}</p>
+                    <p className={`text-lg font-bold ${athlete.price7dChange >= 0 ? 'price-up' : 'price-down'}`}>
+                      {athlete.price7dChange >= 0 ? '+' : ''}{athlete.price7dChange.toFixed(1)}%
+                    </p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => openTrade('buy')}
-                    className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition flex items-center justify-center space-x-2"
-                  >
-                    <TrendingUp size={20} />
-                    <span>{t.acquireUnits}</span>
-                  </button>
-                  <button
-                    onClick={() => openTrade('sell')}
-                    className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-bold transition flex items-center justify-center space-x-2"
-                  >
-                    <TrendingDown size={20} />
-                    <span>{t.releaseUnits}</span>
-                  </button>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-400">{t.activityIndexLabel}</p>
+                    <p className="font-semibold">{formatNumber(activityIndex)} {t.pointsUnit}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">{t.demoCreditsFlow}</p>
+                    <p className="font-semibold">{formatNumber(athlete.tradingVolume)} tATHLX</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-gray-400">{t.participants}</p>
+                    <p className="font-semibold">{athlete.holders}</p>
+                  </div>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => openTrade('buy')}
+                  className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition flex items-center justify-center space-x-2"
+                >
+                  <TrendingUp size={20} />
+                  <span>{t.acquireUnits}</span>
+                </button>
+                <button
+                  onClick={() => openTrade('sell')}
+                  className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-bold transition flex items-center justify-center space-x-2"
+                >
+                  <TrendingDown size={20} />
+                  <span>{t.releaseUnits}</span>
+                </button>
               </div>
             </div>
           </div>
@@ -293,75 +302,19 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
                 ))}
               </div>
             </div>
-            <div className="h-96">
+            <div className="h-64">
               <AthletePriceChart data={chartData} options={chartOptions} />
             </div>
           </div>
 
-          {/* Profile & Bio */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <div className="glass-effect rounded-xl p-6">
-              <h2 className="text-2xl font-bold mb-4">{t.playerProfile}</h2>
-              <p className="text-gray-300 leading-relaxed mb-4">{athlete.bio}</p>
-              <a
-                href={athlete.profileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 text-sm"
-              >
-                {t.viewFullProfile} →
-              </a>
-            </div>
-
-            <div className="glass-effect rounded-xl p-6">
-              <h2 className="text-2xl font-bold mb-4">{t.highlightVideo}</h2>
-              <div className="aspect-video">
-                <iframe
-                  src={athlete.highlightVideoUrl}
-                  className="w-full h-full rounded-lg"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Latest News */}
-          {relatedNews.length > 0 && (
-            <div className="glass-effect rounded-xl p-6">
-              <h2 className="text-2xl font-bold mb-6">{t.latestNews}</h2>
-              <div className="space-y-4">
-                {relatedNews.map(news => (
-                  <div key={news.id} className="bg-slate-700/50 rounded-lg p-4 hover:bg-slate-700/70 transition">
-                    <h3 className="text-lg font-bold mb-2">{news.title}</h3>
-                    <p className="text-gray-400 text-sm mb-3">{news.summary}</p>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-500">
-                        {new Date(news.date).toLocaleDateString()}
-                      </span>
-                      <a
-                        href={news.readMoreUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-400 hover:text-blue-300 text-sm font-semibold"
-                      >
-                        {t.readMore} →
-                      </a>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <TradeModal
+            isOpen={tradeModalOpen}
+            onClose={() => setTradeModalOpen(false)}
+            athlete={athlete}
+            initialMode={tradeMode}
+          />
         </div>
       </div>
-
-      <TradeModal
-        isOpen={tradeModalOpen}
-        onClose={() => setTradeModalOpen(false)}
-        athlete={athlete}
-        initialMode={tradeMode}
-      />
-    </>
+    </div>
   );
 }
