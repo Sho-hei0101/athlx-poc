@@ -526,11 +526,15 @@ const baseAthletes = [
     priceHistory: generatePriceHistory(385, 0.1, 30),
     createdAt: new Date(REFERENCE_TIME - 45 * 24 * 60 * 60 * 1000).toISOString()
   }
-] satisfies Array<Omit<Athlete, 'unitCost'>>;
+] satisfies Array<Omit<Athlete, 'unitCost' | 'activityIndex'>>;
 
 export const initialAthletes: Athlete[] = baseAthletes.map((athlete) => ({
   ...athlete,
-  unitCost: getDefaultUnitCost(athlete.category)
+  activityIndex: athlete.currentPrice,
+  unitCost: Math.max(
+    getDefaultUnitCost(athlete.category),
+    (athlete.currentPrice || 0) * 0.001
+  )
 }));
 
 export const initialNews: NewsItem[] = [

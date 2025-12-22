@@ -1,21 +1,12 @@
 'use client';
 
-import { useStore } from '@/lib/store';
 import { useState, useMemo } from 'react';
-import Link from 'next/link';
-import { Search, Filter } from 'lucide-react';
-import { Sport, Category } from '@/lib/types';
+import { useStore } from '@/lib/store';
+import { Search, TrendingUp, Filter, ArrowUp, ArrowDown } from 'lucide-react';
 import { translations } from '@/lib/translations';
+import { Category, Sport } from '@/lib/types';
 import { formatNumber } from '@/lib/format';
-
-const allSports: Sport[] = [
-  'Football', 'Basketball', 'Athletics', 'Swimming', 'Tennis', 'Gymnastics',
-  'Volleyball', 'Rugby Sevens', 'Boxing', 'Judo', 'Cycling', 'Rowing',
-  'Table Tennis', 'Badminton', 'Fencing', 'Weightlifting', 'Wrestling',
-  'Taekwondo', 'Archery', 'Shooting', 'eSports', 'Others'
-];
-
-const categories: Category[] = ['Amateur', 'Semi-pro', 'Pro', 'Elite'];
+import Link from 'next/link';
 
 export default function MarketPage() {
   const { state } = useStore();
@@ -23,34 +14,43 @@ export default function MarketPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSport, setSelectedSport] = useState<Sport | 'All'>('All');
   const [selectedCategory, setSelectedCategory] = useState<Category | 'All'>('All');
-  const [selectedSegment, setSelectedSegment] = useState<'all' | 'new' | 'featured' | 'promoted' | 'fastGrowing'>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'price' | 'volume' | 'change'>('price');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const filteredAthletes = useMemo(() => {
     return state.athletes.filter(athlete => {
       const matchesSearch = athlete.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           athlete.symbol.toLowerCase().includes(searchTerm.toLowerCase());
+        athlete.symbol.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesSport = selectedSport === 'All' || athlete.sport === selectedSport;
       const matchesCategory = selectedCategory === 'All' || athlete.category === selectedCategory;
-      
-      let matchesSegment = true;
-      if (selectedSegment === 'new') matchesSegment = athlete.tags.includes('New');
-      if (selectedSegment === 'featured') matchesSegment = athlete.tags.includes('Featured');
-      if (selectedSegment === 'promoted') matchesSegment = athlete.tags.includes('Promoted');
-      if (selectedSegment === 'fastGrowing') matchesSegment = athlete.tags.includes('Fast Growing');
-
-      return matchesSearch && matchesSport && matchesCategory && matchesSegment;
+      return matchesSearch && matchesSport && matchesCategory;
+    }).sort((a, b) => {
+      let compareValue = 0;
+      switch (sortBy) {
+        case 'name':
+          compareValue = a.name.localeCompare(b.name);
+          break;
+        case 'price':
+          compareValue = a.unitCost - b.unitCost;
+          break;
+        case 'volume':
+          compareValue = a.tradingVolume - b.tradingVolume;
+          break;
+        case 'change':
+          compareValue = a.price24hChange - b.price24hChange;
+          break;
+      }
+      return sortDirection === 'asc' ? compareValue : -compareValue;
     });
-  }, [state.athletes, searchTerm, selectedSport, selectedCategory, selectedSegment]);
+  }, [state.athletes, searchTerm, selectedSport, selectedCategory, sortBy, sortDirection]);
 
-  const getCountryFlag = (nationality: string) => {
-    const flags: Record<string, string> = {
-      'Portugal': '🇵🇹', 'Japan': '🇯🇵', 'Spain': '🇪🇸', 'USA': '🇺🇸', 'Nigeria': '🇳🇬',
-      'China': '🇨🇳', 'Sweden': '🇸🇪', 'Mexico': '🇲🇽', 'France': '🇫🇷', 'Ghana': '🇬🇭',
-      'Poland': '🇵🇱', 'India': '🇮🇳', 'Italy': '🇮🇹', 'Ireland': '🇮🇪', 'South Korea': '🇰🇷',
-      'UAE': '🇦🇪', 'Brazil': '🇧🇷', 'Malaysia': '🇲🇾', 'Russia': '🇷🇺', 'Canada': '🇨🇦'
-    };
-    return flags[nationality] || '🏳️';
+  const categoryLabels: Record<Category, string> = {
+    Amateur: t.amateur,
+    'Semi-pro': t.semiPro,
+    Pro: t.pro,
+    Elite: t.elite
   };
+
   const sportLabels: Record<Sport, string> = {
     Football: t.sportFootball,
     Basketball: t.sportBasketball,
@@ -76,48 +76,67 @@ export default function MarketPage() {
     eSports: t.sportEsports,
     Others: t.sportOthers
   };
-  const categoryLabels: Record<Category, string> = {
-    Amateur: t.amateur,
-    'Semi-pro': t.semiPro,
-    Pro: t.pro,
-    Elite: t.elite
-  };
+
   const tagLabels: Record<string, string> = {
-    Featured: t.tagFeatured,
-    'Fast Growing': t.tagFastGrowing,
-    Promoted: t.tagPromoted,
-    New: t.tagNew
+    'Featured': t.featured,
+    'Fast Growing': t.fastGrowing,
+    'Elite': t.elite,
+    'Promoted': t.promoted,
+    'New': t.newLabel
+  };
+
+  const getCountryFlag = (nationality: string) => {
+    const flags: Record<string, string> = {
+      'Portugal': '🇵🇹', 'Japan': '🇯🇵', 'Spain': '🇪🇸', 'USA': '🇺🇸', 'Nigeria': '🇳🇬',
+      'China': '🇨🇳', 'Sweden': '🇸🇪', 'Mexico': '🇲🇽', 'France': '🇫🇷', 'Ghana': '🇬🇭',
+      'Poland': '🇵🇱', 'India': '🇮🇳', 'Italy': '🇮🇹', 'Ireland': '🇮🇪', 'South Korea': '🇰🇷',
+      'UAE': '🇦🇪', 'Brazil': '🇧🇷', 'Malaysia': '🇲🇾', 'Russia': '🇷🇺', 'Canada': '🇨🇦'
+    };
+    return flags[nationality] || '🏳️';
   };
 
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-5xl font-bold mb-8 gradient-text">{t.athleteDirectory}</h1>
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+          <div>
+            <h1 className="text-5xl font-bold mb-2 gradient-text">{t.market}</h1>
+            <p className="text-gray-400">{t.marketSubtitle}</p>
+          </div>
+
+          {/* Search */}
+          <div className="mt-4 md:mt-0">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 text-gray-400" size={20} />
+              <input
+                type="text"
+                placeholder={t.searchAthletes}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:border-blue-500 transition w-64"
+              />
+            </div>
+          </div>
+        </div>
 
         {/* Filters */}
         <div className="glass-effect rounded-xl p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                placeholder={t.searchAthletePlaceholder}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
-              />
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex items-center space-x-2">
+              <Filter size={18} className="text-blue-400" />
+              <span className="font-semibold">{t.filterBy}</span>
             </div>
 
             {/* Sport Filter */}
             <select
               value={selectedSport}
               onChange={(e) => setSelectedSport(e.target.value as Sport | 'All')}
-              className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
+              className="bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500"
             >
               <option value="All">{t.allSports}</option>
-              {allSports.map(sport => (
-                <option key={sport} value={sport}>{sportLabels[sport]}</option>
+              {Object.entries(sportLabels).map(([sport, label]) => (
+                <option key={sport} value={sport}>{label}</option>
               ))}
             </select>
 
@@ -125,61 +144,47 @@ export default function MarketPage() {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value as Category | 'All')}
-              className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
+              className="bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500"
             >
               <option value="All">{t.allCategories}</option>
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{categoryLabels[cat]}</option>
+              {Object.entries(categoryLabels).map(([category, label]) => (
+                <option key={category} value={category}>{label}</option>
               ))}
             </select>
 
-            {/* Clear Filters */}
-            <button
-              onClick={() => {
-                setSearchTerm('');
-                setSelectedSport('All');
-                setSelectedCategory('All');
-                setSelectedSegment('all');
-              }}
-              className="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg transition flex items-center justify-center space-x-2"
+            {/* Sort */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500"
             >
-              <Filter size={20} />
-              <span>{t.clearFilters}</span>
+              <option value="price">{t.sortByUnitCost}</option>
+              <option value="name">{t.sortByName}</option>
+              <option value="volume">{t.sortByVolume}</option>
+              <option value="change">{t.sortByChange}</option>
+            </select>
+
+            <button
+              onClick={() => setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')}
+              className="p-2 bg-slate-700 rounded-lg hover:bg-slate-600 transition"
+            >
+              {sortDirection === 'asc' ? <ArrowUp size={18} /> : <ArrowDown size={18} />}
             </button>
           </div>
         </div>
 
-        {/* Segments */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          {[
-            { key: 'all', label: t.segmentAllAthletes },
-            { key: 'new', label: t.segmentNewAthletes },
-            { key: 'featured', label: t.segmentFeatured },
-            { key: 'promoted', label: t.segmentCategoryPromotions },
-            { key: 'fastGrowing', label: t.segmentFastGrowing }
-          ].map(segment => (
-            <button
-              key={segment.key}
-              onClick={() => setSelectedSegment(segment.key as any)}
-              className={`px-4 py-2 rounded-lg font-semibold transition ${
-                selectedSegment === segment.key
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
-              }`}
-            >
-              {segment.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Results Count */}
-        <div className="mb-6 text-gray-400">
-          {t.showingLabel} {filteredAthletes.length} {filteredAthletes.length !== 1 ? t.athletePlural : t.athleteSingular}
+        {/* Market Stats */}
+        <div className="flex justify-between items-center mb-6">
+          <p className="text-gray-400">
+            {t.showingLabel} {filteredAthletes.length} {filteredAthletes.length !== 1 ? t.athletePlural : t.athleteSingular}
+          </p>
         </div>
 
         {/* Athlete Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAthletes.map(athlete => (
+          {filteredAthletes.map(athlete => {
+            const activityIndex = athlete.activityIndex ?? athlete.currentPrice;
+            return (
             <Link
               key={athlete.id}
               href={`/athlete/${athlete.symbol}`}
@@ -232,8 +237,12 @@ export default function MarketPage() {
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm text-gray-400">{t.activityIndexLabel}</span>
                   <span className="text-xl font-bold price-display">
-                    {formatNumber(athlete.currentPrice)} pts
+                    {formatNumber(activityIndex)} pts
                   </span>
+                </div>
+                <div className="flex justify-between items-center mb-2 text-sm">
+                  <span className="text-gray-400">{t.unitCostShort}</span>
+                  <span className="font-semibold price-display">{formatNumber(athlete.unitCost)} tATHLX</span>
                 </div>
                 
                 <div className="flex justify-between items-center text-sm">
@@ -254,6 +263,11 @@ export default function MarketPage() {
                 <div className="mt-2 text-xs text-gray-400">
                   {t.demoCreditsFlowShort} {formatNumber(athlete.tradingVolume)} tATHLX • {athlete.holders} {t.participantsLower}
                 </div>
+                {athlete.nextMatch && (
+                  <div className="mt-2 text-xs text-gray-400">
+                    {t.nextMatchShort}: {athlete.nextMatch.date} · {athlete.nextMatch.opponent}
+                  </div>
+                )}
               </div>
 
               {/* Mini Sparkline */}
@@ -271,7 +285,7 @@ export default function MarketPage() {
                 })}
               </div>
             </Link>
-          ))}
+          )})}
         </div>
 
         {filteredAthletes.length === 0 && (
@@ -282,11 +296,10 @@ export default function MarketPage() {
                 setSearchTerm('');
                 setSelectedSport('All');
                 setSelectedCategory('All');
-                setSelectedSegment('all');
               }}
               className="mt-4 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition"
             >
-              {t.clearAllFilters}
+              {t.resetFilters}
             </button>
           </div>
         )}
