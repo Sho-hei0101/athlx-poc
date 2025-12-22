@@ -127,6 +127,7 @@ export interface PendingAthlete {
   bio: string;
   profileUrl: string;
   highlightVideoUrl: string;
+  imageDataUrl?: string;
   submittedAt: string;
   status: 'pending' | 'approved' | 'rejected';
   rejectionReason?: string;
@@ -169,4 +170,5 @@ export interface AppState {
   athleteUpdates: AthleteUpdate[];
   news: NewsItem[];
   language: 'EN' | 'ES';
+  isAdmin: boolean;
 }

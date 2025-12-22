@@ -33,6 +33,7 @@ export default function RegisterAthletePage() {
     bio: '',
     profileUrl: '',
     highlightVideoUrl: '',
+    imageDataUrl: '',
     agreeTerms: false
   });
   const sportLabels: Record<Sport, string> = {
@@ -59,6 +60,20 @@ export default function RegisterAthletePage() {
     Cricket: t.sportCricket,
     eSports: t.sportEsports,
     Others: t.sportOthers
+  };
+
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setError(t.imageTooLarge);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFormData(prev => ({ ...prev, imageDataUrl: reader.result?.toString() ?? '' }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -215,6 +230,22 @@ export default function RegisterAthletePage() {
             <section>
               <h2 className="text-2xl font-bold mb-4">{t.profileLabel}</h2>
               <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">{t.profilePhotoLabel}</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                  />
+                  {formData.imageDataUrl && (
+                    <img
+                      src={formData.imageDataUrl}
+                      alt={t.profilePhotoAlt}
+                      className="mt-3 w-32 h-32 object-cover rounded-lg"
+                    />
+                  )}
+                </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">{t.shortBio} *</label>
                   <textarea
