@@ -1,167 +1,83 @@
 'use client';
 
 import { useStore } from '@/lib/store';
-import { useState, useMemo } from 'react';
-import Link from 'next/link';
-import { Calendar } from 'lucide-react';
-import { Sport } from '@/lib/types';
+import { useState } from 'react';
 import { translations } from '@/lib/translations';
+import { NewsItem } from '@/lib/types';
+import Link from 'next/link';
 import { formatNumber } from '@/lib/format';
-
-const sportsList: (Sport | 'All')[] = ['All', 'Football', 'Basketball', 'Athletics', 'Swimming', 'Tennis', 'Gymnastics', 'Others'];
-const categories = ['All', 'Transfer', 'Performance', 'Injury', 'Career', 'Others'];
 
 export default function NewsPage() {
   const { state } = useStore();
   const t = translations[state.language];
-  const [selectedSport, setSelectedSport] = useState<Sport | 'All'>('All');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const sportLabels: Record<Sport, string> = {
-    Football: t.sportFootball,
-    Basketball: t.sportBasketball,
-    Athletics: t.sportAthletics,
-    Swimming: t.sportSwimming,
-    Tennis: t.sportTennis,
-    Gymnastics: t.sportGymnastics,
-    Volleyball: t.sportVolleyball,
-    'Rugby Sevens': t.sportRugbySevens,
-    Boxing: t.sportBoxing,
-    Judo: t.sportJudo,
-    Cycling: t.sportCycling,
-    Rowing: t.sportRowing,
-    'Table Tennis': t.sportTableTennis,
-    Badminton: t.sportBadminton,
-    Fencing: t.sportFencing,
-    Weightlifting: t.sportWeightlifting,
-    Wrestling: t.sportWrestling,
-    Taekwondo: t.sportTaekwondo,
-    Archery: t.sportArchery,
-    Shooting: t.sportShooting,
-    Cricket: t.sportCricket,
-    eSports: t.sportEsports,
-    Others: t.sportOthers
-  };
-  const newsCategoryLabels: Record<string, string> = {
-    Transfer: t.newsCategoryTransfer,
-    Performance: t.newsCategoryPerformance,
-    Injury: t.newsCategoryInjury,
-    Career: t.newsCategoryCareer,
-    Others: t.newsCategoryOthers
-  };
 
-  const filteredNews = useMemo(() => {
-    return state.news.filter(news => {
-      const matchesSport = selectedSport === 'All' || news.sport === selectedSport;
-      const matchesCategory = selectedCategory === 'All' || news.category === selectedCategory;
-      return matchesSport && matchesCategory;
-    });
-  }, [state.news, selectedSport, selectedCategory]);
+  const categories = ['All', 'Transfer', 'Performance', 'Injury', 'Career', 'Others'];
+  const filteredNews = state.news.filter(news => selectedCategory === 'All' || news.category === selectedCategory);
+
+  const formatDate = (date: string) => new Date(date).toLocaleDateString();
+
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case 'Transfer': return 'bg-purple-500';
+      case 'Performance': return 'bg-green-500';
+      case 'Injury': return 'bg-red-500';
+      case 'Career': return 'bg-blue-500';
+      default: return 'bg-gray-500';
+    }
+  };
 
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-5xl font-bold mb-8 gradient-text">{t.news}</h1>
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-5xl font-bold mb-8 gradient-text">{t.newsTitle}</h1>
 
-        {/* Filters */}
-        <div className="glass-effect rounded-xl p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <select
-              value={selectedSport}
-              onChange={(e) => setSelectedSport(e.target.value as Sport | 'All')}
-              className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
-            >
-              {sportsList.map(sport => (
-                <option key={sport} value={sport}>
-                  {sport === 'All' ? t.allSports : sportLabels[sport]}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 transition"
-            >
-              {categories.map(cat => (
-                <option key={cat} value={cat}>
-                  {cat === 'All' ? t.allCategories : newsCategoryLabels[cat]}
-                </option>
-              ))}
-            </select>
-
+        {/* Category Filter */}
+        <div className="flex flex-wrap gap-2 mb-8">
+          {categories.map(category => (
             <button
-              onClick={() => {
-                setSelectedSport('All');
-                setSelectedCategory('All');
-              }}
-              className="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg transition"
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              className={`px-4 py-2 rounded-lg font-semibold transition ${
+                selectedCategory === category
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+              }`}
             >
-              {t.clearFilters}
+              {category === 'All' ? t.allCategories : t[`category${category}` as keyof typeof t]}
             </button>
-          </div>
+          ))}
         </div>
 
         {/* News Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredNews.map(news => {
-            const relatedAthlete = news.relatedAthleteSymbol 
-              ? state.athletes.find(a => a.symbol === news.relatedAthleteSymbol)
-              : null;
-
-            return (
-              <div key={news.id} className="glass-effect rounded-xl p-6 hover-glow">
-                <div className="flex items-center space-x-2 mb-3">
-                  <span className="badge badge-new">{newsCategoryLabels[news.category]}</span>
-                  <span className="text-sm text-gray-400">{sportLabels[news.sport]}</span>
-                </div>
-
-                <h3 className="text-2xl font-bold mb-3">{news.title}</h3>
-                <p className="text-gray-300 mb-4 leading-relaxed">{news.summary}</p>
-
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-2 text-sm text-gray-400">
-                    <Calendar size={16} />
-                    <span>{new Date(news.date).toLocaleDateString()}</span>
-                  </div>
-                  <a
-                    href={news.readMoreUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300 font-semibold text-sm"
-                  >
-                    {t.readMore} →
-                  </a>
-                </div>
-
-                {relatedAthlete && (
-                  <div className="border-t border-slate-600 pt-4">
-                    <Link href={`/athlete/${relatedAthlete.symbol}`} className="flex items-center space-x-4 hover:bg-slate-700/50 p-3 rounded-lg transition">
-                      <img
-                        src={relatedAthlete.imageUrl}
-                        alt={relatedAthlete.name}
-                        className="w-16 h-16 rounded-lg object-cover"
-                      />
-                      <div>
-                        <p className="font-bold">{relatedAthlete.name}</p>
-                        <p className="text-sm text-gray-400">{relatedAthlete.symbol} • {sportLabels[relatedAthlete.sport]}</p>
-                        <p className="text-sm font-semibold price-display">
-                          {t.activityIndexLabel}: {formatNumber(relatedAthlete.activityIndex ?? relatedAthlete.currentPrice)} {t.pointsUnit}
-                        </p>
-                      </div>
-                      <button className="ml-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold transition">
-                        {t.viewProfile}
-                      </button>
-                    </Link>
-                  </div>
-                )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredNews.map(news => (
+            <div key={news.id} className="glass-effect rounded-xl p-6 hover-glow">
+              <div className="flex items-center justify-between mb-4">
+                <span className={`${getCategoryColor(news.category)} text-white text-xs font-bold px-2 py-1 rounded-full`}>
+                  {news.category}
+                </span>
+                <span className="text-gray-400 text-sm">{formatDate(news.date)}</span>
               </div>
-            );
-          })}
+
+              <h3 className="text-xl font-bold mb-3">{news.title}</h3>
+              <p className="text-gray-300 mb-4">{news.summary}</p>
+
+              {news.relatedAthleteSymbol && (
+                <Link
+                  href={`/athlete/${news.relatedAthleteSymbol}`}
+                  className="inline-block text-blue-400 hover:text-blue-300 font-semibold text-sm"
+                >
+                  {t.viewAthleteProfile} →
+                </Link>
+              )}
+            </div>
+          ))}
         </div>
 
         {filteredNews.length === 0 && (
-          <div className="text-center py-20">
-            <p className="text-2xl text-gray-400">{t.noNewsFound}</p>
+          <div className="text-center py-12 text-gray-400">
+            <p>{t.noNewsFound}</p>
           </div>
         )}
       </div>
