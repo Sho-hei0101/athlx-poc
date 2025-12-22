@@ -273,7 +273,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const linkedAthlete = state.currentUser.linkedAthleteId
       ? state.athletes.find(a => a.id === state.currentUser?.linkedAthleteId)
       : null;
-    if (linkedAthlete && linkedAthlete.symbol === athleteSymbol) {
+    if (linkedAthlete) {
       const t = translations[state.language];
       throw new Error(t.cannotTradeOwnUnits);
     }

@@ -68,6 +68,7 @@ export default function MyPage() {
   const linkedAthlete = state.currentUser.linkedAthleteId
     ? state.athletes.find(a => a.id === state.currentUser!.linkedAthleteId)
     : null;
+  const isAthleteAccount = Boolean(state.currentUser.linkedAthleteId);
   const linkedAthleteSymbol = linkedAthlete?.symbol;
   const recentUpdates = linkedAthlete
     ? state.athleteUpdates.filter(update => update.athleteSymbol === linkedAthlete.symbol).slice(-5).reverse()
@@ -217,16 +218,16 @@ export default function MyPage() {
                               <td className="text-right py-3 px-4">
                                 <button
                                   onClick={() => openSellModal(p)}
-                                  disabled={linkedAthleteSymbol === p.athleteSymbol}
+                                  disabled={isAthleteAccount}
                                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                                    linkedAthleteSymbol === p.athleteSymbol
+                                    isAthleteAccount
                                       ? 'bg-slate-700 text-gray-400 cursor-not-allowed'
                                       : 'bg-red-600 hover:bg-red-700'
                                   }`}
                                 >
                                   {t.releaseUnits}
                                 </button>
-                                {linkedAthleteSymbol === p.athleteSymbol && (
+                                {isAthleteAccount && (
                                   <p className="text-xs text-gray-400 mt-1">{t.cannotTradeOwnUnitsHint}</p>
                                 )}
                               </td>

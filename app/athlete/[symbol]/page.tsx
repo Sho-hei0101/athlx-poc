@@ -140,7 +140,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
   const linkedAthlete = state.currentUser?.linkedAthleteId
     ? state.athletes.find(a => a.id === state.currentUser?.linkedAthleteId)
     : null;
-  const isOwnAthlete = linkedAthlete?.symbol === athlete.symbol;
+  const isAthleteAccount = Boolean(linkedAthlete);
 
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
@@ -245,9 +245,9 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => openTrade('buy')}
-                  disabled={isOwnAthlete}
+                  disabled={isAthleteAccount}
                   className={`px-6 py-3 rounded-lg font-bold transition flex items-center justify-center space-x-2 ${
-                    isOwnAthlete
+                    isAthleteAccount
                       ? 'bg-slate-700 text-gray-400 cursor-not-allowed'
                       : 'bg-green-600 hover:bg-green-700'
                   }`}
@@ -257,9 +257,9 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
                 </button>
                 <button
                   onClick={() => openTrade('sell')}
-                  disabled={isOwnAthlete}
+                  disabled={isAthleteAccount}
                   className={`px-6 py-3 rounded-lg font-bold transition flex items-center justify-center space-x-2 ${
-                    isOwnAthlete
+                    isAthleteAccount
                       ? 'bg-slate-700 text-gray-400 cursor-not-allowed'
                       : 'bg-red-600 hover:bg-red-700'
                   }`}
@@ -267,7 +267,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
                   <TrendingDown size={20} />
                   <span>{t.releaseUnits}</span>
                 </button>
-                {isOwnAthlete && (
+                {isAthleteAccount && (
                   <p className="col-span-2 text-xs text-gray-400 mt-2">{t.cannotTradeOwnUnitsHint}</p>
                 )}
               </div>
