@@ -1,10 +1,26 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { AppState, User, Athlete, Trade, Portfolio, PendingAthlete, NewsItem } from './types';
+import { AppState, User, Athlete, Trade, Portfolio, PendingAthlete, NewsItem, Category, LastMatchInfo, NextMatchInfo } from './types';
 import { initialAthletes, initialNews } from './data';
+import { buildUpdateReason, computeEventScore } from './match';
 
 const STORAGE_KEY = 'athlx_state';
+const USERS_KEY = 'athlx_users';
+const CURRENT_USER_KEY = 'athlx_currentUser';
+const getDefaultUnitCost = (category?: Category) => {
+  switch (category) {
+    case 'Elite':
+      return 0.2;
+    case 'Pro':
+      return 0.1;
+    case 'Semi-pro':
+      return 0.05;
+    case 'Amateur':
+    default:
+      return 0.01;
+  }
+};
 
 const defaultState: AppState = {
   currentUser: null,
@@ -27,12 +43,20 @@ interface StoreContextType {
   submitAthleteRegistration: (data: Omit<PendingAthlete, 'id' | 'userId' | 'submittedAt' | 'status'>) => void;
   approveAthlete: (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => void;
   rejectAthlete: (pendingId: string, reason: string) => void;
+  submitMatchUpdate: (symbol: string, nextMatch?: NextMatchInfo, lastMatch?: LastMatchInfo, approved?: boolean) => void;
   getAthleteBySymbol: (symbol: string) => Athlete | undefined;
   updateAthletePrice: (symbol: string, newPrice: number) => void;
   setLanguage: (lang: 'EN' | 'ES') => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
+type StoredUser = User & { password: string };
+
+const normalizeStoredUser = (user: User): User => ({
+  ...user,
+  athlxBalance: typeof user.athlxBalance === 'number' ? user.athlxBalance : 10000,
+  linkedAthleteId: user.linkedAthleteId ?? undefined
+});
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AppState>(defaultState);
@@ -41,14 +65,44 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Load state from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
+    const storedUser = localStorage.getItem(CURRENT_USER_KEY);
+    const storedUsers = localStorage.getItem(USERS_KEY);
+    let persistedState = defaultState;
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        setState({ ...defaultState, ...parsed });
+        const hydratedAthletes = (parsed.athletes ?? defaultState.athletes).map((athlete: Athlete) => {
+          const activityIndex = athlete.activityIndex ?? athlete.currentPrice;
+          const derivedUnitCost = Math.max(
+            getDefaultUnitCost(athlete.category),
+            (activityIndex || 0) * 0.001
+          );
+          return {
+            ...athlete,
+            activityIndex,
+            unitCost: athlete.unitCost && athlete.unitCost > 0 ? athlete.unitCost : derivedUnitCost
+          };
+        });
+        persistedState = { ...defaultState, ...parsed, athletes: hydratedAthletes };
       } catch (e) {
         console.error('Failed to parse stored state', e);
       }
     }
+    if (storedUser) {
+      try {
+        const parsedUser = normalizeStoredUser(JSON.parse(storedUser));
+        if (storedUsers) {
+          const users = JSON.parse(storedUsers);
+          const matched = users.find((user: User) => user.id === parsedUser.id) ?? parsedUser;
+          persistedState = { ...persistedState, currentUser: normalizeStoredUser(matched) };
+        } else {
+          persistedState = { ...persistedState, currentUser: parsedUser };
+        }
+      } catch (e) {
+        console.error('Failed to parse stored user', e);
+      }
+    }
+    setState(persistedState);
     setIsHydrated(true);
   }, []);
 
@@ -61,26 +115,23 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const login = async (email: string, password: string): Promise<User> => {
     // Simple demo authentication
-    const storedUsers = localStorage.getItem('athlx_users');
-    let users: { email: string; password: string; name: string; id: string }[] = [];
+    const storedUsers = localStorage.getItem(USERS_KEY);
+    let users: StoredUser[] = [];
     
     if (storedUsers) {
       users = JSON.parse(storedUsers);
+      const normalizedUsers = users.map(user => ({ ...user, ...normalizeStoredUser(user) }));
+      localStorage.setItem(USERS_KEY, JSON.stringify(normalizedUsers));
+      users = normalizedUsers;
     }
     
     const user = users.find(u => u.email === email && u.password === password);
     
     if (user) {
-      const loggedInUser: User = {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        athlxBalance: 10000,
-        metaMaskAddress: undefined,
-        linkedAthleteId: undefined
-      };
+      const loggedInUser = normalizeStoredUser(user as User);
       
       setState(prev => ({ ...prev, currentUser: loggedInUser }));
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(loggedInUser));
       return loggedInUser;
     }
     
@@ -88,8 +139,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const signup = async (email: string, password: string, name: string): Promise<User> => {
-    const storedUsers = localStorage.getItem('athlx_users');
-    let users: { email: string; password: string; name: string; id: string }[] = [];
+    const storedUsers = localStorage.getItem(USERS_KEY);
+    let users: StoredUser[] = [];
     
     if (storedUsers) {
       users = JSON.parse(storedUsers);
@@ -99,31 +150,29 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       throw new Error('Email already exists');
     }
     
-    const newUser = {
+    const newUser: StoredUser = {
       id: `user_${Date.now()}`,
       email,
       password,
-      name
-    };
-    
-    users.push(newUser);
-    localStorage.setItem('athlx_users', JSON.stringify(users));
-    
-    const loggedInUser: User = {
-      id: newUser.id,
-      email: newUser.email,
-      name: newUser.name,
+      name,
       athlxBalance: 10000,
       metaMaskAddress: undefined,
       linkedAthleteId: undefined
     };
     
+    users.push(newUser);
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    
+    const loggedInUser: User = normalizeStoredUser(newUser);
+    
     setState(prev => ({ ...prev, currentUser: loggedInUser }));
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(loggedInUser));
     return loggedInUser;
   };
 
   const logout = () => {
     setState(prev => ({ ...prev, currentUser: null }));
+    localStorage.removeItem(CURRENT_USER_KEY);
   };
 
   const connectMetaMask = () => {
@@ -196,6 +245,21 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       trades: [...prev.trades, trade],
       athletes: updatedAthletes
     }));
+
+    const storedUsers = localStorage.getItem(USERS_KEY);
+    if (storedUsers) {
+      const users: StoredUser[] = JSON.parse(storedUsers);
+      const updatedUsers = users.map(user =>
+        user.id === state.currentUser!.id
+          ? { ...user, athlxBalance: newBalance }
+          : user
+      );
+      localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+    }
+    if (state.currentUser) {
+      const updatedCurrentUser = { ...state.currentUser, athlxBalance: newBalance };
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedCurrentUser));
+    }
   };
 
   const getPortfolio = (): Portfolio[] => {
@@ -288,7 +352,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       profileUrl: pending.profileUrl,
       highlightVideoUrl: pending.highlightVideoUrl,
       imageUrl: `https://i.pravatar.cc/300?img=${Math.floor(Math.random() * 70)}`,
-      unitCost: 0.01,
+      activityIndex: initialPrice,
+      unitCost: Math.max(
+        getDefaultUnitCost(finalCategory as Category),
+        initialPrice * 0.001
+      ),
       currentPrice: initialPrice,
       price24hChange: 0,
       price7dChange: 0,
@@ -310,6 +378,19 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         ? { ...prev.currentUser, linkedAthleteId: newAthlete.id }
         : prev.currentUser
     }));
+
+    const storedUsers = localStorage.getItem(USERS_KEY);
+    if (storedUsers) {
+      const users: StoredUser[] = JSON.parse(storedUsers);
+      const updatedUsers = users.map(user =>
+        user.id === pending.userId ? { ...user, linkedAthleteId: newAthlete.id } : user
+      );
+      localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+    }
+    if (state.currentUser?.id === pending.userId) {
+      const updatedCurrentUser = { ...state.currentUser, linkedAthleteId: newAthlete.id };
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedCurrentUser));
+    }
   };
 
   const rejectAthlete = (pendingId: string, reason: string) => {
@@ -331,9 +412,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       athletes: prev.athletes.map(a => {
         if (a.symbol === symbol) {
           const change24h = ((newPrice - a.currentPrice) / a.currentPrice) * 100;
+          const nextUnitCost = Math.max(getDefaultUnitCost(a.category), newPrice * 0.001);
           return {
             ...a,
             currentPrice: newPrice,
+            activityIndex: newPrice,
+            unitCost: nextUnitCost,
             price24hChange: change24h,
             priceHistory: [
               ...a.priceHistory,
@@ -342,6 +426,42 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           };
         }
         return a;
+      })
+    }));
+  };
+
+  const submitMatchUpdate = (symbol: string, nextMatch?: NextMatchInfo, lastMatch?: LastMatchInfo, approved: boolean = true) => {
+    const pendingKey = `athlx_match_updates_${symbol}`;
+    if (!approved) {
+      localStorage.setItem(pendingKey, JSON.stringify({ nextMatch, lastMatch }));
+      return;
+    }
+
+    localStorage.removeItem(pendingKey);
+
+    const score = computeEventScore(nextMatch, lastMatch);
+    setState(prev => ({
+      ...prev,
+      athletes: prev.athletes.map(athlete => {
+        if (athlete.symbol !== symbol) {
+          return athlete;
+        }
+        const activityIndex = Math.max(0, (athlete.activityIndex ?? athlete.currentPrice) + score);
+        const unitCost = Math.max(getDefaultUnitCost(athlete.category), activityIndex * 0.001);
+        return {
+          ...athlete,
+          nextMatch,
+          lastMatch,
+          lastUpdateReason: buildUpdateReason(nextMatch, lastMatch),
+          activityIndex,
+          currentPrice: activityIndex,
+          unitCost,
+          price24hChange: score,
+          priceHistory: [
+            ...athlete.priceHistory,
+            { time: new Date().toISOString(), price: activityIndex, volume: Math.floor(Math.random() * 10000) }
+          ].slice(-30)
+        };
       })
     }));
   };
@@ -365,6 +485,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       rejectAthlete,
       getAthleteBySymbol,
       updateAthletePrice,
+      submitMatchUpdate,
       setLanguage
     }}>
       {children}

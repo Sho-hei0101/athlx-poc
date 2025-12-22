@@ -5,6 +5,7 @@ import { useStore } from '@/lib/store';
 import { Athlete } from '@/lib/types';
 import { X, TrendingUp, TrendingDown } from 'lucide-react';
 import { translations } from '@/lib/translations';
+import { formatNumber } from '@/lib/format';
 
 interface TradeModalProps {
   isOpen: boolean;
@@ -112,7 +113,7 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
         <div className="bg-slate-700/50 rounded-lg p-4 mb-6 space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-gray-400">{t.unitCostLabel}:</span>
-            <span className="font-bold price-display">{athlete.unitCost.toLocaleString()} tATHLX</span>
+            <span className="font-bold price-display">{formatNumber(athlete.unitCost)} tATHLX</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-400">{t.quantity}:</span>
@@ -120,16 +121,16 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
           </div>
           <div className="border-t border-slate-600 pt-3 flex justify-between">
             <span className="text-gray-400">{t.demoSubtotalLabel}:</span>
-            <span className="font-bold price-display">{subtotal.toLocaleString()} tATHLX</span>
+            <span className="font-bold price-display">{formatNumber(subtotal)} tATHLX</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-400">{t.demoFeeLabel}:</span>
-            <span className="font-semibold text-orange-400 price-display">{fee.toLocaleString()} tATHLX</span>
+            <span className="font-semibold text-orange-400 price-display">{formatNumber(fee)} tATHLX</span>
           </div>
           <div className="border-t border-slate-600 pt-3 flex justify-between text-lg">
             <span className="font-bold">{totalLabel}:</span>
             <span className={`font-bold price-display ${mode === 'buy' ? 'text-red-400' : 'text-green-400'}`}>
-              {total.toLocaleString()} tATHLX
+              {formatNumber(total)} tATHLX
             </span>
           </div>
         </div>
@@ -146,7 +147,7 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
 
         {success && (
           <div className="p-3 bg-green-500/20 border border-green-500 rounded-lg text-sm text-green-200 mb-4">
-            {t.actionSuccessPrefix} {actionVerb} {quantity} {t.unitsLabel} {t.actionSuccessFor} {total.toLocaleString()} tATHLX.
+            {t.actionSuccessPrefix} {actionVerb} {quantity} {t.unitsLabel} {t.actionSuccessFor} {formatNumber(total)} tATHLX.
           </div>
         )}
 
@@ -173,7 +174,7 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
 
         {state.currentUser && (
           <div className="mt-4 text-center text-sm text-gray-400">
-            {t.yourDemoBalance}: <span className="font-bold price-display text-white">{state.currentUser.athlxBalance.toLocaleString()} tATHLX</span>
+            {t.yourDemoBalance}: <span className="font-bold price-display text-white">{formatNumber(state.currentUser.athlxBalance)} tATHLX</span>
           </div>
         )}
       </div>
