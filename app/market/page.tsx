@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Search, Filter } from 'lucide-react';
 import { Sport, Category } from '@/lib/types';
 import { translations } from '@/lib/translations';
+import { formatNumber } from '@/lib/format';
 
 const allSports: Sport[] = [
   'Football', 'Basketball', 'Athletics', 'Swimming', 'Tennis', 'Gymnastics',
@@ -231,7 +232,7 @@ export default function MarketPage() {
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm text-gray-400">{t.activityIndexLabel}</span>
                   <span className="text-xl font-bold price-display">
-                    {athlete.currentPrice.toLocaleString()} pts
+                    {formatNumber(athlete.currentPrice)} pts
                   </span>
                 </div>
                 
@@ -251,7 +252,7 @@ export default function MarketPage() {
                 </div>
                 
                 <div className="mt-2 text-xs text-gray-400">
-                  {t.demoCreditsFlowShort} {athlete.tradingVolume.toLocaleString()} tATHLX • {athlete.holders} {t.participantsLower}
+                  {t.demoCreditsFlowShort} {formatNumber(athlete.tradingVolume)} tATHLX • {athlete.holders} {t.participantsLower}
                 </div>
               </div>
 
