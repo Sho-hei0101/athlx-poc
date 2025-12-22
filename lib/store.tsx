@@ -7,6 +7,7 @@ import { initialAthletes, initialNews } from './data';
 const STORAGE_KEY = 'athlx_state';
 const USERS_KEY = 'athlx_users';
 const CURRENT_USER_KEY = 'athlx_currentUser';
+
 const getDefaultUnitCost = (category?: Category) => {
   switch (category) {
     case 'Elite':
@@ -58,6 +59,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const stored = localStorage.getItem(STORAGE_KEY);
     const storedUser = localStorage.getItem(CURRENT_USER_KEY);
     let persistedState = defaultState;
+
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
@@ -72,6 +74,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         console.error('Failed to parse stored state', e);
       }
     }
+
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
@@ -80,6 +83,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         console.error('Failed to parse stored user', e);
       }
     }
+
     setState(persistedState);
     setIsHydrated(true);
   }, []);
@@ -373,7 +377,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             priceHistory: [
               ...a.priceHistory,
               { time: new Date().toISOString(), price: newPrice, volume: Math.floor(Math.random() * 10000) }
-            ].slice(-30)
+            ]
           };
         }
         return a;
@@ -409,7 +413,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
 export const useStore = () => {
   const context = useContext(StoreContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useStore must be used within StoreProvider');
   }
   return context;
