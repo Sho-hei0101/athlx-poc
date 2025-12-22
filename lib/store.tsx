@@ -5,6 +5,9 @@ import { AppState, User, Athlete, Trade, Portfolio, PendingAthlete, NewsItem, Ca
 import { initialAthletes, initialNews } from './data';
 
 const STORAGE_KEY = 'athlx_state';
+const USERS_KEY = 'athlx_users';
+const CURRENT_USER_KEY = 'athlx_currentUser';
+
 const getDefaultUnitCost = (category?: Category) => {
   switch (category) {
     case 'Elite':
@@ -54,6 +57,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Load state from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
+    const storedUser = localStorage.getItem(CURRENT_USER_KEY);
+    let persistedState = defaultState;
+
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
@@ -63,11 +69,22 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             ? athlete.unitCost
             : getDefaultUnitCost(athlete.category)
         }));
-        setState({ ...defaultState, ...parsed, athletes: hydratedAthletes });
+        persistedState = { ...defaultState, ...parsed, athletes: hydratedAthletes };
       } catch (e) {
         console.error('Failed to parse stored state', e);
       }
     }
+
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        persistedState = { ...persistedState, currentUser: parsedUser };
+      } catch (e) {
+        console.error('Failed to parse stored user', e);
+      }
+    }
+
+    setState(persistedState);
     setIsHydrated(true);
   }, []);
 
@@ -80,7 +97,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const login = async (email: string, password: string): Promise<User> => {
     // Simple demo authentication
-    const storedUsers = localStorage.getItem('athlx_users');
+    const storedUsers = localStorage.getItem(USERS_KEY);
     let users: { email: string; password: string; name: string; id: string }[] = [];
     
     if (storedUsers) {
@@ -100,6 +117,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       };
       
       setState(prev => ({ ...prev, currentUser: loggedInUser }));
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(loggedInUser));
       return loggedInUser;
     }
     
@@ -107,7 +125,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const signup = async (email: string, password: string, name: string): Promise<User> => {
-    const storedUsers = localStorage.getItem('athlx_users');
+    const storedUsers = localStorage.getItem(USERS_KEY);
     let users: { email: string; password: string; name: string; id: string }[] = [];
     
     if (storedUsers) {
@@ -126,7 +144,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
     
     users.push(newUser);
-    localStorage.setItem('athlx_users', JSON.stringify(users));
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
     
     const loggedInUser: User = {
       id: newUser.id,
@@ -138,11 +156,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
     
     setState(prev => ({ ...prev, currentUser: loggedInUser }));
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(loggedInUser));
     return loggedInUser;
   };
 
   const logout = () => {
     setState(prev => ({ ...prev, currentUser: null }));
+    localStorage.removeItem(CURRENT_USER_KEY);
   };
 
   const connectMetaMask = () => {
@@ -357,7 +377,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             priceHistory: [
               ...a.priceHistory,
               { time: new Date().toISOString(), price: newPrice, volume: Math.floor(Math.random() * 10000) }
-            ].slice(-30)
+            ]
           };
         }
         return a;
@@ -393,7 +413,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
 export const useStore = () => {
   const context = useContext(StoreContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useStore must be used within StoreProvider');
   }
   return context;
