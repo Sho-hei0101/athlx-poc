@@ -137,6 +137,10 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
   };
 
   const activityIndex = athlete.activityIndex ?? athlete.currentPrice;
+  const linkedAthlete = state.currentUser?.linkedAthleteId
+    ? state.athletes.find(a => a.id === state.currentUser?.linkedAthleteId)
+    : null;
+  const isOwnAthlete = linkedAthlete?.symbol === athlete.symbol;
 
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
@@ -241,18 +245,31 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => openTrade('buy')}
-                  className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition flex items-center justify-center space-x-2"
+                  disabled={isOwnAthlete}
+                  className={`px-6 py-3 rounded-lg font-bold transition flex items-center justify-center space-x-2 ${
+                    isOwnAthlete
+                      ? 'bg-slate-700 text-gray-400 cursor-not-allowed'
+                      : 'bg-green-600 hover:bg-green-700'
+                  }`}
                 >
                   <TrendingUp size={20} />
                   <span>{t.acquireUnits}</span>
                 </button>
                 <button
                   onClick={() => openTrade('sell')}
-                  className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-bold transition flex items-center justify-center space-x-2"
+                  disabled={isOwnAthlete}
+                  className={`px-6 py-3 rounded-lg font-bold transition flex items-center justify-center space-x-2 ${
+                    isOwnAthlete
+                      ? 'bg-slate-700 text-gray-400 cursor-not-allowed'
+                      : 'bg-red-600 hover:bg-red-700'
+                  }`}
                 >
                   <TrendingDown size={20} />
                   <span>{t.releaseUnits}</span>
                 </button>
+                {isOwnAthlete && (
+                  <p className="col-span-2 text-xs text-gray-400 mt-2">{t.cannotTradeOwnUnitsHint}</p>
+                )}
               </div>
             </div>
           </div>

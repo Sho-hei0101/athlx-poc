@@ -127,6 +127,7 @@ export interface PendingAthlete {
   bio: string;
   profileUrl: string;
   highlightVideoUrl: string;
+  imageDataUrl?: string;
   submittedAt: string;
   status: 'pending' | 'approved' | 'rejected';
   rejectionReason?: string;
@@ -143,11 +144,31 @@ export interface NewsItem {
   relatedAthleteSymbol?: string;
 }
 
+export interface AthleteUpdate {
+  id: string;
+  athleteSymbol: string;
+  matchDate: string;
+  opponent: string;
+  homeAway: MatchHomeAway;
+  minutesPlayed: number;
+  result: MatchResult;
+  goals: number;
+  assists: number;
+  injury: boolean;
+  notes: string;
+  submittedAt: string;
+  baseDelta: number;
+  newUnitCost: number;
+  newActivityIndex: number;
+}
+
 export interface AppState {
   currentUser: User | null;
   athletes: Athlete[];
   pendingAthletes: PendingAthlete[];
   trades: Trade[];
+  athleteUpdates: AthleteUpdate[];
   news: NewsItem[];
   language: 'EN' | 'ES';
+  isAdmin: boolean;
 }

@@ -12,7 +12,7 @@ interface AdminPasswordModalProps {
 }
 
 export default function AdminPasswordModal({ isOpen, onClose }: AdminPasswordModalProps) {
-  const { state } = useStore();
+  const { state, setAdminAccess } = useStore();
   const t = translations[state.language];
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -27,6 +27,7 @@ export default function AdminPasswordModal({ isOpen, onClose }: AdminPasswordMod
     e.preventDefault();
     
     if (password === ADMIN_PIN) {
+      setAdminAccess(true);
       onClose();
       router.push('/admin');
       setPassword('');

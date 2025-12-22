@@ -6,15 +6,38 @@ import Link from 'next/link';
 import { TrendingUp, TrendingDown, DollarSign, Users, Activity } from 'lucide-react';
 import TradeModal from '@/components/TradeModal';
 import { translations } from '@/lib/translations';
-import { Category } from '@/lib/types';
+import { Category, MatchHomeAway, MatchResult } from '@/lib/types';
 import { formatNumber } from '@/lib/format';
 
 export default function MyPage() {
-  const { state, getPortfolio } = useStore();
+  const { state, getPortfolio, submitAthletePerformanceUpdate } = useStore();
   const t = translations[state.language];
   const [activeTab, setActiveTab] = useState<'fan' | 'athlete'>('fan');
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [selectedAthlete, setSelectedAthlete] = useState<any>(null);
+  const [updateMessage, setUpdateMessage] = useState('');
+  const [updateError, setUpdateError] = useState('');
+  const [updateForm, setUpdateForm] = useState<{
+    matchDate: string;
+    opponent: string;
+    homeAway: MatchHomeAway;
+    minutesPlayed: number;
+    result: MatchResult;
+    goals: number;
+    assists: number;
+    injury: boolean;
+    notes: string;
+  }>({
+    matchDate: '',
+    opponent: '',
+    homeAway: 'Home',
+    minutesPlayed: 90,
+    result: 'Win',
+    goals: 0,
+    assists: 0,
+    injury: false,
+    notes: ''
+  });
 
   useEffect(() => {
     if (!state.currentUser) {
@@ -45,6 +68,10 @@ export default function MyPage() {
   const linkedAthlete = state.currentUser.linkedAthleteId
     ? state.athletes.find(a => a.id === state.currentUser!.linkedAthleteId)
     : null;
+  const linkedAthleteSymbol = linkedAthlete?.symbol;
+  const recentUpdates = linkedAthlete
+    ? state.athleteUpdates.filter(update => update.athleteSymbol === linkedAthlete.symbol).slice(-5).reverse()
+    : [];
 
   const openSellModal = (portfolio: any) => {
     const athlete = state.athletes.find(a => a.symbol === portfolio.athleteSymbol);
@@ -52,6 +79,36 @@ export default function MyPage() {
       setSelectedAthlete(athlete);
       setTradeModalOpen(true);
     }
+  };
+
+  const handleUpdateSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!linkedAthlete) return;
+    setUpdateError('');
+    setUpdateMessage('');
+
+    if (!updateForm.matchDate || !updateForm.opponent || !updateForm.homeAway || !updateForm.result) {
+      setUpdateError(t.updateRequiredFields);
+      return;
+    }
+
+    const minutesPlayed = Math.max(0, Math.min(90, Number(updateForm.minutesPlayed) || 0));
+    const goals = Math.max(0, Math.min(10, Number(updateForm.goals) || 0));
+    const assists = Math.max(0, Math.min(10, Number(updateForm.assists) || 0));
+
+    submitAthletePerformanceUpdate({
+      athleteSymbol: linkedAthlete.symbol,
+      matchDate: updateForm.matchDate,
+      opponent: updateForm.opponent.trim(),
+      homeAway: updateForm.homeAway,
+      minutesPlayed,
+      result: updateForm.result,
+      goals,
+      assists,
+      injury: updateForm.injury,
+      notes: updateForm.notes.trim()
+    });
+    setUpdateMessage(t.athleteUpdateSubmitted);
   };
 
   return (
@@ -160,10 +217,18 @@ export default function MyPage() {
                               <td className="text-right py-3 px-4">
                                 <button
                                   onClick={() => openSellModal(p)}
-                                  className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-semibold transition"
+                                  disabled={linkedAthleteSymbol === p.athleteSymbol}
+                                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                                    linkedAthleteSymbol === p.athleteSymbol
+                                      ? 'bg-slate-700 text-gray-400 cursor-not-allowed'
+                                      : 'bg-red-600 hover:bg-red-700'
+                                  }`}
                                 >
                                   {t.releaseUnits}
                                 </button>
+                                {linkedAthleteSymbol === p.athleteSymbol && (
+                                  <p className="text-xs text-gray-400 mt-1">{t.cannotTradeOwnUnitsHint}</p>
+                                )}
                               </td>
                             </tr>
                           );
@@ -287,6 +352,158 @@ export default function MyPage() {
                     <p className="mt-4 text-sm text-gray-400">
                       {t.realTimeSupportNote}
                     </p>
+                  </div>
+
+                  <div className="glass-effect rounded-xl p-6">
+                    <h2 className="text-2xl font-bold mb-2">{t.athleteUpdateTitle}</h2>
+                    <p className="text-sm text-gray-400 mb-6">{t.athleteUpdateSubtitle}</p>
+                    <form onSubmit={handleUpdateSubmit} className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">{t.matchDateLabel}</label>
+                          <input
+                            type="date"
+                            value={updateForm.matchDate}
+                            onChange={(event) => setUpdateForm(prev => ({ ...prev, matchDate: event.target.value }))}
+                            className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">{t.opponentLabel}</label>
+                          <input
+                            type="text"
+                            value={updateForm.opponent}
+                            onChange={(event) => setUpdateForm(prev => ({ ...prev, opponent: event.target.value }))}
+                            className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">{t.homeAwayLabel}</label>
+                          <select
+                            value={updateForm.homeAway}
+                            onChange={(event) => setUpdateForm(prev => ({ ...prev, homeAway: event.target.value as MatchHomeAway }))}
+                            className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                            required
+                          >
+                            <option value="Home">{t.homeLabel}</option>
+                            <option value="Away">{t.awayLabel}</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">{t.minutesPlayedLabel}</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="90"
+                            value={updateForm.minutesPlayed}
+                            onChange={(event) => setUpdateForm(prev => ({ ...prev, minutesPlayed: Number(event.target.value) }))}
+                            className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">{t.resultLabel}</label>
+                          <select
+                            value={updateForm.result}
+                            onChange={(event) => setUpdateForm(prev => ({ ...prev, result: event.target.value as MatchResult }))}
+                            className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                            required
+                          >
+                            <option value="Win">{t.resultWin}</option>
+                            <option value="Draw">{t.resultDraw}</option>
+                            <option value="Loss">{t.resultLoss}</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">{t.goalsLabel}</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="10"
+                            value={updateForm.goals}
+                            onChange={(event) => setUpdateForm(prev => ({ ...prev, goals: Number(event.target.value) }))}
+                            className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">{t.assistsLabel}</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="10"
+                            value={updateForm.assists}
+                            onChange={(event) => setUpdateForm(prev => ({ ...prev, assists: Number(event.target.value) }))}
+                            className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                          />
+                        </div>
+                        <div className="flex items-center space-x-2 text-sm text-gray-300 mt-6">
+                          <input
+                            type="checkbox"
+                            checked={updateForm.injury}
+                            onChange={(event) => setUpdateForm(prev => ({ ...prev, injury: event.target.checked }))}
+                          />
+                          <span>{t.injuryLabel}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">{t.notesLabel}</label>
+                        <textarea
+                          value={updateForm.notes}
+                          onChange={(event) => setUpdateForm(prev => ({ ...prev, notes: event.target.value }))}
+                          className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg min-h-[120px]"
+                        />
+                      </div>
+                      {updateError && (
+                        <div className="p-3 bg-red-500/20 border border-red-500 rounded-lg text-sm text-red-200">
+                          {updateError}
+                        </div>
+                      )}
+                      {updateMessage && (
+                        <div className="p-3 bg-green-500/20 border border-green-500 rounded-lg text-sm text-green-200">
+                          {updateMessage}
+                        </div>
+                      )}
+                      <button
+                        type="submit"
+                        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition"
+                      >
+                        {t.submitAthleteUpdate}
+                      </button>
+                    </form>
+                    <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-400 mb-1">{t.unitCostLabel}</p>
+                        <p className="text-xl font-bold price-display">{formatNumber(linkedAthlete.unitCost)} tATHLX</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400 mb-1">{t.activityIndexLabel}</p>
+                        <p className="text-xl font-bold">{formatNumber(linkedAthlete.activityIndex)} {t.pointsUnit}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400 mb-1">{t.lastUpdateReasonLabel}</p>
+                        <p className="text-sm text-gray-300">{linkedAthlete.lastUpdateReason ?? t.noUpdatesYet}</p>
+                      </div>
+                    </div>
+                    {recentUpdates.length > 0 && (
+                      <div className="mt-6">
+                        <h3 className="text-lg font-semibold mb-3">{t.recentUpdates}</h3>
+                        <div className="space-y-2 text-sm text-gray-300">
+                          {recentUpdates.map(update => (
+                            <div key={update.id} className="bg-slate-700/50 rounded-lg p-3">
+                              <div className="flex justify-between">
+                                <span>{update.matchDate} · {update.opponent}</span>
+                                <span className="text-gray-400">{new Date(update.submittedAt).toLocaleDateString()}</span>
+                              </div>
+                              {update.notes && (
+                                <p className="text-xs text-gray-400 mt-1">{update.notes}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="glass-effect rounded-xl p-6">

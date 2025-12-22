@@ -7,7 +7,7 @@ import { translations } from '@/lib/translations';
 import { Category } from '@/lib/types';
 
 export default function AdminPage() {
-  const { state, approveAthlete, rejectAthlete } = useStore();
+  const { state, approveAthlete, rejectAthlete, resetDemoData } = useStore();
   const t = translations[state.language];
   const [selectedPending, setSelectedPending] = useState<string | null>(null);
   const [finalCategory, setFinalCategory] = useState('Amateur');
@@ -15,6 +15,9 @@ export default function AdminPage() {
   const [tokenSymbol, setTokenSymbol] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [view, setView] = useState<'dashboard' | 'pending' | 'review'>('dashboard');
+  const [resetConfirm, setResetConfirm] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState('');
 
   const pendingApplications = state.pendingAthletes.filter(p => p.status === 'pending');
   const approvedCount = state.pendingAthletes.filter(p => p.status === 'approved').length;
@@ -95,6 +98,22 @@ export default function AdminPage() {
       setView('pending');
       setSelectedPending(null);
       setRejectionReason('');
+    }
+  };
+
+  const handleReset = () => {
+    setResetError('');
+    setResetSuccess('');
+    if (resetConfirm !== 'RESET') {
+      setResetError(t.resetConfirmError);
+      return;
+    }
+    try {
+      resetDemoData();
+      setResetSuccess(t.resetDemoDataSuccess);
+      setResetConfirm('');
+    } catch (error: any) {
+      setResetError(error.message ?? t.adminOnly);
     }
   };
 
@@ -199,6 +218,38 @@ export default function AdminPage() {
                 <p className="text-gray-400">{state.athletes.length} {t.athletesInDirectory}</p>
               </div>
             </div>
+
+            {state.isAdmin && (
+              <div className="glass-effect rounded-xl p-6">
+                <h2 className="text-xl font-bold mb-2">{t.resetDemoData}</h2>
+                <p className="text-sm text-gray-400 mb-4">{t.resetDemoDataWarning}</p>
+                <div className="flex flex-col md:flex-row gap-3">
+                  <input
+                    type="text"
+                    value={resetConfirm}
+                    onChange={(event) => setResetConfirm(event.target.value)}
+                    placeholder={t.resetConfirmPlaceholder}
+                    className="flex-1 px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                  />
+                  <button
+                    onClick={handleReset}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-semibold transition"
+                  >
+                    {t.resetDemoData}
+                  </button>
+                </div>
+                {resetError && (
+                  <div className="mt-3 p-3 bg-red-500/20 border border-red-500 rounded-lg text-sm text-red-200">
+                    {resetError}
+                  </div>
+                )}
+                {resetSuccess && (
+                  <div className="mt-3 p-3 bg-green-500/20 border border-green-500 rounded-lg text-sm text-green-200">
+                    {resetSuccess}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
