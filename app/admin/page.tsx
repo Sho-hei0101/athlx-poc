@@ -5,9 +5,11 @@ import { useState } from 'react';
 import { Users, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { translations } from '@/lib/translations';
 import { Category } from '@/lib/types';
+import { EVENTS_KEY, logEvent } from '@/lib/analytics';
+import { getBrowserStorage } from '@/lib/storage';
 
 export default function AdminPage() {
-  const { state, approveAthlete, rejectAthlete } = useStore();
+  const { state, approveAthlete, rejectAthlete, resetDemoData } = useStore();
   const t = translations[state.language];
   const [selectedPending, setSelectedPending] = useState<string | null>(null);
   const [finalCategory, setFinalCategory] = useState('Amateur');
@@ -15,6 +17,14 @@ export default function AdminPage() {
   const [tokenSymbol, setTokenSymbol] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [view, setView] = useState<'dashboard' | 'pending' | 'review'>('dashboard');
+  const [resetConfirm, setResetConfirm] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState('');
+  const [exportMessage, setExportMessage] = useState('');
+  const [importMessage, setImportMessage] = useState('');
+  const [importError, setImportError] = useState('');
+  const [importConfirm, setImportConfirm] = useState('');
+  const [importFile, setImportFile] = useState<File | null>(null);
 
   const pendingApplications = state.pendingAthletes.filter(p => p.status === 'pending');
   const approvedCount = state.pendingAthletes.filter(p => p.status === 'approved').length;
@@ -95,6 +105,122 @@ export default function AdminPage() {
       setView('pending');
       setSelectedPending(null);
       setRejectionReason('');
+    }
+  };
+
+  const handleReset = () => {
+    setResetError('');
+    setResetSuccess('');
+    if (resetConfirm !== 'RESET') {
+      setResetError(t.resetConfirmError);
+      return;
+    }
+    try {
+      resetDemoData();
+      setResetSuccess(t.resetDemoDataSuccess);
+      setResetConfirm('');
+      window.location.reload();
+    } catch (error: any) {
+      setResetError(error.message ?? t.adminOnly);
+    }
+  };
+
+  const ensureAdmin = () => {
+    if (!state.isAdmin) {
+      const error = new Error(t.adminOnly);
+      setImportError(error.message);
+      setResetError(error.message);
+      throw error;
+    }
+  };
+
+  const handleExport = () => {
+    ensureAdmin();
+    setExportMessage('');
+    const storage = getBrowserStorage();
+    if (!storage) {
+      setExportMessage(t.importFailed);
+      return;
+    }
+    const requiredKeys = ['athlx_state', 'athlx_users', 'athlx_currentUser', EVENTS_KEY];
+    const exportKeys = Array.from(new Set([
+      ...requiredKeys,
+      ...Object.keys(storage).filter(key => key.startsWith('athlx_'))
+    ]));
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      version: 1,
+      origin: 'AthleteXchange demo',
+      localStorage: exportKeys.reduce<Record<string, string | null>>((acc, key) => {
+        acc[key] = storage.getItem(key);
+        return acc;
+      }, {})
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `athlx-demo-export-${Date.now()}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setExportMessage(t.exportSuccess);
+    logEvent('export', { userId: state.currentUser?.id });
+  };
+
+  const handleImport = async () => {
+    ensureAdmin();
+    setImportError('');
+    setImportMessage('');
+    const storage = getBrowserStorage();
+    if (!storage) {
+      setImportError(t.importFailed);
+      return;
+    }
+    if (importConfirm !== 'IMPORT') {
+      setImportError(t.importConfirmError);
+      return;
+    }
+    if (!importFile) {
+      setImportError(t.importFailed);
+      return;
+    }
+    let backup: Record<string, string | null> = {};
+    try {
+      const text = await importFile.text();
+      const parsed = JSON.parse(text);
+      if (!parsed?.localStorage || typeof parsed.localStorage !== 'object') {
+        setImportError(t.importFailed);
+        return;
+      }
+      const requiredKeys = ['athlx_state', 'athlx_users', 'athlx_currentUser', EVENTS_KEY];
+      const hasRequired = requiredKeys.every(key => key in parsed.localStorage);
+      if (!hasRequired) {
+        setImportError(t.importFailed);
+        return;
+      }
+      backup = Object.keys(parsed.localStorage).reduce<Record<string, string | null>>((acc, key) => {
+        acc[key] = storage.getItem(key);
+        return acc;
+      }, {});
+      Object.entries(parsed.localStorage as Record<string, string | null>).forEach(([key, value]) => {
+        if (value === null || value === undefined) {
+          storage.removeItem(key);
+        } else {
+          storage.setItem(key, value);
+        }
+      });
+      logEvent('import', { userId: state.currentUser?.id });
+      setImportMessage(t.importSuccess);
+      window.location.reload();
+    } catch (error) {
+      Object.entries(backup).forEach(([key, value]) => {
+        if (value === null || value === undefined) {
+          storage.removeItem(key);
+        } else {
+          storage.setItem(key, value);
+        }
+      });
+      setImportError(t.importFailed);
     }
   };
 
@@ -199,6 +325,87 @@ export default function AdminPage() {
                 <p className="text-gray-400">{state.athletes.length} {t.athletesInDirectory}</p>
               </div>
             </div>
+
+            {state.isAdmin && (
+              <div className="glass-effect rounded-xl p-6">
+                <h2 className="text-xl font-bold mb-2">{t.resetDemoData}</h2>
+                <p className="text-sm text-gray-400 mb-4">{t.resetDemoDataWarning}</p>
+                <div className="flex flex-col md:flex-row gap-3">
+                  <input
+                    type="text"
+                    value={resetConfirm}
+                    onChange={(event) => setResetConfirm(event.target.value)}
+                    placeholder={t.resetConfirmPlaceholder}
+                    className="flex-1 px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                  />
+                  <button
+                    onClick={handleReset}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-semibold transition"
+                  >
+                    {t.resetDemoData}
+                  </button>
+                </div>
+                {resetError && (
+                  <div className="mt-3 p-3 bg-red-500/20 border border-red-500 rounded-lg text-sm text-red-200">
+                    {resetError}
+                  </div>
+                )}
+                {resetSuccess && (
+                  <div className="mt-3 p-3 bg-green-500/20 border border-green-500 rounded-lg text-sm text-green-200">
+                    {resetSuccess}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {state.isAdmin && (
+              <div className="glass-effect rounded-xl p-6">
+                <h2 className="text-xl font-bold mb-4">{t.adminDataTools}</h2>
+                <div className="flex flex-col md:flex-row gap-3 mb-4">
+                  <button
+                    onClick={handleExport}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition"
+                  >
+                    {t.exportJson}
+                  </button>
+                  {exportMessage && (
+                    <span className="text-sm text-green-300">{exportMessage}</span>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-400">{t.importConfirmWarning}</p>
+                  <input
+                    type="file"
+                    accept="application/json"
+                    onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                  />
+                  <input
+                    type="text"
+                    value={importConfirm}
+                    onChange={(event) => setImportConfirm(event.target.value)}
+                    placeholder={t.importConfirmPlaceholder}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                  />
+                  <button
+                    onClick={handleImport}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition"
+                  >
+                    {t.importJson}
+                  </button>
+                  {importError && (
+                    <div className="p-3 bg-red-500/20 border border-red-500 rounded-lg text-sm text-red-200">
+                      {importError}
+                    </div>
+                  )}
+                  {importMessage && (
+                    <div className="p-3 bg-green-500/20 border border-green-500 rounded-lg text-sm text-green-200">
+                      {importMessage}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -6,6 +6,7 @@ import { Athlete } from '@/lib/types';
 import { X, TrendingUp, TrendingDown } from 'lucide-react';
 import { translations } from '@/lib/translations';
 import { formatNumber } from '@/lib/format';
+import { calcTradingFee } from '@/lib/fees';
 
 interface TradeModalProps {
   isOpen: boolean;
@@ -22,11 +23,12 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
   const [error, setError] = useState('');
 
   const t = translations[state.language];
+  const isAthleteAccount = Boolean(state.currentUser?.linkedAthleteId);
 
   if (!isOpen) return null;
 
   const subtotal = quantity * athlete.unitCost;
-  const fee = subtotal * 0.05;
+  const fee = calcTradingFee(subtotal);
   const total = mode === 'buy' ? subtotal + fee : subtotal - fee;
   const actionLabel = mode === 'buy' ? t.acquireUnits : t.releaseUnits;
   const actionVerb = mode === 'buy' ? t.acquiredVerb : t.releasedVerb;
@@ -36,6 +38,11 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
     try {
       if (!state.currentUser) {
         setError(t.pleaseLogin);
+        return;
+      }
+
+      if (isAthleteAccount) {
+        setError(t.cannotTradeOwnUnits);
         return;
       }
 
@@ -161,7 +168,7 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
           </button>
           <button
             onClick={handleConfirm}
-            disabled={success}
+            disabled={success || isAthleteAccount}
             className={`flex-1 px-6 py-3 rounded-lg font-semibold transition ${
               mode === 'buy'
                 ? 'bg-green-600 hover:bg-green-700'
@@ -171,6 +178,12 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
             {t.confirm} {actionLabel}
           </button>
         </div>
+
+        {isAthleteAccount && (
+          <div className="mt-4 text-center text-xs text-gray-400">
+            {t.cannotTradeOwnUnitsHint}
+          </div>
+        )}
 
         {state.currentUser && (
           <div className="mt-4 text-center text-sm text-gray-400">
