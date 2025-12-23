@@ -125,8 +125,6 @@ export default function MyPage() {
       });
 
       setUpdateMessage(t.athleteUpdateSubmitted);
-      // 任意：フォームを軽くリセットしたい場合（不要なら消してOK）
-      // setUpdateForm(prev => ({ ...prev, notes: '' }));
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : undefined;
       setUpdateError(message ?? t.updateFailed);
@@ -229,7 +227,9 @@ export default function MyPage() {
                           const displayUnitCost = currentPrice > 0 ? currentPrice : fallbackUnitCost;
 
                           const pnl = (displayUnitCost - avgBuyPrice) * quantity;
-                          const pnlPercent = avgBuyPrice ? ((displayUnitCost - avgBuyPrice) / avgBuyPrice) * 100 : 0;
+                          const pnlPercent = avgBuyPrice
+                            ? ((displayUnitCost - avgBuyPrice) / avgBuyPrice) * 100
+                            : 0;
 
                           return (
                             <tr
@@ -247,9 +247,15 @@ export default function MyPage() {
 
                               <td className="text-right py-3 px-4 font-semibold">{quantity}</td>
                               <td className="text-right py-3 px-4 price-display">{formatNumber(avgBuyPrice)}</td>
-                              <td className="text-right py-3 px-4 price-display">{formatNumber(displayUnitCost)}</td>
+                              <td className="text-right py-3 px-4 price-display">
+                                {formatNumber(displayUnitCost)}
+                              </td>
 
-                              <td className={`text-right py-3 px-4 font-bold ${pnl >= 0 ? 'price-up' : 'price-down'}`}>
+                              <td
+                                className={`text-right py-3 px-4 font-bold ${
+                                  pnl >= 0 ? 'price-up' : 'price-down'
+                                }`}
+                              >
                                 {pnl >= 0 ? '+' : ''}
                                 {formatNumber(pnl)} ({pnlPercent >= 0 ? '+' : ''}
                                 {pnlPercent.toFixed(1)}%)
@@ -267,7 +273,6 @@ export default function MyPage() {
                                 >
                                   {t.releaseUnits}
                                 </button>
-
                                 {isAthleteAccount && (
                                   <p className="text-xs text-gray-400 mt-1">{t.cannotTradeOwnUnitsHint}</p>
                                 )}
@@ -307,7 +312,8 @@ export default function MyPage() {
                           )}
                           <div>
                             <p className="font-semibold">
-                              {tr.type === 'buy' ? t.acquireUnits : t.releaseUnits} {tr.quantity} {tr.athleteSymbol}
+                              {tr.type === 'buy' ? t.acquireUnits : t.releaseUnits} {tr.quantity}{' '}
+                              {tr.athleteSymbol}
                             </p>
                             <p className="text-sm text-gray-400">{new Date(tr.timestamp).toLocaleString()}</p>
                           </div>
@@ -370,7 +376,9 @@ export default function MyPage() {
 
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.unitCostLabel}</p>
-                        <p className="text-xl font-bold price-display">{formatNumber(linkedAthlete.unitCost)} tATHLX</p>
+                        <p className="text-xl font-bold price-display">
+                          {formatNumber(linkedAthlete.unitCost)} tATHLX
+                        </p>
                       </div>
 
                       <div>
@@ -473,7 +481,10 @@ export default function MyPage() {
                             max="90"
                             value={updateForm.minutesPlayed}
                             onChange={(event) =>
-                              setUpdateForm((prev) => ({ ...prev, minutesPlayed: Number(event.target.value) }))
+                              setUpdateForm((prev) => ({
+                                ...prev,
+                                minutesPlayed: Number(event.target.value),
+                              }))
                             }
                             className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
                             required
@@ -570,7 +581,9 @@ export default function MyPage() {
                     <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.unitCostLabel}</p>
-                        <p className="text-xl font-bold price-display">{formatNumber(linkedAthlete.unitCost)} tATHLX</p>
+                        <p className="text-xl font-bold price-display">
+                          {formatNumber(linkedAthlete.unitCost)} tATHLX
+                        </p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.activityIndexLabel}</p>
@@ -580,7 +593,9 @@ export default function MyPage() {
                       </div>
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.lastUpdateReasonLabel}</p>
-                        <p className="text-sm text-gray-300">{linkedAthlete.lastUpdateReason ?? t.noUpdatesYet}</p>
+                        <p className="text-sm text-gray-300">
+                          {linkedAthlete.lastUpdateReason ?? t.noUpdatesYet}
+                        </p>
                       </div>
                     </div>
 
@@ -606,6 +621,7 @@ export default function MyPage() {
                     )}
                   </div>
 
+                  {/* Link to public profile */}
                   <div className="glass-effect rounded-xl p-6">
                     <Link
                       href={`/athlete/${linkedAthlete.symbol}`}

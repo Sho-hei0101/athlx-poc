@@ -428,7 +428,7 @@ export const translations: Record<Language, Record<string, string>> = {
     activityIndex: 'Activity Index (pts)',
     postCareerSupport: 'Post-Career Support Vault',
     demoOnly: 'Demo-only. No real-world value.',
-    testEnvironment: 'Test Environment'
+    testEnvironment: 'Test Environment',
   },
 
   ES: {
@@ -537,6 +537,64 @@ export const translations: Record<Language, Record<string, string>> = {
     categoryInjury: 'Lesión',
     categoryCareer: 'Carrera',
     categoryOthers: 'Otros',
+
+    // Match fields  (ES側にも必須)
+    nextMatch: 'Próximo partido',
+    matchDateLabel: 'Fecha del partido',
+    homeAwayLabel: 'Local/Visitante',
+    minutesPlayedLabel: 'Minutos jugados',
+    resultLabel: 'Resultado',
+    notesLabel: 'Notas',
+    notesPlaceholder: 'Opcional: contexto breve para esta actualización.',
+    submitAthleteUpdate: 'Enviar actualización del atleta',
+    nextMatchShort: 'Próximo',
+    lastMatch: 'Último partido',
+    lastUpdateReasonLabel: 'Motivo del último cambio',
+    relatedNews: 'Noticias relacionadas',
+    opponentLabel: 'Rival',
+    homeLabel: 'Local',
+    awayLabel: 'Visitante',
+
+    roleStarter: 'Titular',
+    roleBench: 'Suplente',
+    roleNotInSquad: 'No convocado',
+    conditionFull: '100%',
+    conditionMinor: 'Molestia menor',
+    conditionNotFull: 'No al 100%',
+    importanceLeague: 'Liga',
+    importanceCup: 'Copa',
+    importanceFriendly: 'Amistoso',
+
+    resultWin: 'Victoria',
+    resultDraw: 'Empate',
+    resultLoss: 'Derrota',
+    minutesHigh: '61-90 min',
+    minutesMid: '31-60 min',
+    minutesLow: '1-30 min',
+    minutesNone: '0 min',
+    goalsLabel: 'Goles',
+    assistsLabel: 'Asistencias',
+    injuryLabel: 'Lesión reportada',
+
+    applyUpdateNow: 'Aplicar actualización ahora',
+    submitMatchUpdate: 'Enviar actualización',
+    matchUpdateApplied: 'Actualización aplicada al índice de actividad y costo por unidad.',
+    matchUpdateQueued: 'Actualización en cola para revisión.',
+
+    demoSubtotalLabel: 'Subtotal Demo',
+    demoFeeLabel: 'Comisión Demo (5%)',
+    demoFeeShort: 'Comisión Demo',
+    totalCostLabel: 'Costo Total',
+    totalReceivedLabel: 'Total Recibido',
+    demoFeeNote:
+      'Se aplica una comisión demo del 5%. Simula distribución: 3% Cartera de Operaciones, 1% Cartera de Recompensa del Atleta, 1% Fondo de Apoyo Post-Carrera (todo demo).',
+
+    pleaseLogin: 'Por favor inicia sesión primero',
+    insufficientBalance: 'Saldo insuficiente',
+    actionSuccessPrefix: 'Acción completada. Has',
+    actionSuccessFor: 'por',
+    yourDemoBalance: 'Tu Saldo Demo',
+    exploreTestEnvironment: 'Explorar Entorno de Prueba',
 
     // Categories
     amateur: 'Amateur',
@@ -790,8 +848,8 @@ export const translations: Record<Language, Record<string, string>> = {
     activityIndex: 'Índice de Actividad (pts)',
     postCareerSupport: 'Fondo de Apoyo Post-Carrera',
     demoOnly: 'Solo demo. Sin valor real.',
-    testEnvironment: 'Entorno de Prueba'
-  }
+    testEnvironment: 'Entorno de Prueba',
+  },
 };
 
 export const t = (key: string, lang: Language = 'EN'): string => {

@@ -251,6 +251,7 @@ export default function AdminPage() {
           storage.setItem(key, value);
         }
       });
+
       setImportError(t.importFailed);
     }
   };
@@ -438,7 +439,6 @@ export default function AdminPage() {
                   >
                     {t.importJson}
                   </button>
-
                   {importError && (
                     <div className="p-3 bg-red-500/20 border border-red-500 rounded-lg text-sm text-red-200">
                       {importError}
