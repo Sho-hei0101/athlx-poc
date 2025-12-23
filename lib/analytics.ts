@@ -24,8 +24,15 @@ export type AnalyticsEvent = {
   meta?: Record<string, unknown>;
 };
 
-const createEventId = () => `evt_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+const createEventId = () =>
+  `evt_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
 
+/**
+ * Client-side analytics (localStorage).
+ * - SSRでも落ちない
+ * - 失敗してもアプリ動作に影響しない
+ * - 最大500件保持
+ */
 export const logEvent = (
   type: AnalyticsEventType,
   payload: Omit<AnalyticsEvent, 'id' | 'type' | 'at'> = {}
@@ -34,14 +41,18 @@ export const logEvent = (
     const storage = getBrowserStorage();
     if (!storage) return;
 
+    const safePayload =
+      payload && typeof payload === 'object' ? payload : ({} as any);
+
     const events = readJSON<AnalyticsEvent[]>(storage, EVENTS_KEY, []);
+
     const next: AnalyticsEvent[] = [
       ...events,
       {
         id: createEventId(),
         type,
         at: new Date().toISOString(),
-        ...payload,
+        ...safePayload,
       },
     ].slice(-500);
 
@@ -49,5 +60,18 @@ export const logEvent = (
   } catch (error) {
     // analytics は失敗してもアプリ動作に影響させない
     console.error('Failed to log analytics event', error);
+  }
+};
+
+/**
+ * Optional: local analytics export helper
+ */
+export const getLoggedEvents = (): AnalyticsEvent[] => {
+  try {
+    const storage = getBrowserStorage();
+    if (!storage) return [];
+    return readJSON<AnalyticsEvent[]>(storage, EVENTS_KEY, []);
+  } catch {
+    return [];
   }
 };
