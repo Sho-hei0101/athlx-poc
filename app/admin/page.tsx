@@ -6,6 +6,7 @@ import { Users, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { translations } from '@/lib/translations';
 import { Category } from '@/lib/types';
 import { EVENTS_KEY, logEvent } from '@/lib/analytics';
+import { getBrowserStorage } from '@/lib/storage';
 
 export default function AdminPage() {
   const { state, approveAthlete, rejectAthlete, resetDemoData } = useStore();
@@ -18,6 +19,7 @@ export default function AdminPage() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [view, setView] = useState<'dashboard' | 'pending' | 'review'>('dashboard');
 
+  // Reset
   const [resetConfirm, setResetConfirm] = useState('');
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
@@ -29,22 +31,22 @@ export default function AdminPage() {
   const [importConfirm, setImportConfirm] = useState('');
   const [importFile, setImportFile] = useState<File | null>(null);
 
-  const pendingApplications = state.pendingAthletes.filter(p => p.status === 'pending');
-  const approvedCount = state.pendingAthletes.filter(p => p.status === 'approved').length;
-  const rejectedCount = state.pendingAthletes.filter(p => p.status === 'rejected').length;
+  const pendingApplications = state.pendingAthletes.filter((p) => p.status === 'pending');
+  const approvedCount = state.pendingAthletes.filter((p) => p.status === 'approved').length;
+  const rejectedCount = state.pendingAthletes.filter((p) => p.status === 'rejected').length;
 
   const categoryBreakdown = {
-    Amateur: state.athletes.filter(a => a.category === 'Amateur').length,
-    'Semi-pro': state.athletes.filter(a => a.category === 'Semi-pro').length,
-    Pro: state.athletes.filter(a => a.category === 'Pro').length,
-    Elite: state.athletes.filter(a => a.category === 'Elite').length
+    Amateur: state.athletes.filter((a) => a.category === 'Amateur').length,
+    'Semi-pro': state.athletes.filter((a) => a.category === 'Semi-pro').length,
+    Pro: state.athletes.filter((a) => a.category === 'Pro').length,
+    Elite: state.athletes.filter((a) => a.category === 'Elite').length,
   };
 
   const categoryLabels: Record<Category, string> = {
     Amateur: t.amateur,
     'Semi-pro': t.semiPro,
     Pro: t.pro,
-    Elite: t.elite
+    Elite: t.elite,
   };
 
   const sportLabels: Record<string, string> = {
@@ -70,22 +72,22 @@ export default function AdminPage() {
     Shooting: t.sportShooting,
     Cricket: t.sportCricket,
     eSports: t.sportEsports,
-    Others: t.sportOthers
+    Others: t.sportOthers,
   };
 
   const genderLabels: Record<string, string> = {
     Male: t.genderMale,
     Female: t.genderFemale,
-    Other: t.genderOther
+    Other: t.genderOther,
   };
 
   const handleReview = (pendingId: string) => {
-    const pending = pendingApplications.find(p => p.id === pendingId);
+    const pending = pendingApplications.find((p) => p.id === pendingId);
     if (!pending) return;
 
     const suggestedSymbol = pending.name
       .split(' ')
-      .map(n => n[0])
+      .map((n) => n[0])
       .join('')
       .toUpperCase()
       .substring(0, 4);
@@ -129,8 +131,9 @@ export default function AdminPage() {
       setResetSuccess(t.resetDemoDataSuccess);
       setResetConfirm('');
       window.location.reload();
-    } catch (error: any) {
-      setResetError(error?.message ?? t.adminOnly);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : undefined;
+      setResetError(message ?? t.adminOnly);
     }
   };
 
@@ -147,12 +150,18 @@ export default function AdminPage() {
     ensureAdmin();
     setExportMessage('');
 
+    const storage = getBrowserStorage();
+    if (!storage) {
+      setExportMessage(t.importFailed);
+      return;
+    }
+
     const requiredKeys = ['athlx_state', 'athlx_users', 'athlx_currentUser', EVENTS_KEY];
     const exportKeys = Array.from(
       new Set([
         ...requiredKeys,
-        ...Object.keys(localStorage).filter(key => key.startsWith('athlx_'))
-      ])
+        ...Object.keys(storage).filter((key) => key.startsWith('athlx_')),
+      ]),
     );
 
     const payload = {
@@ -160,9 +169,9 @@ export default function AdminPage() {
       version: 1,
       origin: 'AthleteXchange demo',
       localStorage: exportKeys.reduce<Record<string, string | null>>((acc, key) => {
-        acc[key] = localStorage.getItem(key);
+        acc[key] = storage.getItem(key);
         return acc;
-      }, {})
+      }, {}),
     };
 
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -181,6 +190,12 @@ export default function AdminPage() {
     ensureAdmin();
     setImportError('');
     setImportMessage('');
+
+    const storage = getBrowserStorage();
+    if (!storage) {
+      setImportError(t.importFailed);
+      return;
+    }
 
     if (importConfirm !== 'IMPORT') {
       setImportError(t.importConfirmError);
@@ -204,7 +219,7 @@ export default function AdminPage() {
       }
 
       const requiredKeys = ['athlx_state', 'athlx_users', 'athlx_currentUser', EVENTS_KEY];
-      const hasRequired = requiredKeys.every(key => key in parsed.localStorage);
+      const hasRequired = requiredKeys.every((key) => key in parsed.localStorage);
       if (!hasRequired) {
         setImportError(t.importFailed);
         return;
@@ -212,36 +227,35 @@ export default function AdminPage() {
 
       // Backup only keys we will overwrite (for rollback)
       backup = Object.keys(parsed.localStorage).reduce<Record<string, string | null>>((acc, key) => {
-        acc[key] = localStorage.getItem(key);
+        acc[key] = storage.getItem(key);
         return acc;
       }, {});
 
       Object.entries(parsed.localStorage as Record<string, string | null>).forEach(([key, value]) => {
         if (value === null || value === undefined) {
-          localStorage.removeItem(key);
+          storage.removeItem(key);
         } else {
-          localStorage.setItem(key, value);
+          storage.setItem(key, value);
         }
       });
 
       logEvent('import', { userId: state.currentUser?.id });
       setImportMessage(t.importSuccess);
       window.location.reload();
-    } catch (_error) {
+    } catch (_error: unknown) {
       // Rollback
       Object.entries(backup).forEach(([key, value]) => {
         if (value === null || value === undefined) {
-          localStorage.removeItem(key);
+          storage.removeItem(key);
         } else {
-          localStorage.setItem(key, value);
+          storage.setItem(key, value);
         }
       });
-
       setImportError(t.importFailed);
     }
   };
 
-  const selectedApplication = pendingApplications.find(p => p.id === selectedPending);
+  const selectedApplication = pendingApplications.find((p) => p.id === selectedPending);
 
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
@@ -459,7 +473,7 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {pendingApplications.map(pending => (
+                    {pendingApplications.map((pending) => (
                       <tr
                         key={pending.id}
                         className="border-b border-slate-700/50 hover:bg-slate-700/30"

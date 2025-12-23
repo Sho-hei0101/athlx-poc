@@ -6,6 +6,7 @@ import { Athlete } from '@/lib/types';
 import { X, TrendingUp, TrendingDown } from 'lucide-react';
 import { translations } from '@/lib/translations';
 import { formatNumber } from '@/lib/format';
+import { calcTradingFee } from '@/lib/fees';
 
 interface TradeModalProps {
   isOpen: boolean;
@@ -27,7 +28,7 @@ export default function TradeModal({ isOpen, onClose, athlete, initialMode = 'bu
   if (!isOpen) return null;
 
   const subtotal = quantity * athlete.unitCost;
-  const fee = subtotal * 0.05;
+  const fee = calcTradingFee(subtotal);
   const total = mode === 'buy' ? subtotal + fee : subtotal - fee;
   const actionLabel = mode === 'buy' ? t.acquireUnits : t.releaseUnits;
   const actionVerb = mode === 'buy' ? t.acquiredVerb : t.releasedVerb;

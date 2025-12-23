@@ -378,8 +378,7 @@ export const translations: Record<Language, Record<string, string>> = {
     aboutHowItWorksTitle: 'How the pilot works:',
     aboutHowItWorksStepOne: 'Athletes can apply and are reviewed by an operator.',
     aboutHowItWorksStepTwo: 'Approved athletes appear in the Athlete Directory.',
-    aboutHowItWorksStepThree:
-      'Fans can acquire or release Athlete Units using demo credits inside the Test Environment.',
+    aboutHowItWorksStepThree: 'Fans acquire or release Athlete Units using demo credits inside the Test Environment.',
     aboutHowItWorksStepFour: 'A fixed demo fee model distributes demo credits into three ledgers:',
     aboutLedgerOperations: 'Operations Wallet (platform costs simulation)',
     aboutLedgerRewards: 'Athlete Reward Wallet (demo-only allocation)',
@@ -510,10 +509,8 @@ export const translations: Record<Language, Record<string, string>> = {
     // Match / Athlete update
     matchUpdateTitle: 'Actualización de partido',
     athleteUpdateTitle: 'Actualización del atleta',
-    athleteUpdateSubtitle:
-      'Envía actividad del partido para actualizar el índice de actividad y el costo por unidad demo.',
-    athleteUpdateSubmitted:
-      'Actualización enviada. Índice de actividad y costo por unidad actualizados.',
+    athleteUpdateSubtitle: 'Envía actividad del partido para actualizar el índice de actividad y el costo por unidad demo.',
+    athleteUpdateSubmitted: 'Actualización enviada. Índice de actividad y costo por unidad actualizados.',
     profilePhotoLabel: 'Foto de perfil (opcional)',
     profilePhotoAlt: 'Vista previa de foto de perfil subida',
     resetDemoDataWarning: 'Escribe RESET para confirmar el borrado de datos demo.',
@@ -540,64 +537,6 @@ export const translations: Record<Language, Record<string, string>> = {
     categoryInjury: 'Lesión',
     categoryCareer: 'Carrera',
     categoryOthers: 'Otros',
-
-    // Match fields
-    nextMatch: 'Próximo partido',
-    matchDateLabel: 'Fecha del partido',
-    homeAwayLabel: 'Local/Visitante',
-    minutesPlayedLabel: 'Minutos jugados',
-    resultLabel: 'Resultado',
-    notesLabel: 'Notas',
-    notesPlaceholder: 'Opcional: contexto breve para esta actualización.',
-    submitAthleteUpdate: 'Enviar actualización del atleta',
-    nextMatchShort: 'Próximo',
-    lastMatch: 'Último partido',
-    lastUpdateReasonLabel: 'Motivo del último cambio',
-    relatedNews: 'Noticias relacionadas',
-    opponentLabel: 'Rival',
-    homeLabel: 'Local',
-    awayLabel: 'Visitante',
-
-    roleStarter: 'Titular',
-    roleBench: 'Suplente',
-    roleNotInSquad: 'No convocado',
-    conditionFull: '100%',
-    conditionMinor: 'Molestia menor',
-    conditionNotFull: 'No al 100%',
-    importanceLeague: 'Liga',
-    importanceCup: 'Copa',
-    importanceFriendly: 'Amistoso',
-
-    resultWin: 'Victoria',
-    resultDraw: 'Empate',
-    resultLoss: 'Derrota',
-    minutesHigh: '61-90 min',
-    minutesMid: '31-60 min',
-    minutesLow: '1-30 min',
-    minutesNone: '0 min',
-    goalsLabel: 'Goles',
-    assistsLabel: 'Asistencias',
-    injuryLabel: 'Lesión reportada',
-
-    applyUpdateNow: 'Aplicar actualización ahora',
-    submitMatchUpdate: 'Enviar actualización',
-    matchUpdateApplied: 'Actualización aplicada al índice de actividad y costo por unidad.',
-    matchUpdateQueued: 'Actualización en cola para revisión.',
-
-    demoSubtotalLabel: 'Subtotal Demo',
-    demoFeeLabel: 'Comisión Demo (5%)',
-    demoFeeShort: 'Comisión Demo',
-    totalCostLabel: 'Costo Total',
-    totalReceivedLabel: 'Total Recibido',
-    demoFeeNote:
-      'Se aplica una comisión demo del 5%. Simula distribución: 3% Cartera de Operaciones, 1% Cartera de Recompensa del Atleta, 1% Fondo de Apoyo Post-Carrera (todo demo).',
-
-    pleaseLogin: 'Por favor inicia sesión primero',
-    insufficientBalance: 'Saldo insuficiente',
-    actionSuccessPrefix: 'Acción completada. Has',
-    actionSuccessFor: 'por',
-    yourDemoBalance: 'Tu Saldo Demo',
-    exploreTestEnvironment: 'Explorar Entorno de Prueba',
 
     // Categories
     amateur: 'Amateur',

@@ -9,6 +9,18 @@ import { translations } from '@/lib/translations';
 import { Category, MatchHomeAway, MatchResult } from '@/lib/types';
 import { formatNumber } from '@/lib/format';
 
+type UpdateFormState = {
+  matchDate: string;
+  opponent: string;
+  homeAway: MatchHomeAway;
+  minutesPlayed: number;
+  result: MatchResult;
+  goals: number;
+  assists: number;
+  injury: boolean;
+  notes: string;
+};
+
 export default function MyPage() {
   const { state, getPortfolio, submitAthletePerformanceUpdate } = useStore();
   const t = translations[state.language];
@@ -19,17 +31,7 @@ export default function MyPage() {
 
   const [updateMessage, setUpdateMessage] = useState('');
   const [updateError, setUpdateError] = useState('');
-  const [updateForm, setUpdateForm] = useState<{
-    matchDate: string;
-    opponent: string;
-    homeAway: MatchHomeAway;
-    minutesPlayed: number;
-    result: MatchResult;
-    goals: number;
-    assists: number;
-    injury: boolean;
-    notes: string;
-  }>({
+  const [updateForm, setUpdateForm] = useState<UpdateFormState>({
     matchDate: '',
     opponent: '',
     homeAway: 'Home',
@@ -38,7 +40,7 @@ export default function MyPage() {
     goals: 0,
     assists: 0,
     injury: false,
-    notes: ''
+    notes: '',
   });
 
   useEffect(() => {
@@ -50,39 +52,42 @@ export default function MyPage() {
   if (!state.currentUser) return null;
 
   const portfolio = getPortfolio();
-  const userTrades = state.trades.filter(tr => tr.userId === state.currentUser!.id).reverse();
+  const userTrades = state.trades
+    .filter((tr) => tr.userId === state.currentUser!.id)
+    .slice()
+    .reverse();
 
   const portfolioValue = portfolio.reduce((sum, p) => {
-    const fallbackUnitCost = state.athletes.find(a => a.symbol === p.athleteSymbol)?.unitCost ?? 0;
-    const unitCost = p.currentPrice > 0 ? p.currentPrice : fallbackUnitCost;
-    return sum + p.quantity * unitCost;
+    const fallbackUnitCost = state.athletes.find((a) => a.symbol === p.athleteSymbol)?.unitCost ?? 0;
+    const unitCost = (p.currentPrice ?? 0) > 0 ? (p.currentPrice ?? 0) : fallbackUnitCost;
+    return sum + (p.quantity ?? 0) * unitCost;
   }, 0);
 
-  const totalFeesGenerated = userTrades.reduce((sum, tr) => sum + tr.fee, 0);
+  const totalFeesGenerated = userTrades.reduce((sum, tr) => sum + (tr.fee ?? 0), 0);
   const immediatePayoutContribution = totalFeesGenerated * 0.5; // demo
 
   const categoryLabels: Record<Category, string> = {
     Amateur: t.amateur,
     'Semi-pro': t.semiPro,
     Pro: t.pro,
-    Elite: t.elite
+    Elite: t.elite,
   };
 
   const linkedAthlete = state.currentUser.linkedAthleteId
-    ? state.athletes.find(a => a.id === state.currentUser!.linkedAthleteId)
+    ? state.athletes.find((a) => a.id === state.currentUser!.linkedAthleteId)
     : null;
 
   const isAthleteAccount = Boolean(state.currentUser.linkedAthleteId);
 
   const recentUpdates = linkedAthlete
     ? state.athleteUpdates
-        .filter(update => update.athleteSymbol === linkedAthlete.symbol)
+        .filter((update) => update.athleteSymbol === linkedAthlete.symbol)
         .slice(-5)
         .reverse()
     : [];
 
   const openSellModal = (p: any) => {
-    const athlete = state.athletes.find(a => a.symbol === p.athleteSymbol);
+    const athlete = state.athletes.find((a) => a.symbol === p.athleteSymbol);
     if (athlete) {
       setSelectedAthlete(athlete);
       setTradeModalOpen(true);
@@ -116,12 +121,15 @@ export default function MyPage() {
         goals,
         assists,
         injury: updateForm.injury,
-        notes: updateForm.notes.trim()
+        notes: updateForm.notes.trim(),
       });
 
       setUpdateMessage(t.athleteUpdateSubmitted);
-    } catch (err: any) {
-      setUpdateError(err?.message ?? t.updateFailed);
+      // 任意：フォームを軽くリセットしたい場合（不要なら消してOK）
+      // setUpdateForm(prev => ({ ...prev, notes: '' }));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : undefined;
+      setUpdateError(message ?? t.updateFailed);
     }
   };
 
@@ -210,19 +218,18 @@ export default function MyPage() {
                       </thead>
 
                       <tbody>
-                        {portfolio.map(p => {
+                        {portfolio.map((p) => {
                           const avgBuyPrice = p.avgBuyPrice ?? 0;
                           const currentPrice = p.currentPrice ?? 0;
                           const quantity = p.quantity ?? 0;
 
                           const fallbackUnitCost =
-                            state.athletes.find(a => a.symbol === p.athleteSymbol)?.unitCost ?? 0;
+                            state.athletes.find((a) => a.symbol === p.athleteSymbol)?.unitCost ?? 0;
+
                           const displayUnitCost = currentPrice > 0 ? currentPrice : fallbackUnitCost;
 
                           const pnl = (displayUnitCost - avgBuyPrice) * quantity;
-                          const pnlPercent = avgBuyPrice
-                            ? ((displayUnitCost - avgBuyPrice) / avgBuyPrice) * 100
-                            : 0;
+                          const pnlPercent = avgBuyPrice ? ((displayUnitCost - avgBuyPrice) / avgBuyPrice) * 100 : 0;
 
                           return (
                             <tr
@@ -240,15 +247,9 @@ export default function MyPage() {
 
                               <td className="text-right py-3 px-4 font-semibold">{quantity}</td>
                               <td className="text-right py-3 px-4 price-display">{formatNumber(avgBuyPrice)}</td>
-                              <td className="text-right py-3 px-4 price-display">
-                                {formatNumber(displayUnitCost)}
-                              </td>
+                              <td className="text-right py-3 px-4 price-display">{formatNumber(displayUnitCost)}</td>
 
-                              <td
-                                className={`text-right py-3 px-4 font-bold ${
-                                  pnl >= 0 ? 'price-up' : 'price-down'
-                                }`}
-                              >
+                              <td className={`text-right py-3 px-4 font-bold ${pnl >= 0 ? 'price-up' : 'price-down'}`}>
                                 {pnl >= 0 ? '+' : ''}
                                 {formatNumber(pnl)} ({pnlPercent >= 0 ? '+' : ''}
                                 {pnlPercent.toFixed(1)}%)
@@ -293,7 +294,7 @@ export default function MyPage() {
 
                 {userTrades.length > 0 ? (
                   <div className="space-y-3">
-                    {userTrades.map(tr => (
+                    {userTrades.map((tr) => (
                       <div
                         key={tr.id}
                         className="bg-slate-700/50 rounded-lg p-4 flex items-center justify-between"
@@ -306,8 +307,7 @@ export default function MyPage() {
                           )}
                           <div>
                             <p className="font-semibold">
-                              {tr.type === 'buy' ? t.acquireUnits : t.releaseUnits} {tr.quantity}{' '}
-                              {tr.athleteSymbol}
+                              {tr.type === 'buy' ? t.acquireUnits : t.releaseUnits} {tr.quantity} {tr.athleteSymbol}
                             </p>
                             <p className="text-sm text-gray-400">{new Date(tr.timestamp).toLocaleString()}</p>
                           </div>
@@ -333,9 +333,7 @@ export default function MyPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <p className="text-sm text-gray-400 mb-2">{t.totalDemoFees}</p>
-                    <p className="text-2xl font-bold price-display">
-                      {formatNumber(totalFeesGenerated)} tATHLX
-                    </p>
+                    <p className="text-2xl font-bold price-display">{formatNumber(totalFeesGenerated)} tATHLX</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-400 mb-2">{t.immediateSupportContribution}</p>
@@ -372,9 +370,7 @@ export default function MyPage() {
 
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.unitCostLabel}</p>
-                        <p className="text-xl font-bold price-display">
-                          {formatNumber(linkedAthlete.unitCost)} tATHLX
-                        </p>
+                        <p className="text-xl font-bold price-display">{formatNumber(linkedAthlete.unitCost)} tATHLX</p>
                       </div>
 
                       <div>
@@ -430,7 +426,9 @@ export default function MyPage() {
                           <input
                             type="date"
                             value={updateForm.matchDate}
-                            onChange={event => setUpdateForm(prev => ({ ...prev, matchDate: event.target.value }))}
+                            onChange={(event) =>
+                              setUpdateForm((prev) => ({ ...prev, matchDate: event.target.value }))
+                            }
                             className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
                             required
                           />
@@ -441,7 +439,9 @@ export default function MyPage() {
                           <input
                             type="text"
                             value={updateForm.opponent}
-                            onChange={event => setUpdateForm(prev => ({ ...prev, opponent: event.target.value }))}
+                            onChange={(event) =>
+                              setUpdateForm((prev) => ({ ...prev, opponent: event.target.value }))
+                            }
                             className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
                             required
                           />
@@ -451,8 +451,11 @@ export default function MyPage() {
                           <label className="block text-sm font-medium mb-2">{t.homeAwayLabel}</label>
                           <select
                             value={updateForm.homeAway}
-                            onChange={event =>
-                              setUpdateForm(prev => ({ ...prev, homeAway: event.target.value as MatchHomeAway }))
+                            onChange={(event) =>
+                              setUpdateForm((prev) => ({
+                                ...prev,
+                                homeAway: event.target.value as MatchHomeAway,
+                              }))
                             }
                             className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
                             required
@@ -469,8 +472,8 @@ export default function MyPage() {
                             min="0"
                             max="90"
                             value={updateForm.minutesPlayed}
-                            onChange={event =>
-                              setUpdateForm(prev => ({ ...prev, minutesPlayed: Number(event.target.value) }))
+                            onChange={(event) =>
+                              setUpdateForm((prev) => ({ ...prev, minutesPlayed: Number(event.target.value) }))
                             }
                             className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
                             required
@@ -481,8 +484,8 @@ export default function MyPage() {
                           <label className="block text-sm font-medium mb-2">{t.resultLabel}</label>
                           <select
                             value={updateForm.result}
-                            onChange={event =>
-                              setUpdateForm(prev => ({ ...prev, result: event.target.value as MatchResult }))
+                            onChange={(event) =>
+                              setUpdateForm((prev) => ({ ...prev, result: event.target.value as MatchResult }))
                             }
                             className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
                             required
@@ -500,7 +503,9 @@ export default function MyPage() {
                             min="0"
                             max="10"
                             value={updateForm.goals}
-                            onChange={event => setUpdateForm(prev => ({ ...prev, goals: Number(event.target.value) }))}
+                            onChange={(event) =>
+                              setUpdateForm((prev) => ({ ...prev, goals: Number(event.target.value) }))
+                            }
                             className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
                           />
                         </div>
@@ -512,8 +517,8 @@ export default function MyPage() {
                             min="0"
                             max="10"
                             value={updateForm.assists}
-                            onChange={event =>
-                              setUpdateForm(prev => ({ ...prev, assists: Number(event.target.value) }))
+                            onChange={(event) =>
+                              setUpdateForm((prev) => ({ ...prev, assists: Number(event.target.value) }))
                             }
                             className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
                           />
@@ -523,7 +528,9 @@ export default function MyPage() {
                           <input
                             type="checkbox"
                             checked={updateForm.injury}
-                            onChange={event => setUpdateForm(prev => ({ ...prev, injury: event.target.checked }))}
+                            onChange={(event) =>
+                              setUpdateForm((prev) => ({ ...prev, injury: event.target.checked }))
+                            }
                           />
                           <span>{t.injuryLabel}</span>
                         </div>
@@ -533,7 +540,9 @@ export default function MyPage() {
                         <label className="block text-sm font-medium mb-2">{t.notesLabel}</label>
                         <textarea
                           value={updateForm.notes}
-                          onChange={event => setUpdateForm(prev => ({ ...prev, notes: event.target.value }))}
+                          onChange={(event) =>
+                            setUpdateForm((prev) => ({ ...prev, notes: event.target.value }))
+                          }
                           className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg min-h-[120px]"
                         />
                       </div>
@@ -561,9 +570,7 @@ export default function MyPage() {
                     <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.unitCostLabel}</p>
-                        <p className="text-xl font-bold price-display">
-                          {formatNumber(linkedAthlete.unitCost)} tATHLX
-                        </p>
+                        <p className="text-xl font-bold price-display">{formatNumber(linkedAthlete.unitCost)} tATHLX</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.activityIndexLabel}</p>
@@ -573,9 +580,7 @@ export default function MyPage() {
                       </div>
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.lastUpdateReasonLabel}</p>
-                        <p className="text-sm text-gray-300">
-                          {linkedAthlete.lastUpdateReason ?? t.noUpdatesYet}
-                        </p>
+                        <p className="text-sm text-gray-300">{linkedAthlete.lastUpdateReason ?? t.noUpdatesYet}</p>
                       </div>
                     </div>
 
@@ -583,7 +588,7 @@ export default function MyPage() {
                       <div className="mt-6">
                         <h3 className="text-lg font-semibold mb-3">{t.recentUpdates}</h3>
                         <div className="space-y-2 text-sm text-gray-300">
-                          {recentUpdates.map(update => (
+                          {recentUpdates.map((update) => (
                             <div key={update.id} className="bg-slate-700/50 rounded-lg p-3">
                               <div className="flex justify-between">
                                 <span>

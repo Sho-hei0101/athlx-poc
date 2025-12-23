@@ -1,3 +1,5 @@
+import { getBrowserStorage, readJSON, writeJSON } from './storage';
+
 export const EVENTS_KEY = 'athlx_events';
 
 export type AnalyticsEventType =
@@ -24,22 +26,28 @@ export type AnalyticsEvent = {
 
 const createEventId = () => `evt_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
 
-export const logEvent = (type: AnalyticsEventType, payload: Omit<AnalyticsEvent, 'id' | 'type' | 'at'> = {}) => {
-  if (typeof window === 'undefined') return;
+export const logEvent = (
+  type: AnalyticsEventType,
+  payload: Omit<AnalyticsEvent, 'id' | 'type' | 'at'> = {}
+) => {
   try {
-    const existing = window.localStorage.getItem(EVENTS_KEY);
-    const events = existing ? (JSON.parse(existing) as AnalyticsEvent[]) : [];
-    const next = [
+    const storage = getBrowserStorage();
+    if (!storage) return;
+
+    const events = readJSON<AnalyticsEvent[]>(storage, EVENTS_KEY, []);
+    const next: AnalyticsEvent[] = [
       ...events,
       {
         id: createEventId(),
         type,
         at: new Date().toISOString(),
-        ...payload
-      }
+        ...payload,
+      },
     ].slice(-500);
-    window.localStorage.setItem(EVENTS_KEY, JSON.stringify(next));
+
+    writeJSON(storage, EVENTS_KEY, next);
   } catch (error) {
+    // analytics は失敗してもアプリ動作に影響させない
     console.error('Failed to log analytics event', error);
   }
 };
