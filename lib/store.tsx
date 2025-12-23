@@ -1,12 +1,39 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { AppState, User, Athlete, Trade, Portfolio, PendingAthlete, NewsItem, Category } from './types';
+import {
+  AppState,
+  User,
+  Athlete,
+  Trade,
+  Portfolio,
+  PendingAthlete,
+  Category,
+  NextMatchInfo,
+  LastMatchInfo,
+  AthleteUpdate,
+  MatchHomeAway,
+  MatchResult
+} from './types';
 import { initialAthletes, initialNews } from './data';
+import { buildUpdateReason, computeEventScore } from './match';
+import { translations } from './translations';
+import { EVENTS_KEY, logEvent } from './analytics';
+import { calcTradingFee } from './fees';
+import { getBrowserStorage, readJSON, writeJSON } from './storage';
+import {
+  authenticateAccount,
+  clearSession,
+  createAccount,
+  loadAccounts,
+  loadSession,
+  resetDemoStorage,
+  saveSession,
+  updateAccount,
+  StoredAccount
+} from './demoAccountStorage';
 
 const STORAGE_KEY = 'athlx_state';
-const USERS_KEY = 'athlx_users';
-const CURRENT_USER_KEY = 'athlx_currentUser';
 
 const getDefaultUnitCost = (category?: Category) => {
   switch (category) {
@@ -27,8 +54,10 @@ const defaultState: AppState = {
   athletes: initialAthletes,
   pendingAthletes: [],
   trades: [],
+  athleteUpdates: [],
   news: initialNews,
-  language: 'EN'
+  language: 'EN',
+  isAdmin: false
 };
 
 interface StoreContextType {
@@ -45,6 +74,26 @@ interface StoreContextType {
   rejectAthlete: (pendingId: string, reason: string) => void;
   getAthleteBySymbol: (symbol: string) => Athlete | undefined;
   updateAthletePrice: (symbol: string, newPrice: number) => void;
+  submitMatchUpdate: (
+    athleteSymbol: string,
+    nextMatch?: NextMatchInfo,
+    lastMatch?: LastMatchInfo,
+    approved?: boolean
+  ) => void;
+  submitAthletePerformanceUpdate: (payload: {
+    athleteSymbol: string;
+    matchDate: string;
+    opponent: string;
+    homeAway: MatchHomeAway;
+    minutesPlayed: number;
+    result: MatchResult;
+    goals: number;
+    assists: number;
+    injury: boolean;
+    notes: string;
+  }) => void;
+  resetDemoData: () => void;
+  setAdminAccess: (value: boolean) => void;
   setLanguage: (lang: 'EN' | 'ES') => void;
 }
 
@@ -54,70 +103,136 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [state, setState] = useState<AppState>(defaultState);
   const [isHydrated, setIsHydrated] = useState(false);
 
+  const buildPortfolioFromTrades = (trades: Trade[], athletes: Athlete[]): Portfolio[] => {
+    const portfolioMap = new Map<string, Portfolio>();
+
+    trades.forEach(trade => {
+      const existing = portfolioMap.get(trade.athleteSymbol);
+
+      if (trade.type === 'buy') {
+        if (existing) {
+          const totalQuantity = existing.quantity + trade.quantity;
+          const totalCost = (existing.avgBuyPrice * existing.quantity) + (trade.price * trade.quantity);
+          portfolioMap.set(trade.athleteSymbol, {
+            ...existing,
+            quantity: totalQuantity,
+            avgBuyPrice: totalCost / totalQuantity
+          });
+        } else {
+          portfolioMap.set(trade.athleteSymbol, {
+            athleteSymbol: trade.athleteSymbol,
+            athleteName: trade.athleteName,
+            quantity: trade.quantity,
+            avgBuyPrice: trade.price,
+            currentPrice: trade.price
+          });
+        }
+      } else if (existing) {
+        const newQuantity = existing.quantity - trade.quantity;
+        if (newQuantity > 0) {
+          portfolioMap.set(trade.athleteSymbol, {
+            ...existing,
+            quantity: newQuantity
+          });
+        } else {
+          portfolioMap.delete(trade.athleteSymbol);
+        }
+      }
+    });
+
+    return Array.from(portfolioMap.values()).map(portfolio => {
+      const athlete = athletes.find(a => a.symbol === portfolio.athleteSymbol);
+      return {
+        ...portfolio,
+        currentPrice: athlete?.unitCost || portfolio.currentPrice
+      };
+    });
+  };
+
+  const persistCurrentAccount = (email: string, updater: (account: StoredAccount) => StoredAccount) => {
+    const storage = getBrowserStorage();
+    if (!storage) return;
+    updateAccount(storage, email, updater);
+  };
+
   // Load state from localStorage on mount
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const storedUser = localStorage.getItem(CURRENT_USER_KEY);
+    const storage = getBrowserStorage();
+    if (!storage) {
+      setIsHydrated(true);
+      return;
+    }
+    const stored = readJSON<Partial<AppState>>(storage, STORAGE_KEY, {});
+    const storedUser = loadSession(storage);
     let persistedState = defaultState;
 
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        const hydratedAthletes = (parsed.athletes ?? defaultState.athletes).map((athlete: Athlete) => ({
-          ...athlete,
-          unitCost: athlete.unitCost && athlete.unitCost > 0
-            ? athlete.unitCost
-            : getDefaultUnitCost(athlete.category)
-        }));
-        persistedState = { ...defaultState, ...parsed, athletes: hydratedAthletes };
-      } catch (e) {
-        console.error('Failed to parse stored state', e);
+    if (Object.keys(stored).length > 0) {
+      const hydratedAthletes = (stored.athletes ?? defaultState.athletes).map((athlete: Athlete) => ({
+        ...athlete,
+        unitCost: athlete.unitCost && athlete.unitCost > 0
+          ? athlete.unitCost
+          : getDefaultUnitCost(athlete.category)
+      }));
+      persistedState = { ...defaultState, ...stored, athletes: hydratedAthletes };
+    }
+
+    if (storedUser?.email) {
+      const accounts = loadAccounts(storage);
+      const account = accounts[storedUser.email];
+      if (account) {
+        persistedState = {
+          ...persistedState,
+          currentUser: {
+            id: account.id,
+            email: account.email,
+            name: account.name,
+            athlxBalance: account.athlxBalance,
+            metaMaskAddress: undefined,
+            linkedAthleteId: account.linkedAthleteId
+          },
+          trades: account.trades ?? []
+        };
       }
     }
 
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        persistedState = { ...persistedState, currentUser: parsedUser };
-      } catch (e) {
-        console.error('Failed to parse stored user', e);
-      }
-    }
-
-    setState(persistedState);
+    setState({ ...persistedState, isAdmin: false });
     setIsHydrated(true);
   }, []);
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
     if (isHydrated) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      const storage = getBrowserStorage();
+      if (!storage) return;
+      writeJSON(storage, STORAGE_KEY, state);
     }
   }, [state, isHydrated]);
 
   const login = async (email: string, password: string): Promise<User> => {
     // Simple demo authentication
-    const storedUsers = localStorage.getItem(USERS_KEY);
-    let users: { email: string; password: string; name: string; id: string }[] = [];
-    
-    if (storedUsers) {
-      users = JSON.parse(storedUsers);
+    const storage = getBrowserStorage();
+    if (!storage) {
+      throw new Error('Storage unavailable');
     }
-    
-    const user = users.find(u => u.email === email && u.password === password);
-    
-    if (user) {
+    const account = authenticateAccount(storage, { email, password });
+
+    if (account) {
       const loggedInUser: User = {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        athlxBalance: 10000,
+        id: account.id,
+        email: account.email,
+        name: account.name,
+        athlxBalance: account.athlxBalance,
         metaMaskAddress: undefined,
-        linkedAthleteId: undefined
+        linkedAthleteId: account.linkedAthleteId
       };
-      
-      setState(prev => ({ ...prev, currentUser: loggedInUser }));
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(loggedInUser));
+
+      setState(prev => ({
+        ...prev,
+        currentUser: loggedInUser,
+        trades: account.trades ?? []
+      }));
+      saveSession(storage, account.email);
+      logEvent('login', { userId: account.id });
       return loggedInUser;
     }
     
@@ -125,44 +240,32 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const signup = async (email: string, password: string, name: string): Promise<User> => {
-    const storedUsers = localStorage.getItem(USERS_KEY);
-    let users: { email: string; password: string; name: string; id: string }[] = [];
-    
-    if (storedUsers) {
-      users = JSON.parse(storedUsers);
+    const storage = getBrowserStorage();
+    if (!storage) {
+      throw new Error('Storage unavailable');
     }
-    
-    if (users.find(u => u.email === email)) {
-      throw new Error('Email already exists');
-    }
-    
-    const newUser = {
-      id: `user_${Date.now()}`,
-      email,
-      password,
-      name
-    };
-    
-    users.push(newUser);
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    const newAccount = createAccount(storage, { email, password, name });
     
     const loggedInUser: User = {
-      id: newUser.id,
-      email: newUser.email,
-      name: newUser.name,
-      athlxBalance: 10000,
+      id: newAccount.id,
+      email: newAccount.email,
+      name: newAccount.name,
+      athlxBalance: newAccount.athlxBalance,
       metaMaskAddress: undefined,
       linkedAthleteId: undefined
     };
     
-    setState(prev => ({ ...prev, currentUser: loggedInUser }));
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(loggedInUser));
+    setState(prev => ({ ...prev, currentUser: loggedInUser, trades: [] }));
+    saveSession(storage, loggedInUser.email);
+    logEvent('signup', { userId: loggedInUser.id });
     return loggedInUser;
   };
 
   const logout = () => {
-    setState(prev => ({ ...prev, currentUser: null }));
-    localStorage.removeItem(CURRENT_USER_KEY);
+    setState(prev => ({ ...prev, currentUser: null, trades: [], isAdmin: false }));
+    const storage = getBrowserStorage();
+    if (!storage) return;
+    clearSession(storage);
   };
 
   const connectMetaMask = () => {
@@ -186,9 +289,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const executeTrade = (athleteSymbol: string, type: 'buy' | 'sell', quantity: number, price: number) => {
     if (!state.currentUser) return;
+    const linkedAthlete = state.currentUser.linkedAthleteId
+      ? state.athletes.find(a => a.id === state.currentUser?.linkedAthleteId)
+      : null;
+    if (linkedAthlete) {
+      const t = translations[state.language];
+      throw new Error(t.cannotTradeOwnUnits);
+    }
 
     const subtotal = quantity * price;
-    const fee = subtotal * 0.05;
+    const fee = calcTradingFee(subtotal);
     const total = type === 'buy' ? subtotal + fee : subtotal - fee;
 
     // Update user balance
@@ -229,12 +339,29 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return a;
     });
 
+    const updatedTrades = [...state.trades, trade];
+
     setState(prev => ({
       ...prev,
       currentUser: prev.currentUser ? { ...prev.currentUser, athlxBalance: newBalance } : null,
-      trades: [...prev.trades, trade],
+      trades: updatedTrades,
       athletes: updatedAthletes
     }));
+
+    persistCurrentAccount(state.currentUser.email, account => {
+      const updatedPortfolio = buildPortfolioFromTrades(updatedTrades, updatedAthletes);
+      return {
+        ...account,
+        athlxBalance: newBalance,
+        trades: updatedTrades,
+        portfolio: updatedPortfolio
+      };
+    });
+
+    logEvent(type === 'buy' ? 'trade_buy' : 'trade_sell', {
+      userId: state.currentUser.id,
+      athleteSymbol
+    });
   };
 
   const getPortfolio = (): Portfolio[] => {
@@ -306,6 +433,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       ...prev,
       pendingAthletes: [...prev.pendingAthletes, pending]
     }));
+    logEvent('athlete_register_submit', { userId: state.currentUser.id });
   };
 
   const approveAthlete = (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => {
@@ -326,9 +454,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       bio: pending.bio,
       profileUrl: pending.profileUrl,
       highlightVideoUrl: pending.highlightVideoUrl,
-      imageUrl: `https://i.pravatar.cc/300?img=${Math.floor(Math.random() * 70)}`,
+      imageUrl: pending.imageDataUrl ?? `https://i.pravatar.cc/300?img=${Math.floor(Math.random() * 70)}`,
       unitCost: getDefaultUnitCost(finalCategory as Category),
       currentPrice: initialPrice,
+      activityIndex: initialPrice,
       price24hChange: 0,
       price7dChange: 0,
       tradingVolume: 0,
@@ -349,6 +478,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         ? { ...prev.currentUser, linkedAthleteId: newAthlete.id }
         : prev.currentUser
     }));
+
+    if (pending.userId && state.currentUser?.id === pending.userId) {
+      persistCurrentAccount(state.currentUser.email, account => ({
+        ...account,
+        linkedAthleteId: newAthlete.id
+      }));
+    }
+
+    logEvent('admin_approve', { userId: pending.userId, athleteSymbol: newAthlete.symbol });
   };
 
   const rejectAthlete = (pendingId: string, reason: string) => {
@@ -358,6 +496,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         p.id === pendingId ? { ...p, status: 'rejected' as const, rejectionReason: reason } : p
       )
     }));
+    logEvent('admin_reject', { userId: state.currentUser?.id });
   };
 
   const getAthleteBySymbol = (symbol: string): Athlete | undefined => {
@@ -385,6 +524,157 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }));
   };
 
+  const submitMatchUpdate = (
+    athleteSymbol: string,
+    nextMatch?: NextMatchInfo,
+    lastMatch?: LastMatchInfo,
+    approved = true
+  ) => {
+    setState(prev => ({
+      ...prev,
+      athletes: prev.athletes.map(athlete => {
+        if (athlete.symbol !== athleteSymbol) {
+          return athlete;
+        }
+
+        const updateScore = computeEventScore(nextMatch, lastMatch);
+        const updatedActivityIndex = approved
+          ? Math.max(0, athlete.activityIndex + updateScore)
+          : athlete.activityIndex;
+        const updatedUnitCost = approved
+          ? Math.max(getDefaultUnitCost(athlete.category), athlete.unitCost + updateScore * 0.01)
+          : athlete.unitCost;
+        return {
+          ...athlete,
+          nextMatch,
+          lastMatch,
+          activityIndex: updatedActivityIndex,
+          unitCost: updatedUnitCost,
+          lastUpdateReason: approved ? buildUpdateReason(nextMatch, lastMatch) : athlete.lastUpdateReason,
+          priceHistory: approved
+            ? [
+                ...athlete.priceHistory,
+                { time: new Date().toISOString(), price: updatedActivityIndex, volume: 0 }
+              ]
+            : athlete.priceHistory
+        };
+      })
+    }));
+  };
+
+  const submitAthletePerformanceUpdate = (payload: {
+    athleteSymbol: string;
+    matchDate: string;
+    opponent: string;
+    homeAway: MatchHomeAway;
+    minutesPlayed: number;
+    result: MatchResult;
+    goals: number;
+    assists: number;
+    injury: boolean;
+    notes: string;
+  }) => {
+    setState(prev => {
+      const targetAthlete = prev.athletes.find(athlete => athlete.symbol === payload.athleteSymbol);
+      if (!targetAthlete) {
+        return prev;
+      }
+      const minutesPlayed = Math.max(0, Math.min(90, Number(payload.minutesPlayed) || 0));
+      const goals = Math.max(0, Math.min(10, Number(payload.goals) || 0));
+      const assists = Math.max(0, Math.min(10, Number(payload.assists) || 0));
+      const resultDelta = payload.result === 'Win' ? 0.4 : payload.result === 'Draw' ? 0.1 : -0.2;
+      const baseDelta = (minutesPlayed / 90) * 0.5
+        + goals * 0.8
+        + assists * 0.5
+        + resultDelta
+        + (payload.injury ? -1.0 : 0);
+      const noise = (Math.random() * 0.02) - 0.01;
+      const updatedUnitCost = Math.min(
+        5,
+        Math.max(0.001, targetAthlete.unitCost * (1 + baseDelta / 10 + noise))
+      );
+      const updatedActivityIndex = Math.max(0, targetAthlete.activityIndex + baseDelta);
+      const minutesBucket = minutesPlayed >= 61 ? '61-90' : minutesPlayed >= 31 ? '31-60' : minutesPlayed >= 1 ? '1-30' : '0';
+      const updateReason = payload.notes || buildUpdateReason(undefined, {
+        date: payload.matchDate,
+        minutesBucket,
+        result: payload.result,
+        goals: goals || undefined,
+        assists: assists || undefined,
+        injury: payload.injury
+      });
+
+      return {
+        ...prev,
+        athletes: prev.athletes.map(athlete => {
+          if (athlete.symbol !== payload.athleteSymbol) {
+            return athlete;
+          }
+          return {
+            ...athlete,
+            lastMatch: {
+              date: payload.matchDate,
+              minutesBucket,
+              result: payload.result,
+              goals: goals || undefined,
+              assists: assists || undefined,
+              injury: payload.injury
+            },
+            activityIndex: updatedActivityIndex,
+            unitCost: updatedUnitCost,
+            lastUpdateReason: updateReason,
+            priceHistory: [
+              ...athlete.priceHistory,
+              { time: new Date().toISOString(), price: updatedUnitCost, volume: Math.floor(Math.random() * 10000) }
+            ]
+          };
+        }),
+        athleteUpdates: [
+          ...prev.athleteUpdates,
+          {
+            id: `update_${Date.now()}`,
+            athleteSymbol: payload.athleteSymbol,
+            matchDate: payload.matchDate,
+            opponent: payload.opponent,
+            homeAway: payload.homeAway,
+            minutesPlayed,
+            result: payload.result,
+            goals,
+            assists,
+            injury: payload.injury,
+            notes: payload.notes,
+            submittedAt: new Date().toISOString(),
+            baseDelta,
+            newUnitCost: updatedUnitCost,
+            newActivityIndex: updatedActivityIndex
+          }
+        ]
+      };
+    });
+    logEvent('athlete_update_submit', {
+      userId: state.currentUser?.id,
+      athleteSymbol: payload.athleteSymbol
+    });
+  };
+
+  const resetDemoData = () => {
+    if (!state.isAdmin) {
+      const t = translations[state.language];
+      throw new Error(t.adminOnly);
+    }
+    logEvent('reset', { userId: state.currentUser?.id });
+    const storage = getBrowserStorage();
+    if (!storage) return;
+    storage.removeItem(STORAGE_KEY);
+    storage.removeItem(EVENTS_KEY);
+    resetDemoStorage(storage);
+    setState(defaultState);
+  };
+
+  const setAdminAccess = (value: boolean) => {
+    setState(prev => ({ ...prev, isAdmin: value }));
+  };
+
   const setLanguage = (lang: 'EN' | 'ES') => {
     setState(prev => ({ ...prev, language: lang }));
   };
@@ -404,6 +694,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       rejectAthlete,
       getAthleteBySymbol,
       updateAthletePrice,
+      submitMatchUpdate,
+      submitAthletePerformanceUpdate,
+      resetDemoData,
+      setAdminAccess,
       setLanguage
     }}>
       {children}
