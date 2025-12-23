@@ -362,9 +362,22 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         portfolio: updatedPortfolio
       };
     });
+     
+    // ✅ Analytics: quantity & price を meta に入れる（重要）
+  logEvent(type === 'buy' ? 'trade_buy' : 'trade_sell', {
+    userId: state.currentUser.id,
+    athleteSymbol,
+    meta: {
+      quantity,
+      price,
+      subtotal,
+      fee,
+      total,
+      currency: 'tATHLX'
+    }
+  });
+};
 
-    logEvent(type === 'buy' ? 'trade_buy' : 'trade_sell', { userId: state.currentUser.id, athleteSymbol });
-  };
 
   const getPortfolio = (): Portfolio[] => {
     if (!state.currentUser) return [];
