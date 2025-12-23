@@ -1,19 +1,19 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import {
-  AppState,
-  User,
-  Athlete,
-  Trade,
-  Portfolio,
-  PendingAthlete,
-  Category,
-  NextMatchInfo,
-  LastMatchInfo,
-  AthleteUpdate,
-  MatchHomeAway,
-  MatchResult
+  type AppState,
+  type User,
+  type Athlete,
+  type Trade,
+  type Portfolio,
+  type PendingAthlete,
+  type Category,
+  type NextMatchInfo,
+  type LastMatchInfo,
+  type AthleteUpdate,
+  type MatchHomeAway,
+  type MatchResult,
 } from './types';
 import { initialAthletes, initialNews } from './data';
 import { buildUpdateReason, computeEventScore } from './match';
@@ -30,7 +30,7 @@ import {
   resetDemoStorage,
   saveSession,
   updateAccount,
-  StoredAccount
+  type StoredAccount,
 } from './demoAccountStorage';
 
 const STORAGE_KEY = 'athlx_state';
@@ -49,37 +49,56 @@ const getDefaultUnitCost = (category?: Category) => {
   }
 };
 
+const normalizeAthletes = (athletes: Athlete[]): Athlete[] => {
+  return athletes.map((a) => {
+    const unitCost = a.unitCost && a.unitCost > 0 ? a.unitCost : getDefaultUnitCost(a.category);
+    const currentPrice = a.currentPrice && a.currentPrice > 0 ? a.currentPrice : unitCost;
+
+    return {
+      ...a,
+      unitCost,
+      currentPrice,
+      activityIndex: typeof a.activityIndex === 'number' ? a.activityIndex : 0,
+      tradingVolume: typeof a.tradingVolume === 'number' ? a.tradingVolume : 0,
+      holders: typeof a.holders === 'number' ? a.holders : 0,
+      priceHistory: Array.isArray(a.priceHistory) ? a.priceHistory : [],
+    };
+  });
+};
+
 const defaultState: AppState = {
   currentUser: null,
-  athletes: initialAthletes,
+  athletes: normalizeAthletes(initialAthletes as Athlete[]),
   pendingAthletes: [],
   trades: [],
   athleteUpdates: [],
   news: initialNews,
   language: 'EN',
-  isAdmin: false
+  isAdmin: false,
 };
 
 interface StoreContextType {
   state: AppState;
+
   login: (email: string, password: string) => Promise<User>;
   signup: (email: string, password: string, name: string) => Promise<User>;
   logout: () => void;
+
   connectMetaMask: () => void;
   disconnectMetaMask: () => void;
+
   executeTrade: (athleteSymbol: string, type: 'buy' | 'sell', quantity: number, price: number) => void;
   getPortfolio: () => Portfolio[];
+
   submitAthleteRegistration: (data: Omit<PendingAthlete, 'id' | 'userId' | 'submittedAt' | 'status'>) => void;
   approveAthlete: (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => void;
   rejectAthlete: (pendingId: string, reason: string) => void;
+
   getAthleteBySymbol: (symbol: string) => Athlete | undefined;
   updateAthletePrice: (symbol: string, newPrice: number) => void;
-  submitMatchUpdate: (
-    athleteSymbol: string,
-    nextMatch?: NextMatchInfo,
-    lastMatch?: LastMatchInfo,
-    approved?: boolean
-  ) => void;
+
+  submitMatchUpdate: (athleteSymbol: string, nextMatch?: NextMatchInfo, lastMatch?: LastMatchInfo, approved?: boolean) => void;
+
   submitAthletePerformanceUpdate: (payload: {
     athleteSymbol: string;
     matchDate: string;
@@ -92,6 +111,7 @@ interface StoreContextType {
     injury: boolean;
     notes: string;
   }) => void;
+
   resetDemoData: () => void;
   setAdminAccess: (value: boolean) => void;
   setLanguage: (lang: 'EN' | 'ES') => void;
@@ -106,17 +126,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const buildPortfolioFromTrades = (trades: Trade[], athletes: Athlete[]): Portfolio[] => {
     const portfolioMap = new Map<string, Portfolio>();
 
-    trades.forEach(trade => {
+    trades.forEach((trade) => {
       const existing = portfolioMap.get(trade.athleteSymbol);
 
       if (trade.type === 'buy') {
         if (existing) {
           const totalQuantity = existing.quantity + trade.quantity;
-          const totalCost = (existing.avgBuyPrice * existing.quantity) + (trade.price * trade.quantity);
+          const totalCost = existing.avgBuyPrice * existing.quantity + trade.price * trade.quantity;
           portfolioMap.set(trade.athleteSymbol, {
             ...existing,
             quantity: totalQuantity,
-            avgBuyPrice: totalCost / totalQuantity
+            avgBuyPrice: totalCost / totalQuantity,
           });
         } else {
           portfolioMap.set(trade.athleteSymbol, {
@@ -124,28 +144,23 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             athleteName: trade.athleteName,
             quantity: trade.quantity,
             avgBuyPrice: trade.price,
-            currentPrice: trade.price
+            currentPrice: trade.price,
           });
         }
       } else if (existing) {
         const newQuantity = existing.quantity - trade.quantity;
         if (newQuantity > 0) {
-          portfolioMap.set(trade.athleteSymbol, {
-            ...existing,
-            quantity: newQuantity
-          });
+          portfolioMap.set(trade.athleteSymbol, { ...existing, quantity: newQuantity });
         } else {
           portfolioMap.delete(trade.athleteSymbol);
         }
       }
     });
 
-    return Array.from(portfolioMap.values()).map(portfolio => {
-      const athlete = athletes.find(a => a.symbol === portfolio.athleteSymbol);
-      return {
-        ...portfolio,
-        currentPrice: athlete?.unitCost || portfolio.currentPrice
-      };
+    return Array.from(portfolioMap.values()).map((p) => {
+      const athlete = athletes.find((a) => a.symbol === p.athleteSymbol);
+      const fallback = athlete?.unitCost ?? p.currentPrice ?? 0;
+      return { ...p, currentPrice: athlete?.currentPrice ?? fallback };
     });
   };
 
@@ -155,24 +170,21 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     updateAccount(storage, email, updater);
   };
 
-  // Load state from localStorage on mount
+  // Hydrate from storage (state + session)
   useEffect(() => {
     const storage = getBrowserStorage();
     if (!storage) {
       setIsHydrated(true);
       return;
     }
+
     const stored = readJSON<Partial<AppState>>(storage, STORAGE_KEY, {});
     const storedUser = loadSession(storage);
-    let persistedState = defaultState;
 
-    if (Object.keys(stored).length > 0) {
-      const hydratedAthletes = (stored.athletes ?? defaultState.athletes).map((athlete: Athlete) => ({
-        ...athlete,
-        unitCost: athlete.unitCost && athlete.unitCost > 0
-          ? athlete.unitCost
-          : getDefaultUnitCost(athlete.category)
-      }));
+    let persistedState: AppState = defaultState;
+
+    if (stored && Object.keys(stored).length > 0) {
+      const hydratedAthletes = normalizeAthletes((stored.athletes ?? defaultState.athletes) as Athlete[]);
       persistedState = { ...defaultState, ...stored, athletes: hydratedAthletes };
     }
 
@@ -188,9 +200,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             name: account.name,
             athlxBalance: account.athlxBalance,
             metaMaskAddress: undefined,
-            linkedAthleteId: account.linkedAthleteId
+            linkedAthleteId: account.linkedAthleteId,
           },
-          trades: account.trades ?? []
+          trades: account.trades ?? [],
+          isAdmin: false,
         };
       }
     }
@@ -199,121 +212,114 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setIsHydrated(true);
   }, []);
 
-  // Save state to localStorage whenever it changes
+  // Persist state
   useEffect(() => {
-    if (isHydrated) {
-      const storage = getBrowserStorage();
-      if (!storage) return;
-      writeJSON(storage, STORAGE_KEY, state);
-    }
+    if (!isHydrated) return;
+    const storage = getBrowserStorage();
+    if (!storage) return;
+    writeJSON(storage, STORAGE_KEY, state);
   }, [state, isHydrated]);
 
   const login = async (email: string, password: string): Promise<User> => {
-    // Simple demo authentication
     const storage = getBrowserStorage();
-    if (!storage) {
-      throw new Error('Storage unavailable');
-    }
+    if (!storage) throw new Error('Storage unavailable');
+
     const account = authenticateAccount(storage, { email, password });
+    if (!account) throw new Error('Invalid credentials');
 
-    if (account) {
-      const loggedInUser: User = {
-        id: account.id,
-        email: account.email,
-        name: account.name,
-        athlxBalance: account.athlxBalance,
-        metaMaskAddress: undefined,
-        linkedAthleteId: account.linkedAthleteId
-      };
+    const loggedInUser: User = {
+      id: account.id,
+      email: account.email,
+      name: account.name,
+      athlxBalance: account.athlxBalance,
+      metaMaskAddress: undefined,
+      linkedAthleteId: account.linkedAthleteId,
+    };
 
-      setState(prev => ({
-        ...prev,
-        currentUser: loggedInUser,
-        trades: account.trades ?? []
-      }));
-      saveSession(storage, account.email);
-      logEvent('login', { userId: account.id });
-      return loggedInUser;
-    }
-    
-    throw new Error('Invalid credentials');
+    setState((prev) => ({
+      ...prev,
+      currentUser: loggedInUser,
+      trades: account.trades ?? [],
+      isAdmin: false,
+    }));
+
+    saveSession(storage, account.email);
+    logEvent('login', { userId: account.id });
+    return loggedInUser;
   };
 
   const signup = async (email: string, password: string, name: string): Promise<User> => {
     const storage = getBrowserStorage();
-    if (!storage) {
-      throw new Error('Storage unavailable');
-    }
+    if (!storage) throw new Error('Storage unavailable');
+
     const newAccount = createAccount(storage, { email, password, name });
-    
+
     const loggedInUser: User = {
       id: newAccount.id,
       email: newAccount.email,
       name: newAccount.name,
       athlxBalance: newAccount.athlxBalance,
       metaMaskAddress: undefined,
-      linkedAthleteId: undefined
+      linkedAthleteId: undefined,
     };
-    
-    setState(prev => ({ ...prev, currentUser: loggedInUser, trades: [] }));
+
+    setState((prev) => ({ ...prev, currentUser: loggedInUser, trades: [], isAdmin: false }));
     saveSession(storage, loggedInUser.email);
     logEvent('signup', { userId: loggedInUser.id });
     return loggedInUser;
   };
 
   const logout = () => {
-    setState(prev => ({ ...prev, currentUser: null, trades: [], isAdmin: false }));
     const storage = getBrowserStorage();
+    setState((prev) => ({ ...prev, currentUser: null, trades: [], isAdmin: false }));
     if (!storage) return;
     clearSession(storage);
   };
 
   const connectMetaMask = () => {
-    if (state.currentUser) {
-      const address = `0x${Math.random().toString(16).substring(2, 10)}...${Math.random().toString(16).substring(2, 6)}`;
-      setState(prev => ({
-        ...prev,
-        currentUser: prev.currentUser ? { ...prev.currentUser, metaMaskAddress: address } : null
-      }));
-    }
+    if (!state.currentUser) return;
+    const address = `0x${Math.random().toString(16).substring(2, 10)}...${Math.random()
+      .toString(16)
+      .substring(2, 6)}`;
+    setState((prev) => ({
+      ...prev,
+      currentUser: prev.currentUser ? { ...prev.currentUser, metaMaskAddress: address } : null,
+    }));
   };
 
   const disconnectMetaMask = () => {
-    if (state.currentUser) {
-      setState(prev => ({
-        ...prev,
-        currentUser: prev.currentUser ? { ...prev.currentUser, metaMaskAddress: undefined } : null
-      }));
-    }
+    if (!state.currentUser) return;
+    setState((prev) => ({
+      ...prev,
+      currentUser: prev.currentUser ? { ...prev.currentUser, metaMaskAddress: undefined } : null,
+    }));
   };
 
   const executeTrade = (athleteSymbol: string, type: 'buy' | 'sell', quantity: number, price: number) => {
     if (!state.currentUser) return;
+
+    // Zero-ownership: athlete-linked accounts cannot trade their own units
     const linkedAthlete = state.currentUser.linkedAthleteId
-      ? state.athletes.find(a => a.id === state.currentUser?.linkedAthleteId)
+      ? state.athletes.find((a) => a.id === state.currentUser?.linkedAthleteId)
       : null;
+
     if (linkedAthlete) {
-      const t = translations[state.language];
-      throw new Error(t.cannotTradeOwnUnits);
+      const tr = translations[state.language];
+      throw new Error(tr.cannotTradeOwnUnits);
     }
+
+    const athlete = state.athletes.find((a) => a.symbol === athleteSymbol);
+    if (!athlete) return;
 
     const subtotal = quantity * price;
     const fee = calcTradingFee(subtotal);
     const total = type === 'buy' ? subtotal + fee : subtotal - fee;
 
-    // Update user balance
-    const newBalance = type === 'buy' 
-      ? state.currentUser.athlxBalance - total
-      : state.currentUser.athlxBalance + total;
+    const newBalance =
+      type === 'buy' ? state.currentUser.athlxBalance - total : state.currentUser.athlxBalance + total;
 
-    if (type === 'buy' && newBalance < 0) {
-      throw new Error('Insufficient balance');
-    }
+    if (type === 'buy' && newBalance < 0) throw new Error('Insufficient balance');
 
-    const athlete = state.athletes.find(a => a.symbol === athleteSymbol);
-    if (!athlete) return;
-
-    // Create trade record
     const trade: Trade = {
       id: `trade_${Date.now()}`,
       userId: state.currentUser.id,
@@ -324,98 +330,56 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       price,
       fee,
       total,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
-    // Update athlete stats
-    const updatedAthletes = state.athletes.map(a => {
-      if (a.symbol === athleteSymbol) {
-        return {
-          ...a,
-          tradingVolume: a.tradingVolume + subtotal,
-          holders: type === 'buy' ? a.holders + 1 : Math.max(a.holders - 1, 0)
-        };
-      }
-      return a;
+    const updatedAthletes = state.athletes.map((a) => {
+      if (a.symbol !== athleteSymbol) return a;
+      return {
+        ...a,
+        tradingVolume: (a.tradingVolume ?? 0) + subtotal,
+        // NOTE: demo-only counter. Real holders should be derived from portfolio holders.
+        holders: type === 'buy' ? (a.holders ?? 0) + 1 : Math.max((a.holders ?? 0) - 1, 0),
+      };
     });
 
     const updatedTrades = [...state.trades, trade];
 
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       currentUser: prev.currentUser ? { ...prev.currentUser, athlxBalance: newBalance } : null,
       trades: updatedTrades,
-      athletes: updatedAthletes
+      athletes: updatedAthletes,
     }));
 
-    persistCurrentAccount(state.currentUser.email, account => {
+    persistCurrentAccount(state.currentUser.email, (account) => {
       const updatedPortfolio = buildPortfolioFromTrades(updatedTrades, updatedAthletes);
       return {
         ...account,
         athlxBalance: newBalance,
         trades: updatedTrades,
-        portfolio: updatedPortfolio
+        portfolio: updatedPortfolio,
       };
     });
 
     logEvent(type === 'buy' ? 'trade_buy' : 'trade_sell', {
       userId: state.currentUser.id,
-      athleteSymbol
+      athleteSymbol,
+      meta: {
+        quantity,
+        price,
+        subtotal,
+        fee,
+        total,
+        currency: 'tATHLX',
+      },
     });
   };
 
   const getPortfolio = (): Portfolio[] => {
     if (!state.currentUser) return [];
-
-    const userTrades = state.trades.filter(t => t.userId === state.currentUser!.id);
-    const portfolioMap = new Map<string, Portfolio>();
-
-    userTrades.forEach(trade => {
-      const existing = portfolioMap.get(trade.athleteSymbol);
-      
-      if (trade.type === 'buy') {
-        if (existing) {
-          const totalQuantity = existing.quantity + trade.quantity;
-          const totalCost = (existing.avgBuyPrice * existing.quantity) + (trade.price * trade.quantity);
-          portfolioMap.set(trade.athleteSymbol, {
-            ...existing,
-            quantity: totalQuantity,
-            avgBuyPrice: totalCost / totalQuantity
-          });
-        } else {
-          portfolioMap.set(trade.athleteSymbol, {
-            athleteSymbol: trade.athleteSymbol,
-            athleteName: trade.athleteName,
-            quantity: trade.quantity,
-            avgBuyPrice: trade.price,
-            currentPrice: trade.price
-          });
-        }
-      } else {
-        if (existing) {
-          const newQuantity = existing.quantity - trade.quantity;
-          if (newQuantity > 0) {
-            portfolioMap.set(trade.athleteSymbol, {
-              ...existing,
-              quantity: newQuantity
-            });
-          } else {
-            portfolioMap.delete(trade.athleteSymbol);
-          }
-        }
-      }
-    });
-
-    // Update current prices
-    const portfolio = Array.from(portfolioMap.values()).map(p => {
-      const athlete = state.athletes.find(a => a.symbol === p.athleteSymbol);
-      return {
-        ...p,
-        currentPrice: athlete?.unitCost || p.currentPrice
-      };
-    });
-
-    return portfolio;
+    const userTrades = state.trades.filter((t) => t.userId === state.currentUser!.id);
+    return buildPortfolioFromTrades(userTrades, state.athletes);
   };
 
   const submitAthleteRegistration = (data: Omit<PendingAthlete, 'id' | 'userId' | 'submittedAt' | 'status'>) => {
@@ -426,26 +390,26 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       id: `pending_${Date.now()}`,
       userId: state.currentUser.id,
       submittedAt: new Date().toISOString(),
-      status: 'pending'
+      status: 'pending',
     };
 
-    setState(prev => ({
-      ...prev,
-      pendingAthletes: [...prev.pendingAthletes, pending]
-    }));
+    setState((prev) => ({ ...prev, pendingAthletes: [...prev.pendingAthletes, pending] }));
     logEvent('athlete_register_submit', { userId: state.currentUser.id });
   };
 
   const approveAthlete = (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => {
-    const pending = state.pendingAthletes.find(p => p.id === pendingId);
+    const pending = state.pendingAthletes.find((p) => p.id === pendingId);
     if (!pending) return;
+
+    const normalizedCategory = finalCategory as Category;
+    const unitCost = initialPrice > 0 ? initialPrice : getDefaultUnitCost(normalizedCategory);
 
     const newAthlete: Athlete = {
       id: `athlete_${Date.now()}`,
       name: pending.name,
       symbol: symbol.toUpperCase(),
       sport: pending.sport,
-      category: finalCategory as any,
+      category: normalizedCategory,
       nationality: pending.nationality,
       team: pending.team,
       position: pending.position,
@@ -455,110 +419,93 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       profileUrl: pending.profileUrl,
       highlightVideoUrl: pending.highlightVideoUrl,
       imageUrl: pending.imageDataUrl ?? `https://i.pravatar.cc/300?img=${Math.floor(Math.random() * 70)}`,
-      unitCost: getDefaultUnitCost(finalCategory as Category),
-      currentPrice: initialPrice,
-      activityIndex: initialPrice,
+      unitCost,
+      currentPrice: unitCost,
+      activityIndex: unitCost, // demo: starts at initial index
       price24hChange: 0,
       price7dChange: 0,
       tradingVolume: 0,
       holders: 0,
       tags: ['New'],
-      priceHistory: [{ time: new Date().toISOString(), price: initialPrice, volume: 0 }],
+      priceHistory: [{ time: new Date().toISOString(), price: unitCost, volume: 0 }],
       createdAt: new Date().toISOString(),
-      userId: pending.userId
+      userId: pending.userId,
     };
 
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       athletes: [...prev.athletes, newAthlete],
-      pendingAthletes: prev.pendingAthletes.map(p => 
-        p.id === pendingId ? { ...p, status: 'approved' as const } : p
-      ),
-      currentUser: prev.currentUser?.id === pending.userId 
-        ? { ...prev.currentUser, linkedAthleteId: newAthlete.id }
-        : prev.currentUser
+      pendingAthletes: prev.pendingAthletes.map((p) => (p.id === pendingId ? { ...p, status: 'approved' as const } : p)),
+      currentUser:
+        prev.currentUser?.id === pending.userId ? { ...prev.currentUser, linkedAthleteId: newAthlete.id } : prev.currentUser,
     }));
 
     if (pending.userId && state.currentUser?.id === pending.userId) {
-      persistCurrentAccount(state.currentUser.email, account => ({
-        ...account,
-        linkedAthleteId: newAthlete.id
-      }));
+      persistCurrentAccount(state.currentUser.email, (account) => ({ ...account, linkedAthleteId: newAthlete.id }));
     }
 
     logEvent('admin_approve', { userId: pending.userId, athleteSymbol: newAthlete.symbol });
   };
 
   const rejectAthlete = (pendingId: string, reason: string) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
-      pendingAthletes: prev.pendingAthletes.map(p =>
-        p.id === pendingId ? { ...p, status: 'rejected' as const, rejectionReason: reason } : p
-      )
+      pendingAthletes: prev.pendingAthletes.map((p) =>
+        p.id === pendingId ? { ...p, status: 'rejected' as const, rejectionReason: reason } : p,
+      ),
     }));
     logEvent('admin_reject', { userId: state.currentUser?.id });
   };
 
-  const getAthleteBySymbol = (symbol: string): Athlete | undefined => {
-    return state.athletes.find(a => a.symbol === symbol);
-  };
+  const getAthleteBySymbol = (symbol: string): Athlete | undefined => state.athletes.find((a) => a.symbol === symbol);
 
   const updateAthletePrice = (symbol: string, newPrice: number) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
-      athletes: prev.athletes.map(a => {
-        if (a.symbol === symbol) {
-          const change24h = ((newPrice - a.currentPrice) / a.currentPrice) * 100;
-          return {
-            ...a,
-            currentPrice: newPrice,
-            price24hChange: change24h,
-            priceHistory: [
-              ...a.priceHistory,
-              { time: new Date().toISOString(), price: newPrice, volume: Math.floor(Math.random() * 10000) }
-            ]
-          };
-        }
-        return a;
-      })
+      athletes: prev.athletes.map((a) => {
+        if (a.symbol !== symbol) return a;
+        const base = a.currentPrice || 0.0001;
+        const change24h = ((newPrice - base) / base) * 100;
+        return {
+          ...a,
+          currentPrice: newPrice,
+          unitCost: newPrice,
+          price24hChange: change24h,
+          priceHistory: [
+            ...(a.priceHistory ?? []),
+            { time: new Date().toISOString(), price: newPrice, volume: Math.floor(Math.random() * 10000) },
+          ],
+        };
+      }),
     }));
   };
 
-  const submitMatchUpdate = (
-    athleteSymbol: string,
-    nextMatch?: NextMatchInfo,
-    lastMatch?: LastMatchInfo,
-    approved = true
-  ) => {
-    setState(prev => ({
+  const submitMatchUpdate = (athleteSymbol: string, nextMatch?: NextMatchInfo, lastMatch?: LastMatchInfo, approved = true) => {
+    setState((prev) => ({
       ...prev,
-      athletes: prev.athletes.map(athlete => {
-        if (athlete.symbol !== athleteSymbol) {
-          return athlete;
-        }
+      athletes: prev.athletes.map((athlete) => {
+        if (athlete.symbol !== athleteSymbol) return athlete;
 
         const updateScore = computeEventScore(nextMatch, lastMatch);
-        const updatedActivityIndex = approved
-          ? Math.max(0, athlete.activityIndex + updateScore)
-          : athlete.activityIndex;
+        const updatedActivityIndex = approved ? Math.max(0, athlete.activityIndex + updateScore) : athlete.activityIndex;
+
         const updatedUnitCost = approved
           ? Math.max(getDefaultUnitCost(athlete.category), athlete.unitCost + updateScore * 0.01)
           : athlete.unitCost;
+
         return {
           ...athlete,
           nextMatch,
           lastMatch,
           activityIndex: updatedActivityIndex,
           unitCost: updatedUnitCost,
+          currentPrice: updatedUnitCost,
           lastUpdateReason: approved ? buildUpdateReason(nextMatch, lastMatch) : athlete.lastUpdateReason,
           priceHistory: approved
-            ? [
-                ...athlete.priceHistory,
-                { time: new Date().toISOString(), price: updatedActivityIndex, volume: 0 }
-              ]
-            : athlete.priceHistory
+            ? [...(athlete.priceHistory ?? []), { time: new Date().toISOString(), price: updatedUnitCost, volume: 0 }]
+            : athlete.priceHistory,
         };
-      })
+      }),
     }));
   };
 
@@ -574,42 +521,64 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     injury: boolean;
     notes: string;
   }) => {
-    setState(prev => {
-      const targetAthlete = prev.athletes.find(athlete => athlete.symbol === payload.athleteSymbol);
-      if (!targetAthlete) {
-        return prev;
-      }
+    setState((prev) => {
+      const targetAthlete = prev.athletes.find((athlete) => athlete.symbol === payload.athleteSymbol);
+      if (!targetAthlete) return prev;
+
       const minutesPlayed = Math.max(0, Math.min(90, Number(payload.minutesPlayed) || 0));
       const goals = Math.max(0, Math.min(10, Number(payload.goals) || 0));
       const assists = Math.max(0, Math.min(10, Number(payload.assists) || 0));
+
       const resultDelta = payload.result === 'Win' ? 0.4 : payload.result === 'Draw' ? 0.1 : -0.2;
-      const baseDelta = (minutesPlayed / 90) * 0.5
-        + goals * 0.8
-        + assists * 0.5
-        + resultDelta
-        + (payload.injury ? -1.0 : 0);
-      const noise = (Math.random() * 0.02) - 0.01;
-      const updatedUnitCost = Math.min(
-        5,
-        Math.max(0.001, targetAthlete.unitCost * (1 + baseDelta / 10 + noise))
-      );
+
+      const baseDelta =
+        (minutesPlayed / 90) * 0.5 +
+        goals * 0.8 +
+        assists * 0.5 +
+        resultDelta +
+        (payload.injury ? -1.0 : 0);
+
+      const noise = Math.random() * 0.02 - 0.01;
+
+      const updatedUnitCost = Math.min(5, Math.max(0.001, targetAthlete.unitCost * (1 + baseDelta / 10 + noise)));
       const updatedActivityIndex = Math.max(0, targetAthlete.activityIndex + baseDelta);
-      const minutesBucket = minutesPlayed >= 61 ? '61-90' : minutesPlayed >= 31 ? '31-60' : minutesPlayed >= 1 ? '1-30' : '0';
-      const updateReason = payload.notes || buildUpdateReason(undefined, {
-        date: payload.matchDate,
-        minutesBucket,
+
+      const minutesBucket =
+        minutesPlayed >= 61 ? '61-90' : minutesPlayed >= 31 ? '31-60' : minutesPlayed >= 1 ? '1-30' : '0';
+
+      const updateReason =
+        payload.notes ||
+        buildUpdateReason(undefined, {
+          date: payload.matchDate,
+          minutesBucket,
+          result: payload.result,
+          goals: goals || undefined,
+          assists: assists || undefined,
+          injury: payload.injury,
+        });
+
+      const updateRecord: AthleteUpdate = {
+        id: `update_${Date.now()}`,
+        athleteSymbol: payload.athleteSymbol,
+        matchDate: payload.matchDate,
+        opponent: payload.opponent,
+        homeAway: payload.homeAway,
+        minutesPlayed,
         result: payload.result,
-        goals: goals || undefined,
-        assists: assists || undefined,
-        injury: payload.injury
-      });
+        goals,
+        assists,
+        injury: payload.injury,
+        notes: payload.notes,
+        submittedAt: new Date().toISOString(),
+        baseDelta,
+        newUnitCost: updatedUnitCost,
+        newActivityIndex: updatedActivityIndex,
+      };
 
       return {
         ...prev,
-        athletes: prev.athletes.map(athlete => {
-          if (athlete.symbol !== payload.athleteSymbol) {
-            return athlete;
-          }
+        athletes: prev.athletes.map((athlete) => {
+          if (athlete.symbol !== payload.athleteSymbol) return athlete;
           return {
             ...athlete,
             lastMatch: {
@@ -618,88 +587,74 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               result: payload.result,
               goals: goals || undefined,
               assists: assists || undefined,
-              injury: payload.injury
+              injury: payload.injury,
             },
             activityIndex: updatedActivityIndex,
             unitCost: updatedUnitCost,
+            currentPrice: updatedUnitCost,
             lastUpdateReason: updateReason,
             priceHistory: [
-              ...athlete.priceHistory,
-              { time: new Date().toISOString(), price: updatedUnitCost, volume: Math.floor(Math.random() * 10000) }
-            ]
+              ...(athlete.priceHistory ?? []),
+              { time: new Date().toISOString(), price: updatedUnitCost, volume: Math.floor(Math.random() * 10000) },
+            ],
           };
         }),
-        athleteUpdates: [
-          ...prev.athleteUpdates,
-          {
-            id: `update_${Date.now()}`,
-            athleteSymbol: payload.athleteSymbol,
-            matchDate: payload.matchDate,
-            opponent: payload.opponent,
-            homeAway: payload.homeAway,
-            minutesPlayed,
-            result: payload.result,
-            goals,
-            assists,
-            injury: payload.injury,
-            notes: payload.notes,
-            submittedAt: new Date().toISOString(),
-            baseDelta,
-            newUnitCost: updatedUnitCost,
-            newActivityIndex: updatedActivityIndex
-          }
-        ]
+        athleteUpdates: [...prev.athleteUpdates, updateRecord],
       };
     });
-    logEvent('athlete_update_submit', {
-      userId: state.currentUser?.id,
-      athleteSymbol: payload.athleteSymbol
-    });
+
+    logEvent('athlete_update_submit', { userId: state.currentUser?.id, athleteSymbol: payload.athleteSymbol });
   };
 
   const resetDemoData = () => {
     if (!state.isAdmin) {
-      const t = translations[state.language];
-      throw new Error(t.adminOnly);
+      const tr = translations[state.language];
+      throw new Error(tr.adminOnly);
     }
+
     logEvent('reset', { userId: state.currentUser?.id });
+
     const storage = getBrowserStorage();
     if (!storage) return;
+
     storage.removeItem(STORAGE_KEY);
     storage.removeItem(EVENTS_KEY);
     resetDemoStorage(storage);
+
     setState(defaultState);
   };
 
   const setAdminAccess = (value: boolean) => {
-    setState(prev => ({ ...prev, isAdmin: value }));
+    setState((prev) => ({ ...prev, isAdmin: value }));
   };
 
   const setLanguage = (lang: 'EN' | 'ES') => {
-    setState(prev => ({ ...prev, language: lang }));
+    setState((prev) => ({ ...prev, language: lang }));
   };
 
   return (
-    <StoreContext.Provider value={{
-      state,
-      login,
-      signup,
-      logout,
-      connectMetaMask,
-      disconnectMetaMask,
-      executeTrade,
-      getPortfolio,
-      submitAthleteRegistration,
-      approveAthlete,
-      rejectAthlete,
-      getAthleteBySymbol,
-      updateAthletePrice,
-      submitMatchUpdate,
-      submitAthletePerformanceUpdate,
-      resetDemoData,
-      setAdminAccess,
-      setLanguage
-    }}>
+    <StoreContext.Provider
+      value={{
+        state,
+        login,
+        signup,
+        logout,
+        connectMetaMask,
+        disconnectMetaMask,
+        executeTrade,
+        getPortfolio,
+        submitAthleteRegistration,
+        approveAthlete,
+        rejectAthlete,
+        getAthleteBySymbol,
+        updateAthletePrice,
+        submitMatchUpdate,
+        submitAthletePerformanceUpdate,
+        resetDemoData,
+        setAdminAccess,
+        setLanguage,
+      }}
+    >
       {children}
     </StoreContext.Provider>
   );
