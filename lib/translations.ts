@@ -1,4 +1,6 @@
-export const translations = {
+export type Language = 'EN' | 'ES';
+
+export const translations: Record<Language, Record<string, string>> = {
   EN: {
     // Navigation
     home: 'Home',
@@ -54,13 +56,18 @@ export const translations = {
     fastGrowing: 'Fast Growing',
     promoted: 'Promoted',
     newLabel: 'New',
+
+    // Important rules / errors
     cannotTradeOwnUnits: 'Athlete accounts cannot acquire or release units.',
     cannotTradeOwnUnitsHint: 'Athlete accounts cannot acquire or release units.',
     adminOnly: 'Admin access required.',
     imageTooLarge: 'Image must be 2MB or smaller.',
     updateRequiredFields: 'Please complete all required fields.',
+    updateFailed: 'Failed to submit update. Please try again.',
     noUpdatesYet: 'No updates submitted yet.',
     recentUpdates: 'Recent updates',
+
+    // Search / Filter
     searchAthletes: 'Search athletes...',
     filterBy: 'Filter by',
     sortByUnitCost: 'Sort by unit cost',
@@ -68,6 +75,8 @@ export const translations = {
     sortByVolume: 'Sort by flow',
     sortByChange: 'Sort by 24h delta',
     resetFilters: 'Reset filters',
+
+    // Match / Athlete update
     matchUpdateTitle: 'Match Update',
     athleteUpdateTitle: 'Athlete Update',
     athleteUpdateSubtitle: 'Submit match activity to refresh the demo activity index and unit cost.',
@@ -78,6 +87,8 @@ export const translations = {
     resetConfirmPlaceholder: 'Type RESET to confirm',
     resetConfirmError: 'Please type RESET to continue.',
     resetDemoDataSuccess: 'Demo data cleared.',
+
+    // Admin data tools (keep for compatibility)
     adminDataTools: 'Admin data tools',
     exportJson: 'Export JSON',
     importJson: 'Import JSON',
@@ -87,6 +98,8 @@ export const translations = {
     importConfirmWarning: 'Type IMPORT to confirm restoring demo data from this file.',
     importConfirmPlaceholder: 'Type IMPORT to confirm',
     importConfirmError: 'Please type IMPORT to continue.',
+
+    // News
     newsTitle: 'Sports News',
     viewAthleteProfile: 'View athlete profile',
     categoryTransfer: 'Transfer',
@@ -94,6 +107,8 @@ export const translations = {
     categoryInjury: 'Injury',
     categoryCareer: 'Career',
     categoryOthers: 'Others',
+
+    // Match fields
     nextMatch: 'Next Match',
     matchDateLabel: 'Match date',
     homeAwayLabel: 'Home/Away',
@@ -109,6 +124,7 @@ export const translations = {
     opponentLabel: 'Opponent',
     homeLabel: 'Home',
     awayLabel: 'Away',
+
     roleStarter: 'Starter',
     roleBench: 'Bench',
     roleNotInSquad: 'Not in squad',
@@ -118,6 +134,7 @@ export const translations = {
     importanceLeague: 'League',
     importanceCup: 'Cup',
     importanceFriendly: 'Friendly',
+
     resultWin: 'Win',
     resultDraw: 'Draw',
     resultLoss: 'Loss',
@@ -128,16 +145,20 @@ export const translations = {
     goalsLabel: 'Goals',
     assistsLabel: 'Assists',
     injuryLabel: 'Injury reported',
+
     applyUpdateNow: 'Apply update now',
     submitMatchUpdate: 'Submit update',
     matchUpdateApplied: 'Update applied to activity index and unit cost.',
     matchUpdateQueued: 'Update queued for review.',
+
     demoSubtotalLabel: 'Demo Subtotal',
     demoFeeLabel: 'Demo Fee (5%)',
     demoFeeShort: 'Demo Fee',
     totalCostLabel: 'Total Cost',
     totalReceivedLabel: 'Total Received',
-    demoFeeNote: 'A 5% demo fee is applied. Simulates distribution: 3% Operations Wallet, 1% Athlete Reward Wallet, 1% Post-Career Support Vault (all demo-only).',
+    demoFeeNote:
+      'A 5% demo fee is applied. Simulates distribution: 3% Operations Wallet, 1% Athlete Reward Wallet, 1% Post-Career Support Vault (all demo-only).',
+
     pleaseLogin: 'Please login first',
     insufficientBalance: 'Insufficient balance',
     actionSuccessPrefix: 'Action complete! You',
@@ -199,13 +220,17 @@ export const translations = {
     // Why ATHLX
     whyAthlxTitle: 'Why ATHLX Exists',
     whyAthlxCardOneTitle: 'Early Career Support Model',
-    whyAthlxCardOneDescription: 'This pilot explores support models for young athletes during critical early career stages, simulating allocation of demo resources to help test UX and community engagement.',
+    whyAthlxCardOneDescription:
+      'This pilot explores support models for young athletes during critical early career stages, simulating allocation of demo resources to help test UX and community engagement.',
     whyAthlxCardTwoTitle: 'Post-Career Support Simulation',
-    whyAthlxCardTwoDescription: 'The Post-Career Support Vault is a locked demo ledger that simulates long-term athlete support mechanisms. This tests allocation models for life after active sports careers.',
+    whyAthlxCardTwoDescription:
+      'The Post-Career Support Vault is a locked demo ledger that simulates long-term athlete support mechanisms. This tests allocation models for life after active sports careers.',
     whyAthlxCardThreeTitle: 'Community Participation',
-    whyAthlxCardThreeDescription: 'Fans participate in a test environment, using demo credits to simulate community-driven athlete support. This helps shape new models for fan-athlete connections.',
+    whyAthlxCardThreeDescription:
+      'Fans participate in a test environment, using demo credits to simulate community-driven athlete support. This helps shape new models for fan-athlete connections.',
     whyAthlxCardFourTitle: 'UX Testing & Innovation',
-    whyAthlxCardFourDescription: 'This closed pilot tests innovative support allocation models. Participants help improve the platform through real usage and feedback in a safe, demo-only environment.',
+    whyAthlxCardFourDescription:
+      'This closed pilot tests innovative support allocation models. Participants help improve the platform through real usage and feedback in a safe, demo-only environment.',
 
     // Athlete highlights
     newAthletesTitle: 'Newly Listed Athletes',
@@ -269,7 +294,8 @@ export const translations = {
     totalDemoCreditsFlow: 'Total Demo Credits Flow',
     totalImmediatePayout: 'Total Immediate Payout (2.5%)',
     directSupportNote: 'Direct support from every unit exchange',
-    realTimeSupportNote: 'Every time units are exchanged, 2.5% of the demo credits flow is allocated to you as immediate support. This mechanism ensures you receive real-time benefits from participation.',
+    realTimeSupportNote:
+      'Every time units are exchanged, 2.5% of the demo credits flow is allocated to you as immediate support. This mechanism ensures you receive real-time benefits from participation.',
     viewPublicProfile: 'View Your Public Profile',
     noAthleteProfileLinked: 'No Athlete Profile Linked',
     noAthleteProfileLinkedDetail: "You don't have an athlete profile associated with your account yet.",
@@ -338,37 +364,45 @@ export const translations = {
     profileUrlPlaceholder: 'https://example.com/your-profile',
     highlightVideoLabel: 'Highlight Video URL (YouTube)',
     highlightVideoPlaceholder: 'https://youtube.com/embed/...',
-    termsAgreement: 'I agree to the terms and understand this is a demo environment. I confirm that the information provided is accurate and I have the right to register on this platform.',
+    termsAgreement:
+      'I agree to the terms and understand this is a demo environment. I confirm that the information provided is accurate and I have the right to register on this platform.',
     submitApplication: 'Submit Application',
 
     // About
     aboutTitle: 'About AthleteXchange (ATHLX)',
     aboutSubtitle: 'About AthleteXchange (ATHLX)',
-    aboutIntroOne: 'AthleteXchange (ATHLX) is a pilot platform designed to explore new ways for fans to support athletes through a simulated, demo-only environment.',
-    aboutIntroTwo: 'This pilot uses Demo Credits (tATHLX) and Athlete Units purely for testing user experience and support allocation logic. Nothing in this pilot represents real money, ownership rights, shares, or any promise of financial return. There are no withdrawals and no external transfers.',
+    aboutIntroOne:
+      'AthleteXchange (ATHLX) is a pilot platform designed to explore new ways for fans to support athletes through a simulated, demo-only environment.',
+    aboutIntroTwo:
+      'This pilot uses Demo Credits (tATHLX) and Athlete Units purely for testing user experience and support allocation logic. Nothing in this pilot represents real money, ownership rights, shares, or any promise of financial return. There are no withdrawals and no external transfers.',
     aboutHowItWorksTitle: 'How the pilot works:',
     aboutHowItWorksStepOne: 'Athletes can apply and are reviewed by an operator.',
     aboutHowItWorksStepTwo: 'Approved athletes appear in the Athlete Directory.',
-    aboutHowItWorksStepThree: 'Fans can acquire or release Athlete Units using demo credits inside the Test Environment.',
+    aboutHowItWorksStepThree: 'Fans acquire or release Athlete Units using demo credits inside the Test Environment.',
     aboutHowItWorksStepFour: 'A fixed demo fee model distributes demo credits into three ledgers:',
     aboutLedgerOperations: 'Operations Wallet (platform costs simulation)',
     aboutLedgerRewards: 'Athlete Reward Wallet (demo-only allocation)',
     aboutLedgerSupport: 'Post-Career Support Vault (locked demo ledger)',
     aboutNoticeTitle: 'Important notice:',
-    aboutNoticeBody: 'This is a closed pilot for UX testing and community research. Demo-only. No real-world money. No withdrawals. No external transfers. Nothing here represents real money or any real-world entitlement.',
+    aboutNoticeBody:
+      'This is a closed pilot for UX testing and community research. Demo-only. No real-world money. No withdrawals. No external transfers. Nothing here represents real money or any real-world entitlement.',
     aboutPurposeTitle: 'Purpose & Vision',
     aboutPurposeCardOneTitle: 'Support for Young Talents',
-    aboutPurposeCardOneDescription: 'This pilot explores direct support models for athletes during early career stages, when traditional funding is often unavailable.',
+    aboutPurposeCardOneDescription:
+      'This pilot explores direct support models for athletes during early career stages, when traditional funding is often unavailable.',
     aboutPurposeCardTwoTitle: 'Post-Career Support Simulation',
-    aboutPurposeCardTwoDescription: 'The Post-Career Support Vault is a locked demo ledger concept designed to simulate long-term support mechanisms for athletes.',
+    aboutPurposeCardTwoDescription:
+      'The Post-Career Support Vault is a locked demo ledger concept designed to simulate long-term support mechanisms for athletes.',
     aboutPurposeCardThreeTitle: 'Community Participation',
-    aboutPurposeCardThreeDescription: 'Fans participate in a closed test environment to help shape new community-driven athlete support models.',
+    aboutPurposeCardThreeDescription:
+      'Fans participate in a closed test environment to help shape new community-driven athlete support models.',
     aboutPurposeCardFourTitle: 'UX Testing & Feedback',
-    aboutPurposeCardFourDescription: 'This closed pilot gathers user experience data and feedback to improve support allocation models and platform design.',
+    aboutPurposeCardFourDescription:
+      'This closed pilot gathers user experience data and feedback to improve support allocation models and platform design.',
     aboutCtaTitle: 'Join the Pilot',
     aboutCtaSubtitle: 'Participate in testing this closed demo environment.',
 
-    // News
+    // News (legacy keys used elsewhere)
     newsCategoryTransfer: 'Transfer',
     newsCategoryPerformance: 'Performance',
     newsCategoryInjury: 'Injury',
@@ -394,8 +428,9 @@ export const translations = {
     activityIndex: 'Activity Index (pts)',
     postCareerSupport: 'Post-Career Support Vault',
     demoOnly: 'Demo-only. No real-world value.',
-    testEnvironment: 'Test Environment'
+    testEnvironment: 'Test Environment',
   },
+
   ES: {
     // Navigation
     home: 'Inicio',
@@ -451,13 +486,18 @@ export const translations = {
     fastGrowing: 'Crecimiento rápido',
     promoted: 'Promocionado',
     newLabel: 'Nuevo',
+
+    // Important rules / errors
     cannotTradeOwnUnits: 'Las cuentas de atleta no pueden adquirir ni liberar unidades.',
     cannotTradeOwnUnitsHint: 'Las cuentas de atleta no pueden adquirir ni liberar unidades.',
     adminOnly: 'Acceso de administrador requerido.',
     imageTooLarge: 'La imagen debe ser de 2MB o menos.',
     updateRequiredFields: 'Completa todos los campos obligatorios.',
+    updateFailed: 'No se pudo enviar la actualización. Inténtalo de nuevo.',
     noUpdatesYet: 'Aún no hay actualizaciones.',
     recentUpdates: 'Actualizaciones recientes',
+
+    // Search / Filter
     searchAthletes: 'Buscar atletas...',
     filterBy: 'Filtrar por',
     sortByUnitCost: 'Ordenar por costo por unidad',
@@ -465,6 +505,8 @@ export const translations = {
     sortByVolume: 'Ordenar por flujo',
     sortByChange: 'Ordenar por delta 24h',
     resetFilters: 'Restablecer filtros',
+
+    // Match / Athlete update
     matchUpdateTitle: 'Actualización de partido',
     athleteUpdateTitle: 'Actualización del atleta',
     athleteUpdateSubtitle: 'Envía actividad del partido para actualizar el índice de actividad y el costo por unidad demo.',
@@ -475,6 +517,8 @@ export const translations = {
     resetConfirmPlaceholder: 'Escribe RESET para confirmar',
     resetConfirmError: 'Escribe RESET para continuar.',
     resetDemoDataSuccess: 'Datos demo eliminados.',
+
+    // Admin data tools (keep for compatibility)
     adminDataTools: 'Herramientas de datos de admin',
     exportJson: 'Exportar JSON',
     importJson: 'Importar JSON',
@@ -484,6 +528,8 @@ export const translations = {
     importConfirmWarning: 'Escribe IMPORT para confirmar la restauración desde este archivo.',
     importConfirmPlaceholder: 'Escribe IMPORT para confirmar',
     importConfirmError: 'Escribe IMPORT para continuar.',
+
+    // News
     newsTitle: 'Noticias Deportivas',
     viewAthleteProfile: 'Ver perfil del atleta',
     categoryTransfer: 'Transferencia',
@@ -491,6 +537,8 @@ export const translations = {
     categoryInjury: 'Lesión',
     categoryCareer: 'Carrera',
     categoryOthers: 'Otros',
+
+    // Match fields
     nextMatch: 'Próximo partido',
     matchDateLabel: 'Fecha del partido',
     homeAwayLabel: 'Local/Visitante',
@@ -506,6 +554,7 @@ export const translations = {
     opponentLabel: 'Rival',
     homeLabel: 'Local',
     awayLabel: 'Visitante',
+
     roleStarter: 'Titular',
     roleBench: 'Suplente',
     roleNotInSquad: 'No convocado',
@@ -515,6 +564,7 @@ export const translations = {
     importanceLeague: 'Liga',
     importanceCup: 'Copa',
     importanceFriendly: 'Amistoso',
+
     resultWin: 'Victoria',
     resultDraw: 'Empate',
     resultLoss: 'Derrota',
@@ -525,16 +575,20 @@ export const translations = {
     goalsLabel: 'Goles',
     assistsLabel: 'Asistencias',
     injuryLabel: 'Lesión reportada',
+
     applyUpdateNow: 'Aplicar actualización ahora',
     submitMatchUpdate: 'Enviar actualización',
     matchUpdateApplied: 'Actualización aplicada al índice de actividad y costo por unidad.',
     matchUpdateQueued: 'Actualización en cola para revisión.',
+
     demoSubtotalLabel: 'Subtotal Demo',
     demoFeeLabel: 'Comisión Demo (5%)',
     demoFeeShort: 'Comisión Demo',
     totalCostLabel: 'Costo Total',
     totalReceivedLabel: 'Total Recibido',
-    demoFeeNote: 'Se aplica una comisión demo del 5%. Simula distribución: 3% Cartera de Operaciones, 1% Cartera de Recompensa del Atleta, 1% Fondo de Apoyo Post-Carrera (todo demo).',
+    demoFeeNote:
+      'Se aplica una comisión demo del 5%. Simula distribución: 3% Cartera de Operaciones, 1% Cartera de Recompensa del Atleta, 1% Fondo de Apoyo Post-Carrera (todo demo).',
+
     pleaseLogin: 'Por favor inicia sesión primero',
     insufficientBalance: 'Saldo insuficiente',
     actionSuccessPrefix: 'Acción completada. Has',
@@ -575,9 +629,12 @@ export const translations = {
 
     // Hero
     heroTitle: 'Apoya a los atletas directamente.',
-    heroSubtitle: 'Un piloto cerrado donde la participación ayuda a simular la asignación de apoyo a atletas — solo créditos demo.',
-    heroSupportBulletOne: 'Los fans participan en una simulación de apoyo a atletas, explorando nuevos modelos comunitarios.',
-    heroSupportBulletTwo: 'Los créditos demo simulan la asignación de apoyo y los modelos de asistencia post-carrera.',
+    heroSubtitle:
+      'Un piloto cerrado donde la participación ayuda a simular la asignación de apoyo a atletas — solo créditos demo.',
+    heroSupportBulletOne:
+      'Los fans participan en una simulación de apoyo a atletas, explorando nuevos modelos comunitarios.',
+    heroSupportBulletTwo:
+      'Los créditos demo simulan la asignación de apoyo y los modelos de asistencia post-carrera.',
     exploreMarket: 'Explorar Entorno de Prueba',
     registerAthlete: 'Registrarse como Atleta',
 
@@ -596,13 +653,17 @@ export const translations = {
     // Why ATHLX
     whyAthlxTitle: 'Por Qué Existe ATHLX',
     whyAthlxCardOneTitle: 'Modelo de Apoyo Temprano',
-    whyAthlxCardOneDescription: 'Este piloto explora modelos de apoyo para atletas jóvenes en etapas críticas, simulando la asignación de recursos demo para probar UX y participación comunitaria.',
+    whyAthlxCardOneDescription:
+      'Este piloto explora modelos de apoyo para atletas jóvenes en etapas críticas, simulando la asignación de recursos demo para probar UX y participación comunitaria.',
     whyAthlxCardTwoTitle: 'Simulación de Apoyo Post-Carrera',
-    whyAthlxCardTwoDescription: 'El Fondo de Apoyo Post-Carrera es un registro demo bloqueado que simula mecanismos de apoyo a largo plazo. Esto prueba modelos de asignación para la vida después del deporte activo.',
+    whyAthlxCardTwoDescription:
+      'El Fondo de Apoyo Post-Carrera es un registro demo bloqueado que simula mecanismos de apoyo a largo plazo.',
     whyAthlxCardThreeTitle: 'Participación Comunitaria',
-    whyAthlxCardThreeDescription: 'Los fans participan en un entorno de prueba, usando créditos demo para simular apoyo comunitario a atletas. Esto ayuda a crear nuevos modelos de conexión fan-atleta.',
+    whyAthlxCardThreeDescription:
+      'Los fans participan en un entorno de prueba, usando créditos demo para simular apoyo comunitario a atletas.',
     whyAthlxCardFourTitle: 'Pruebas de UX e Innovación',
-    whyAthlxCardFourDescription: 'Este piloto cerrado prueba modelos innovadores de asignación de apoyo. Los participantes ayudan a mejorar la plataforma con uso real y retroalimentación en un entorno seguro y demo.',
+    whyAthlxCardFourDescription:
+      'Este piloto cerrado prueba modelos innovadores de asignación de apoyo. Los participantes ayudan a mejorar la plataforma con uso real.',
 
     // Athlete highlights
     newAthletesTitle: 'Atletas Nuevos',
@@ -666,7 +727,8 @@ export const translations = {
     totalDemoCreditsFlow: 'Flujo Total de Créditos Demo',
     totalImmediatePayout: 'Pago Inmediato Total (2.5%)',
     directSupportNote: 'Apoyo directo por cada intercambio de unidades',
-    realTimeSupportNote: 'Cada vez que se intercambian unidades, el 2.5% del flujo de créditos demo se asigna como apoyo inmediato. Este mecanismo asegura beneficios en tiempo real por la participación.',
+    realTimeSupportNote:
+      'Cada vez que se intercambian unidades, el 2.5% del flujo de créditos demo se asigna como apoyo inmediato.',
     viewPublicProfile: 'Ver Tu Perfil Público',
     noAthleteProfileLinked: 'Sin Perfil de Atleta Vinculado',
     noAthleteProfileLinkedDetail: 'Aún no tienes un perfil de atleta asociado a tu cuenta.',
@@ -735,37 +797,32 @@ export const translations = {
     profileUrlPlaceholder: 'https://example.com/tu-perfil',
     highlightVideoLabel: 'URL de Video Destacado (YouTube)',
     highlightVideoPlaceholder: 'https://youtube.com/embed/...',
-    termsAgreement: 'Acepto los términos y entiendo que este es un entorno demo. Confirmo que la información proporcionada es precisa y que tengo derecho a registrarme en esta plataforma.',
+    termsAgreement:
+      'Acepto los términos y entiendo que este es un entorno demo. Confirmo que la información proporcionada es precisa.',
     submitApplication: 'Enviar Solicitud',
 
     // About
     aboutTitle: 'Sobre AthleteXchange (ATHLX)',
     aboutSubtitle: 'Sobre AthleteXchange (ATHLX)',
-    aboutIntroOne: 'AthleteXchange (ATHLX) es un piloto diseñado para explorar nuevas formas de apoyo a atletas mediante un entorno simulado, solo para demostración.',
-    aboutIntroTwo: 'Este piloto utiliza Créditos Demo (tATHLX) y Unidades del Atleta únicamente para probar la experiencia de usuario y la lógica de asignación de apoyo. Nada en este piloto representa dinero real, derechos de propiedad, acciones, ni promesas de retorno financiero. No hay retiros ni transferencias externas.',
+    aboutIntroOne:
+      'AthleteXchange (ATHLX) es un piloto diseñado para explorar nuevas formas de apoyo a atletas mediante un entorno simulado.',
+    aboutIntroTwo:
+      'Este piloto utiliza Créditos Demo (tATHLX) y Unidades del Atleta únicamente para probar UX. No representa dinero real.',
     aboutHowItWorksTitle: 'Cómo funciona el piloto:',
     aboutHowItWorksStepOne: 'Los atletas pueden solicitar y son revisados por un operador.',
     aboutHowItWorksStepTwo: 'Los atletas aprobados aparecen en el Directorio de Atletas.',
-    aboutHowItWorksStepThree: 'Los fans pueden adquirir o liberar Unidades del Atleta usando créditos demo dentro del Entorno de Prueba.',
+    aboutHowItWorksStepThree:
+      'Los fans pueden adquirir o liberar Unidades del Atleta usando créditos demo dentro del Entorno de Prueba.',
     aboutHowItWorksStepFour: 'Un modelo fijo de comisión demo distribuye créditos demo en tres registros:',
-    aboutLedgerOperations: 'Cartera de Operaciones (simulación de costes de la plataforma)',
-    aboutLedgerRewards: 'Cartera de Recompensas del Atleta (asignación solo demo)',
-    aboutLedgerSupport: 'Fondo de Apoyo Post-Carrera (registro demo bloqueado)',
+    aboutLedgerOperations: 'Cartera de Operaciones',
+    aboutLedgerRewards: 'Cartera de Recompensas del Atleta',
+    aboutLedgerSupport: 'Fondo de Apoyo Post-Carrera',
     aboutNoticeTitle: 'Aviso importante:',
-    aboutNoticeBody: 'Esto es un piloto cerrado para pruebas de UX e investigación comunitaria. Solo demostración. No es dinero real. No hay retiros. No hay transferencias externas. Nada aquí genera uso o efectos fuera del piloto.',
+    aboutNoticeBody:
+      'Piloto cerrado. Solo demostración. No es dinero real. No hay retiros. No hay transferencias externas.',
     aboutPurposeTitle: 'Propósito y Visión',
-    aboutPurposeCardOneTitle: 'Apoyo a Jóvenes Talentos',
-    aboutPurposeCardOneDescription: 'Este piloto explora modelos de apoyo directo para atletas en etapas tempranas de su carrera, cuando el financiamiento tradicional suele ser inaccesible.',
-    aboutPurposeCardTwoTitle: 'Simulación de Apoyo Post-Carrera',
-    aboutPurposeCardTwoDescription: 'El Fondo de Apoyo Post-Carrera es un concepto de registro demo bloqueado diseñado para simular mecanismos de apoyo a largo plazo para atletas.',
-    aboutPurposeCardThreeTitle: 'Participación Comunitaria',
-    aboutPurposeCardThreeDescription: 'Los fans participan en un entorno de prueba cerrado para ayudar a dar forma a nuevos modelos de apoyo a atletas impulsados por la comunidad.',
-    aboutPurposeCardFourTitle: 'Pruebas de UX y Retroalimentación',
-    aboutPurposeCardFourDescription: 'Este piloto cerrado reúne datos de experiencia y retroalimentación para mejorar los modelos de apoyo y el diseño de la plataforma.',
-    aboutCtaTitle: 'Únete al Piloto',
-    aboutCtaSubtitle: 'Participa en las pruebas de este entorno demo cerrado.',
 
-    // News
+    // News (legacy keys used elsewhere)
     newsCategoryTransfer: 'Transferencias',
     newsCategoryPerformance: 'Rendimiento',
     newsCategoryInjury: 'Lesiones',
@@ -791,10 +848,10 @@ export const translations = {
     activityIndex: 'Índice de Actividad (pts)',
     postCareerSupport: 'Fondo de Apoyo Post-Carrera',
     demoOnly: 'Solo demo. Sin valor real.',
-    testEnvironment: 'Entorno de Prueba'
-  }
+    testEnvironment: 'Entorno de Prueba',
+  },
 };
 
-export const t = (key: keyof typeof translations.EN, lang: 'EN' | 'ES' = 'EN'): string => {
-  return translations[lang][key] || translations.EN[key];
+export const t = (key: string, lang: Language = 'EN'): string => {
+  return translations[lang]?.[key] ?? translations.EN?.[key] ?? key;
 };
