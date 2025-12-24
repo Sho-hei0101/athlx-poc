@@ -538,7 +538,7 @@ export const translations: Record<Language, Record<string, string>> = {
     categoryCareer: 'Carrera',
     categoryOthers: 'Otros',
 
-    // Match fields  (ES側にも必須)
+    // Match fields
     nextMatch: 'Próximo partido',
     matchDateLabel: 'Fecha del partido',
     homeAwayLabel: 'Local/Visitante',

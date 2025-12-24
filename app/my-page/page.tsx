@@ -551,9 +551,7 @@ export default function MyPage() {
                         <label className="block text-sm font-medium mb-2">{t.notesLabel}</label>
                         <textarea
                           value={updateForm.notes}
-                          onChange={(event) =>
-                            setUpdateForm((prev) => ({ ...prev, notes: event.target.value }))
-                          }
+                          onChange={(event) => setUpdateForm((prev) => ({ ...prev, notes: event.target.value }))}
                           className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg min-h-[120px]"
                         />
                       </div>
@@ -581,9 +579,7 @@ export default function MyPage() {
                     <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.unitCostLabel}</p>
-                        <p className="text-xl font-bold price-display">
-                          {formatNumber(linkedAthlete.unitCost)} tATHLX
-                        </p>
+                        <p className="text-xl font-bold price-display">{formatNumber(linkedAthlete.unitCost)} tATHLX</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.activityIndexLabel}</p>

@@ -298,12 +298,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const executeTrade = (athleteSymbol: string, type: 'buy' | 'sell', quantity: number, price: number) => {
     if (!state.currentUser) return;
 
-    // Zero-ownership: athlete-linked accounts cannot trade their own units
-    const linkedAthlete = state.currentUser.linkedAthleteId
-      ? state.athletes.find((a) => a.id === state.currentUser?.linkedAthleteId)
-      : null;
-
-    if (linkedAthlete) {
+    // Zero-ownership: athlete-linked accounts cannot trade (demo-enforced)
+    if (state.currentUser.linkedAthleteId) {
       const tr = translations[state.language];
       throw new Error(tr.cannotTradeOwnUnits);
     }
@@ -311,12 +307,35 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const athlete = state.athletes.find((a) => a.symbol === athleteSymbol);
     if (!athlete) return;
 
-    const subtotal = quantity * price;
+    // Safety clamp
+    const safeQuantity = Math.max(0, Number(quantity) || 0);
+    const safePrice = Math.max(0, Number(price) || 0);
+
+    const subtotal = Math.max(0, safeQuantity * safePrice);
     const fee = calcTradingFee(subtotal);
-    const total = type === 'buy' ? subtotal + fee : subtotal - fee;
+    const total = Math.max(0, type === 'buy' ? subtotal + fee : subtotal - fee);
 
     const newBalance =
       type === 'buy' ? state.currentUser.athlxBalance - total : state.currentUser.athlxBalance + total;
+
+    if (process.env.NODE_ENV !== 'production') {
+      if (type === 'buy') {
+        console.assert(newBalance <= state.currentUser.athlxBalance, 'Buy should reduce balance');
+      } else {
+        console.assert(newBalance >= state.currentUser.athlxBalance, 'Sell should increase balance');
+      }
+      // Useful for debugging regressions
+      console.log('Trade debug', {
+        type,
+        quantity: safeQuantity,
+        price: safePrice,
+        subtotal,
+        fee,
+        total,
+        oldBalance: state.currentUser.athlxBalance,
+        newBalance,
+      });
+    }
 
     if (type === 'buy' && newBalance < 0) throw new Error('Insufficient balance');
 
@@ -326,8 +345,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       athleteSymbol,
       athleteName: athlete.name,
       type,
-      quantity,
-      price,
+      quantity: safeQuantity,
+      price: safePrice,
       fee,
       total,
       timestamp: new Date().toISOString(),
@@ -366,8 +385,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       userId: state.currentUser.id,
       athleteSymbol,
       meta: {
-        quantity,
-        price,
+        quantity: safeQuantity,
+        price: safePrice,
         subtotal,
         fee,
         total,

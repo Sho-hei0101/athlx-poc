@@ -44,9 +44,15 @@ const insertSupabaseEvent = async (event: AnalyticsEvent) => {
 
   // NOTE:
   // - We intentionally use REST here to avoid importing a Supabase client into a shared module.
-  // - Requires a public table "analytics_events" with columns:
-  //   id (text), type (text), at (timestamptz), user_id (text), athlete_symbol (text), meta (jsonb)
+  // - Table "analytics_events" columns used here:
+  //   id (text), type (text), at (timestamptz), athlete_symbol (text), meta (jsonb)
+  // - userId is embedded into meta to avoid relying on a user_id column.
   try {
+    const meta =
+      event.userId != null
+        ? { ...(event.meta ?? {}), userId: event.userId }
+        : (event.meta ?? null);
+
     await fetch(`${config.url}/rest/v1/analytics_events`, {
       method: 'POST',
       headers: {
@@ -59,9 +65,8 @@ const insertSupabaseEvent = async (event: AnalyticsEvent) => {
         id: event.id,
         type: event.type,
         at: event.at,
-        user_id: event.userId ?? null,
         athlete_symbol: event.athleteSymbol ?? null,
-        meta: event.meta ?? null,
+        meta,
       }),
     });
   } catch (error) {
