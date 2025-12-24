@@ -306,6 +306,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       ? state.currentUser.athlxBalance - total
       : state.currentUser.athlxBalance + total;
 
+    if (process.env.NODE_ENV !== 'production') {
+      if (type === 'buy') {
+        console.assert(newBalance <= state.currentUser.athlxBalance, 'Buy should reduce balance');
+      } else {
+        console.assert(newBalance >= state.currentUser.athlxBalance, 'Sell should increase balance');
+      }
+    }
+
     if (type === 'buy' && newBalance < 0) {
       throw new Error('Insufficient balance');
     }

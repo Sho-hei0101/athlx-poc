@@ -26,13 +26,15 @@ export async function POST(request: NextRequest) {
 
     const eventId = payload.id ?? crypto.randomUUID();
     const eventAt = payload.at ?? new Date().toISOString();
+    const meta = payload.userId
+      ? { ...(payload.meta ?? {}), userId: payload.userId }
+      : (payload.meta ?? null);
     const insertPayload = {
       id: eventId,
       type: payload.type,
       at: eventAt,
-      user_id: payload.userId ?? null,
       athlete_symbol: payload.athleteSymbol ?? null,
-      meta: payload.meta ?? null
+      meta
     };
 
     const response = await fetch(`${supabaseUrl}/rest/v1/analytics_events`, {
