@@ -120,8 +120,8 @@ export default function AdminPage() {
       setResetSuccess(t.resetDemoDataSuccess);
       setResetConfirm('');
       window.location.reload();
-    } catch (error: any) {
-      setResetError(error.message ?? t.adminOnly);
+    } catch (error: unknown) {
+      setResetError(error instanceof Error ? error.message : t.adminOnly);
     }
   };
 
@@ -212,7 +212,7 @@ export default function AdminPage() {
       logEvent('import', { userId: state.currentUser?.id });
       setImportMessage(t.importSuccess);
       window.location.reload();
-    } catch (error) {
+    } catch (error: unknown) {
       Object.entries(backup).forEach(([key, value]) => {
         if (value === null || value === undefined) {
           storage.removeItem(key);
@@ -220,7 +220,7 @@ export default function AdminPage() {
           storage.setItem(key, value);
         }
       });
-      setImportError(t.importFailed);
+      setImportError(error instanceof Error ? error.message : t.importFailed);
     }
   };
 

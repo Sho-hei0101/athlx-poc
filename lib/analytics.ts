@@ -40,9 +40,10 @@ const insertSupabaseEvent = async (event: AnalyticsEvent) => {
         id: event.id,
         type: event.type,
         at: event.at,
-        user_id: event.userId ?? null,
         athlete_symbol: event.athleteSymbol ?? null,
-        meta: event.meta ?? null
+        meta: event.userId
+          ? { ...(event.meta ?? {}), userId: event.userId }
+          : (event.meta ?? null)
       })
     });
   } catch (error) {

@@ -297,7 +297,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       throw new Error(t.cannotTradeOwnUnits);
     }
 
-    const subtotal = Math.max(0, quantity * price);
+    const safeQuantity = Math.max(0, quantity);
+    const safePrice = Math.max(0, price);
+    const subtotal = Math.max(0, safeQuantity * safePrice);
     const fee = calcTradingFee(subtotal);
     const total = Math.max(0, type === 'buy' ? subtotal + fee : subtotal - fee);
 
@@ -312,9 +314,19 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       } else {
         console.assert(newBalance >= state.currentUser.athlxBalance, 'Sell should increase balance');
       }
+      console.log('Trade debug', {
+        type,
+        quantity: safeQuantity,
+        price: safePrice,
+        subtotal,
+        fee,
+        total,
+        oldBalance: state.currentUser.athlxBalance,
+        newBalance
+      });
     }
 
-    if (type === 'buy' && newBalance < 0) {
+    if (type === 'buy' && total > state.currentUser.athlxBalance) {
       throw new Error('Insufficient balance');
     }
 
@@ -328,8 +340,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       athleteSymbol,
       athleteName: athlete.name,
       type,
-      quantity,
-      price,
+      quantity: safeQuantity,
+      price: safePrice,
       fee,
       total,
       timestamp: new Date().toISOString()
@@ -370,8 +382,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       userId: state.currentUser.id,
       athleteSymbol,
       meta: {
-        quantity,
-        price,
+        quantity: safeQuantity,
+        price: safePrice,
         subtotal,
         fee,
         total,
