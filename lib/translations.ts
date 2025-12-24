@@ -821,6 +821,20 @@ export const translations: Record<Language, Record<string, string>> = {
     aboutNoticeBody:
       'Piloto cerrado. Solo demostración. No es dinero real. No hay retiros. No hay transferencias externas.',
     aboutPurposeTitle: 'Propósito y Visión',
+    aboutPurposeCardOneTitle: 'Apoyo a jóvenes talentos',
+    aboutPurposeCardOneDescription:
+      'Este piloto explora modelos de apoyo directo para atletas en etapas tempranas, cuando el acceso a financiación tradicional suele ser limitado.',
+    aboutPurposeCardTwoTitle: 'Simulación de apoyo post-carrera',
+    aboutPurposeCardTwoDescription:
+      'El Fondo de Apoyo Post-Carrera es un registro demo bloqueado diseñado para simular mecanismos de soporte a largo plazo para atletas.',
+    aboutPurposeCardThreeTitle: 'Participación de la comunidad',
+    aboutPurposeCardThreeDescription:
+      'Los fans participan en un entorno cerrado de prueba para ayudar a dar forma a nuevos modelos comunitarios de apoyo a atletas.',
+    aboutPurposeCardFourTitle: 'Pruebas de UX y feedback',
+    aboutPurposeCardFourDescription:
+      'Este piloto cerrado recopila experiencia de usuario y feedback para mejorar el modelo de asignación de apoyo y el diseño de la plataforma.',
+    aboutCtaTitle: 'Únete al piloto',
+    aboutCtaSubtitle: 'Participa en la prueba de este entorno demo cerrado.',
 
     // News (legacy keys used elsewhere)
     newsCategoryTransfer: 'Transferencias',
