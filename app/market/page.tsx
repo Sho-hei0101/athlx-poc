@@ -180,16 +180,131 @@ export default function MarketPage() {
           </p>
         </div>
 
-        {/* Athlete Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAthletes.map(athlete => {
-            const activityIndex = athlete.activityIndex ?? athlete.currentPrice;
-            return (
-            <Link
-              key={athlete.id}
-              href={`/athlete/${athlete.symbol}`}
-              className="glass-effect rounded-xl p-6 hover-glow transition"
+     {/* Athlete Grid */}
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  {filteredAthletes.map((athlete) => {
+    const activityIndex = athlete.activityIndex ?? athlete.currentPrice;
+
+    return (
+      <Link
+        key={athlete.id}
+        href={`/athlete/${athlete.symbol}`}
+        className="glass-effect rounded-xl p-6 hover-glow transition"
+      >
+        {/* Image + Tags */}
+        <div className="relative mb-4 overflow-hidden rounded-lg bg-slate-800">
+          <img
+            src={athlete.imageUrl}
+            alt={athlete.name}
+            className="w-full h-56 object-cover object-top"
+            loading="lazy"
+          />
+
+          {/* Tags */}
+          <div className="absolute top-2 right-2 flex flex-wrap gap-1 justify-end">
+            {athlete.tags.map((tag) => (
+              <span
+                key={tag}
+                className={`badge badge-${tag.toLowerCase().replace(' ', '-')}`}
+              >
+                {tagLabels[tag] ?? tag}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Info */}
+        <div className="mb-3">
+          <div className="flex items-start justify-between mb-2">
+            <div>
+              <h3 className="text-xl font-bold">{athlete.name}</h3>
+              <p className="text-sm text-gray-400 flex items-center space-x-1">
+                <span>{getCountryFlag(athlete.nationality)}</span>
+                <span>{athlete.nationality}</span>
+              </p>
+            </div>
+            <span
+              className={`badge badge-${athlete.category
+                .toLowerCase()
+                .replace('-', '')}`}
             >
+              {categoryLabels[athlete.category]}
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-2 text-sm text-gray-400">
+            <span className="font-semibold text-blue-400">{athlete.symbol}</span>
+            <span>•</span>
+            <span>{sportLabels[athlete.sport]}</span>
+          </div>
+        </div>
+
+        {/* Activity Index Info */}
+        <div className="border-t border-slate-600 pt-3">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm text-gray-400">{t.activityIndexLabel}</span>
+            <span className="text-xl font-bold price-display">
+              {formatNumber(activityIndex)} pts
+            </span>
+          </div>
+
+          <div className="flex justify-between items-center mb-2 text-sm">
+            <span className="text-gray-400">{t.unitCostShort}</span>
+            <span className="font-semibold price-display">
+              {formatNumber(athlete.unitCost)} tATHLX
+            </span>
+          </div>
+
+          <div className="flex justify-between items-center text-sm">
+            <div>
+              <span className="text-gray-400">{t.indexDelta24hShort} </span>
+              <span className={athlete.price24hChange >= 0 ? 'price-up' : 'price-down'}>
+                {athlete.price24hChange >= 0 ? '+' : ''}
+                {athlete.price24hChange.toFixed(1)}%
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-400">{t.indexDelta7dShort} </span>
+              <span className={athlete.price7dChange >= 0 ? 'price-up' : 'price-down'}>
+                {athlete.price7dChange >= 0 ? '+' : ''}
+                {athlete.price7dChange.toFixed(1)}%
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-2 text-xs text-gray-400">
+            {t.demoCreditsFlowShort} {formatNumber(athlete.tradingVolume)} tATHLX •{' '}
+            {athlete.holders} {t.participantsLower}
+          </div>
+
+          {athlete.nextMatch && (
+            <div className="mt-2 text-xs text-gray-400">
+              {t.nextMatchShort}: {athlete.nextMatch.date} · {athlete.nextMatch.opponent}
+            </div>
+          )}
+        </div>
+
+        {/* Mini Sparkline */}
+        <div className="mt-3 h-12 flex items-end space-x-1">
+          {athlete.priceHistory.slice(-10).map((point, i) => {
+            const recent = athlete.priceHistory.slice(-10);
+            const maxPrice = Math.max(...recent.map((p) => p.price));
+            const height = maxPrice ? (point.price / maxPrice) * 100 : 0;
+
+            return (
+              <div
+                key={i}
+                className="flex-1 bg-blue-500/30 rounded-t"
+                style={{ height: `${height}%` }}
+              />
+            );
+          })}
+        </div>
+      </Link>
+    );
+  })}
+</div>
+        
           {/* Image */}
 <div className="relative mb-4 overflow-hidden rounded-lg bg-slate-800">
   <img
