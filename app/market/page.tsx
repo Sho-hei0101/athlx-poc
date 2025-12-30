@@ -190,13 +190,16 @@ export default function MarketPage() {
               href={`/athlete/${athlete.symbol}`}
               className="glass-effect rounded-xl p-6 hover-glow transition"
             >
-              {/* Image */}
-              <div className="relative mb-4">
-                <img
-                  src={athlete.imageUrl}
-                  alt={athlete.name}
-                  className="w-full h-56 object-cover rounded-lg"
-                />
+          {/* Image */}
+<div className="relative mb-4 overflow-hidden rounded-lg bg-slate-800">
+  <img
+    src={athlete.imageUrl}
+    alt={athlete.name}
+    className="w-full h-56 object-cover object-top"
+    loading="lazy"
+  />
+</div>
+              
                 {/* Tags */}
                 <div className="absolute top-2 right-2 flex flex-wrap gap-1 justify-end">
                   {athlete.tags.map(tag => (
