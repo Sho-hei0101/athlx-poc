@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { initialAthletes } from '@/lib/data';
 import type { Athlete } from '@/lib/types';
-import { appendCatalogAthlete, getCatalogAthletes } from '@/lib/server/catalog';
+import { getCatalogAthletes, upsertCatalogAthlete } from '@/lib/server/catalog';
 
 export const runtime = 'nodejs';
 
@@ -51,18 +50,17 @@ const isValidAthletePayload = (payload: unknown): payload is Athlete => {
 export async function GET() {
   try {
     const catalog = await getCatalogAthletes();
-    const athletes = catalog.length > 0 ? catalog : (initialAthletes as Athlete[]);
-    return NextResponse.json({ ok: true, athletes });
+    return NextResponse.json({ ok: true, athletes: catalog });
   } catch (error) {
     console.error('Catalog GET failed', error);
-    return NextResponse.json({ ok: true, athletes: initialAthletes, warning: 'catalog_unavailable' });
+    return NextResponse.json({ ok: true, athletes: [], warning: 'catalog_unavailable' });
   }
 }
 
 export async function POST(req: Request) {
   try {
     const adminPin = req.headers.get('x-admin-pin');
-    if (!adminPin || adminPin !== process.env.ADMIN_PIN) {
+    if (!adminPin || adminPin !== process.env.ATHLX_ADMIN_PIN) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -76,13 +74,11 @@ export async function POST(req: Request) {
       symbol: payload.symbol.toUpperCase(),
     };
 
-    await appendCatalogAthlete(newAthlete);
-    const catalog = await getCatalogAthletes();
+    const catalog = await upsertCatalogAthlete(newAthlete);
     return NextResponse.json({ ok: true, athletes: catalog });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Catalog update failed';
-    const status = message.includes('exists') ? 409 : 500;
     console.error('Catalog POST failed', error);
-    return NextResponse.json({ ok: false, error: message }, { status });
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

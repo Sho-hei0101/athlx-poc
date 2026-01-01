@@ -15,7 +15,7 @@ import {
   type MatchHomeAway,
   type MatchResult,
 } from './types';
-import { initialAthletes, initialNews } from './data';
+import { initialNews } from './data';
 import { buildUpdateReason, computeEventScore } from './match';
 import { translations } from './translations';
 import { EVENTS_KEY, logEvent } from './analytics';
@@ -68,7 +68,7 @@ const normalizeAthletes = (athletes: Athlete[]): Athlete[] => {
 
 const defaultState: AppState = {
   currentUser: null,
-  athletes: normalizeAthletes(initialAthletes as Athlete[]),
+  athletes: [],
   pendingAthletes: [],
   trades: [],
   athleteUpdates: [],

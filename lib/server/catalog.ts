@@ -3,7 +3,7 @@ import 'server-only';
 import { kv } from '@vercel/kv';
 import type { Athlete } from '@/lib/types';
 
-const CATALOG_KEY = 'athlx:catalog:athletes';
+export const KV_KEY = 'athlx:catalog:athletes:v1';
 
 const normalizeCatalogPayload = (payload: unknown): Athlete[] => {
   if (!Array.isArray(payload)) return [];
@@ -11,17 +11,17 @@ const normalizeCatalogPayload = (payload: unknown): Athlete[] => {
 };
 
 export const getCatalogAthletes = async (): Promise<Athlete[]> => {
-  const stored = await kv.get<Athlete[]>(CATALOG_KEY);
+  const stored = await kv.get<Athlete[]>(KV_KEY);
   return normalizeCatalogPayload(stored);
 };
 
-export const appendCatalogAthlete = async (newAthlete: Athlete): Promise<void> => {
+export const upsertCatalogAthlete = async (newAthlete: Athlete): Promise<Athlete[]> => {
   const current = await getCatalogAthletes();
   const nextSymbol = newAthlete.symbol.toUpperCase();
-  const exists = current.some((athlete) => athlete.symbol.toUpperCase() === nextSymbol);
-  if (exists) {
-    throw new Error('Athlete symbol already exists.');
-  }
-  const nextCatalog = [...current, { ...newAthlete, symbol: nextSymbol }];
-  await kv.set(CATALOG_KEY, nextCatalog);
+  const nextCatalog = current.some((athlete) => athlete.symbol.toUpperCase() === nextSymbol)
+    ? current.map((athlete) => (athlete.symbol.toUpperCase() === nextSymbol ? { ...newAthlete, symbol: nextSymbol } : athlete))
+    : [...current, { ...newAthlete, symbol: nextSymbol }];
+
+  await kv.set(KV_KEY, nextCatalog);
+  return nextCatalog;
 };
