@@ -34,6 +34,7 @@ import {
 } from './demoAccountStorage';
 
 const STORAGE_KEY = 'athlx_state';
+const CATALOG_KEY = 'athlx_catalog_v1';
 
 const getDefaultUnitCost = (category?: Category) => {
   switch (category) {
@@ -180,11 +181,21 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const stored = readJSON<Partial<AppState>>(storage, STORAGE_KEY, {});
     const storedUser = loadSession(storage);
+    const hasCatalog = Boolean(storage.getItem(CATALOG_KEY));
 
-    let persistedState: AppState = defaultState;
+    if (!hasCatalog) {
+      const seededCatalog = normalizeAthletes(
+        ((stored as Partial<AppState>)?.athletes ?? defaultState.athletes) as Athlete[],
+      );
+      writeJSON(storage, CATALOG_KEY, seededCatalog);
+    }
+
+    const catalog = readJSON<Athlete[]>(storage, CATALOG_KEY, defaultState.athletes);
+    const hydratedAthletes = normalizeAthletes(catalog);
+
+    let persistedState: AppState = { ...defaultState, athletes: hydratedAthletes };
 
     if (stored && Object.keys(stored).length > 0) {
-      const hydratedAthletes = normalizeAthletes((stored.athletes ?? defaultState.athletes) as Athlete[]);
       persistedState = { ...defaultState, ...stored, athletes: hydratedAthletes };
     }
 
@@ -217,7 +228,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!isHydrated) return;
     const storage = getBrowserStorage();
     if (!storage) return;
-    writeJSON(storage, STORAGE_KEY, state);
+    const { athletes, ...stateWithoutAthletes } = state;
+    writeJSON(storage, STORAGE_KEY, stateWithoutAthletes as Partial<AppState>);
   }, [state, isHydrated]);
 
   const login = async (email: string, password: string): Promise<User> => {
@@ -422,9 +434,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const normalizedCategory = finalCategory as Category;
     const unitCost = initialPrice > 0 ? initialPrice : getDefaultUnitCost(normalizedCategory);
+    const safeId = `athlete_${(crypto as any)?.randomUUID?.() ?? Date.now()}`;
 
     const newAthlete: Athlete = {
-      id: `athlete_${Date.now()}`,
+      id: safeId,
       name: pending.name,
       symbol: symbol.toUpperCase(),
       sport: pending.sport,
@@ -451,9 +464,24 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       userId: pending.userId,
     };
 
+    const storage = getBrowserStorage();
+    const currentCatalog = storage
+      ? readJSON<Athlete[]>(storage, CATALOG_KEY, defaultState.athletes)
+      : defaultState.athletes;
+    const normalizedCatalog = normalizeAthletes(currentCatalog);
+    const existingIndex = normalizedCatalog.findIndex((athlete) => athlete.symbol === newAthlete.symbol);
+    const nextCatalog =
+      existingIndex >= 0
+        ? normalizedCatalog.map((athlete, index) => (index === existingIndex ? newAthlete : athlete))
+        : [...normalizedCatalog, newAthlete];
+
+    if (storage) {
+      writeJSON(storage, CATALOG_KEY, nextCatalog);
+    }
+
     setState((prev) => ({
       ...prev,
-      athletes: [...prev.athletes, newAthlete],
+      athletes: nextCatalog,
       pendingAthletes: prev.pendingAthletes.map((p) => (p.id === pendingId ? { ...p, status: 'approved' as const } : p)),
       currentUser:
         prev.currentUser?.id === pending.userId ? { ...prev.currentUser, linkedAthleteId: newAthlete.id } : prev.currentUser,
