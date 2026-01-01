@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   type AppState,
   type User,
@@ -91,7 +91,7 @@ interface StoreContextType {
   getPortfolio: () => Portfolio[];
 
   submitAthleteRegistration: (data: Omit<PendingAthlete, 'id' | 'userId' | 'submittedAt' | 'status'>) => void;
-  approveAthlete: (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => void;
+  approveAthlete: (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => Promise<void>;
   rejectAthlete: (pendingId: string, reason: string) => void;
 
   getAthleteBySymbol: (symbol: string) => Athlete | undefined;
@@ -114,6 +114,7 @@ interface StoreContextType {
 
   resetDemoData: () => void;
   setAdminAccess: (value: boolean) => void;
+  setAdminPin: (pin: string | null) => void;
   setLanguage: (lang: 'EN' | 'ES') => void;
 }
 
@@ -122,6 +123,7 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AppState>(defaultState);
   const [isHydrated, setIsHydrated] = useState(false);
+  const adminPinRef = useRef<string | null>(null);
 
   const buildPortfolioFromTrades = (trades: Trade[], athletes: Athlete[]): Portfolio[] => {
     const portfolioMap = new Map<string, Portfolio>();
@@ -181,11 +183,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const stored = readJSON<Partial<AppState>>(storage, STORAGE_KEY, {});
     const storedUser = loadSession(storage);
 
-    let persistedState: AppState = defaultState;
+    let persistedState: AppState = { ...defaultState, athletes: defaultState.athletes };
 
     if (stored && Object.keys(stored).length > 0) {
-      const hydratedAthletes = normalizeAthletes((stored.athletes ?? defaultState.athletes) as Athlete[]);
-      persistedState = { ...defaultState, ...stored, athletes: hydratedAthletes };
+      persistedState = { ...defaultState, ...stored, athletes: defaultState.athletes };
     }
 
     if (storedUser?.email) {
@@ -210,6 +211,28 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     setState({ ...persistedState, isAdmin: false });
     setIsHydrated(true);
+
+    let isActive = true;
+    const loadCatalog = async () => {
+      try {
+        const response = await fetch('/api/catalog/athletes');
+        if (!response.ok) {
+          console.error('Failed to load catalog athletes', response.status);
+          return;
+        }
+        const data = (await response.json()) as { athletes?: Athlete[] };
+        if (!isActive || !Array.isArray(data?.athletes)) return;
+        const hydratedAthletes = normalizeAthletes(data.athletes);
+        setState((prev) => ({ ...prev, athletes: hydratedAthletes }));
+      } catch (error) {
+        console.error('Catalog hydration failed', error);
+      }
+    };
+
+    void loadCatalog();
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   // Persist state
@@ -217,7 +240,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!isHydrated) return;
     const storage = getBrowserStorage();
     if (!storage) return;
-    writeJSON(storage, STORAGE_KEY, state);
+    const { athletes, ...stateWithoutAthletes } = state;
+    writeJSON(storage, STORAGE_KEY, stateWithoutAthletes as Partial<AppState>);
   }, [state, isHydrated]);
 
   const login = async (email: string, password: string): Promise<User> => {
@@ -272,6 +296,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const logout = () => {
     const storage = getBrowserStorage();
     setState((prev) => ({ ...prev, currentUser: null, trades: [], isAdmin: false }));
+    adminPinRef.current = null;
     if (!storage) return;
     clearSession(storage);
   };
@@ -416,15 +441,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     logEvent('athlete_register_submit', { userId: state.currentUser.id });
   };
 
-  const approveAthlete = (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => {
+  const approveAthlete = async (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => {
     const pending = state.pendingAthletes.find((p) => p.id === pendingId);
     if (!pending) return;
 
     const normalizedCategory = finalCategory as Category;
     const unitCost = initialPrice > 0 ? initialPrice : getDefaultUnitCost(normalizedCategory);
+    const safeId = `athlete_${(crypto as any)?.randomUUID?.() ?? Date.now()}`;
 
     const newAthlete: Athlete = {
-      id: `athlete_${Date.now()}`,
+      id: safeId,
       name: pending.name,
       symbol: symbol.toUpperCase(),
       sport: pending.sport,
@@ -451,9 +477,37 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       userId: pending.userId,
     };
 
+    const adminPin = adminPinRef.current;
+    if (!adminPin) {
+      throw new Error('Admin PIN is required to approve athletes.');
+    }
+
+    const response = await fetch('/api/catalog/athletes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-pin': adminPin,
+      },
+      body: JSON.stringify(newAthlete),
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to approve athlete.';
+      try {
+        const data = (await response.json()) as { error?: string };
+        if (data?.error) errorMessage = data.error;
+      } catch (error) {
+        console.error('Failed to parse approval response', error);
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = (await response.json()) as { athletes?: Athlete[] };
+    const nextCatalog = normalizeAthletes(data?.athletes ?? [...state.athletes, newAthlete]);
+
     setState((prev) => ({
       ...prev,
-      athletes: [...prev.athletes, newAthlete],
+      athletes: nextCatalog,
       pendingAthletes: prev.pendingAthletes.map((p) => (p.id === pendingId ? { ...p, status: 'approved' as const } : p)),
       currentUser:
         prev.currentUser?.id === pending.userId ? { ...prev.currentUser, linkedAthleteId: newAthlete.id } : prev.currentUser,
@@ -645,6 +699,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const setAdminAccess = (value: boolean) => {
     setState((prev) => ({ ...prev, isAdmin: value }));
+    if (!value) {
+      adminPinRef.current = null;
+    }
+  };
+
+  const setAdminPin = (pin: string | null) => {
+    adminPinRef.current = pin;
   };
 
   const setLanguage = (lang: 'EN' | 'ES') => {
@@ -671,6 +732,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         submitAthletePerformanceUpdate,
         resetDemoData,
         setAdminAccess,
+        setAdminPin,
         setLanguage,
       }}
     >
