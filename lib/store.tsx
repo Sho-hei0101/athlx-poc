@@ -176,6 +176,58 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     updateAccount(storage, email, updater);
   };
 
+  /**
+   * ✅ KVへ Athlete を upsert して、最新 catalog を返す（全ユーザー共通）
+   * - ここが “共通化” の要
+   */
+  const persistAthleteToCatalog = async (athlete: Athlete): Promise<Athlete[]> => {
+    const adminPin = adminPinRef.current;
+    if (!adminPin) throw new Error('Admin PIN is required.');
+
+    const res = await fetch('/api/catalog/athletes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-pin': adminPin,
+      },
+      body: JSON.stringify(athlete),
+    });
+
+    if (!res.ok) {
+      let msg = 'Failed to persist athlete to KV.';
+      try {
+        const data = (await res.json()) as { error?: string };
+        if (data?.error) msg = data.error;
+      } catch {
+        // ignore
+      }
+      throw new Error(msg);
+    }
+
+    const data = (await res.json()) as { athletes?: Athlete[] };
+    return normalizeAthletes(data?.athletes ?? []);
+  };
+
+  /**
+   * ✅ KVの catalog をGETで取り直して state/local を揃える（整合性確保）
+   */
+  const refreshCatalogFromApi = async () => {
+    const storage = getBrowserStorage();
+    try {
+      const res = await fetch('/api/catalog/athletes', { method: 'GET' });
+      if (!res.ok) return;
+
+      const data = (await res.json()) as { athletes?: Athlete[] };
+      if (!Array.isArray(data?.athletes)) return;
+
+      const hydrated = normalizeAthletes(data.athletes);
+      setState((prev) => ({ ...prev, athletes: hydrated }));
+      if (storage) writeJSON(storage, CATALOG_KEY, hydrated);
+    } catch {
+      // ignore
+    }
+  };
+
   // Hydrate (local state + session) then hydrate catalog from API(KV)
   useEffect(() => {
     const storage = getBrowserStorage();
@@ -532,10 +584,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }));
   };
 
+  /**
+   * ✅ 試合更新：ローカル更新 + KVへ永続化（全ユーザー共通）
+   */
   const submitMatchUpdate = (athleteSymbol: string, nextMatch?: NextMatchInfo, lastMatch?: LastMatchInfo, approved = true) => {
-    setState((prev) => ({
-      ...prev,
-      athletes: prev.athletes.map((athlete) => {
+    let updatedTarget: Athlete | null = null;
+
+    setState((prev) => {
+      const nextAthletes = prev.athletes.map((athlete) => {
         if (athlete.symbol !== athleteSymbol) return athlete;
 
         const updateScore = computeEventScore(nextMatch, lastMatch);
@@ -545,7 +601,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           ? Math.max(getDefaultUnitCost(athlete.category), athlete.unitCost + updateScore * 0.01)
           : athlete.unitCost;
 
-        return {
+        const nextAthlete: Athlete = {
           ...athlete,
           nextMatch,
           lastMatch,
@@ -557,10 +613,34 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             ? [...(athlete.priceHistory ?? []), { time: new Date().toISOString(), price: updatedUnitCost, volume: 0 }]
             : athlete.priceHistory,
         };
-      }),
-    }));
+
+        updatedTarget = nextAthlete;
+        return nextAthlete;
+      });
+
+      return { ...prev, athletes: nextAthletes };
+    });
+
+    void (async () => {
+      try {
+        if (!approved) return;
+        if (!updatedTarget) return;
+
+        const nextCatalog = await persistAthleteToCatalog(updatedTarget);
+
+        // 成功したら state/local を “KVの真実” に揃える
+        setState((prev) => ({ ...prev, athletes: nextCatalog }));
+        const storage = getBrowserStorage();
+        if (storage) writeJSON(storage, CATALOG_KEY, nextCatalog);
+      } catch (e) {
+        console.error('Failed to persist match update to KV', e);
+      }
+    })();
   };
 
+  /**
+   * ✅ パフォーマンス更新：ローカル更新 + KVへ永続化（全ユーザー共通）
+   */
   const submitAthletePerformanceUpdate = (payload: {
     athleteSymbol: string;
     matchDate: string;
@@ -573,6 +653,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     injury: boolean;
     notes: string;
   }) => {
+    let updatedTarget: Athlete | null = null;
+
     setState((prev) => {
       const targetAthlete = prev.athletes.find((athlete) => athlete.symbol === payload.athleteSymbol);
       if (!targetAthlete) return prev;
@@ -627,35 +709,56 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         newActivityIndex: updatedActivityIndex,
       };
 
+      const nextAthletes = prev.athletes.map((athlete) => {
+        if (athlete.symbol !== payload.athleteSymbol) return athlete;
+
+        const nextAthlete: Athlete = {
+          ...athlete,
+          lastMatch: {
+            date: payload.matchDate,
+            minutesBucket,
+            result: payload.result,
+            goals: goals || undefined,
+            assists: assists || undefined,
+            injury: payload.injury,
+          },
+          activityIndex: updatedActivityIndex,
+          unitCost: updatedUnitCost,
+          currentPrice: updatedUnitCost,
+          lastUpdateReason: updateReason,
+          priceHistory: [
+            ...(athlete.priceHistory ?? []),
+            { time: new Date().toISOString(), price: updatedUnitCost, volume: Math.floor(Math.random() * 10000) },
+          ],
+        };
+
+        updatedTarget = nextAthlete;
+        return nextAthlete;
+      });
+
       return {
         ...prev,
-        athletes: prev.athletes.map((athlete) => {
-          if (athlete.symbol !== payload.athleteSymbol) return athlete;
-          return {
-            ...athlete,
-            lastMatch: {
-              date: payload.matchDate,
-              minutesBucket,
-              result: payload.result,
-              goals: goals || undefined,
-              assists: assists || undefined,
-              injury: payload.injury,
-            },
-            activityIndex: updatedActivityIndex,
-            unitCost: updatedUnitCost,
-            currentPrice: updatedUnitCost,
-            lastUpdateReason: updateReason,
-            priceHistory: [
-              ...(athlete.priceHistory ?? []),
-              { time: new Date().toISOString(), price: updatedUnitCost, volume: Math.floor(Math.random() * 10000) },
-            ],
-          };
-        }),
+        athletes: nextAthletes,
         athleteUpdates: [...prev.athleteUpdates, updateRecord],
       };
     });
 
     logEvent('athlete_update_submit', { userId: state.currentUser?.id, athleteSymbol: payload.athleteSymbol });
+
+    void (async () => {
+      try {
+        if (!updatedTarget) return;
+
+        const nextCatalog = await persistAthleteToCatalog(updatedTarget);
+
+        // 成功したら state/local を “KVの真実” に揃える
+        setState((prev) => ({ ...prev, athletes: nextCatalog }));
+        const storage = getBrowserStorage();
+        if (storage) writeJSON(storage, CATALOG_KEY, nextCatalog);
+      } catch (e) {
+        console.error('Failed to persist performance update to KV', e);
+      }
+    })();
   };
 
   const resetDemoData = () => {
@@ -674,6 +777,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     resetDemoStorage(storage);
 
     setState(defaultState);
+
+    // KV側は消さない（全ユーザー共通カタログなので）
   };
 
   const setAdminAccess = (value: boolean) => {
@@ -683,6 +788,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const setAdminPin = (pin: string | null) => {
     adminPinRef.current = pin;
+    // PINを入れた直後にKV catalogを取り直してもよい（任意）
+    // void refreshCatalogFromApi();
   };
 
   const setLanguage = (lang: 'EN' | 'ES') => {
