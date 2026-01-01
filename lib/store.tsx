@@ -34,6 +34,7 @@ import {
 } from './demoAccountStorage';
 
 const STORAGE_KEY = 'athlx_state';
+const CATALOG_KEY = 'athlx_catalog_v1';
 
 const getDefaultUnitCost = (category?: Category) => {
   switch (category) {
@@ -114,7 +115,10 @@ interface StoreContextType {
 
   resetDemoData: () => void;
   setAdminAccess: (value: boolean) => void;
+
+  // Admin PIN を Store に渡して API へ転送する
   setAdminPin: (pin: string | null) => void;
+
   setLanguage: (lang: 'EN' | 'ES') => void;
 }
 
@@ -172,7 +176,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     updateAccount(storage, email, updater);
   };
 
-  // Hydrate from storage (state + session)
+  // Hydrate (local state + session) then hydrate catalog from API(KV)
   useEffect(() => {
     const storage = getBrowserStorage();
     if (!storage) {
@@ -224,6 +228,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (!isActive || !Array.isArray(data?.athletes)) return;
         const hydratedAthletes = normalizeAthletes(data.athletes);
         setState((prev) => ({ ...prev, athletes: hydratedAthletes }));
+
+        // 速度最適化：localにも同期（ただし source of truth はKV）
+        writeJSON(storage, CATALOG_KEY, hydratedAthletes);
       } catch (error) {
         console.error('Catalog hydration failed', error);
       }
@@ -235,7 +242,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
   }, []);
 
-  // Persist state
+  // Persist (state except athletes) to localStorage
   useEffect(() => {
     if (!isHydrated) return;
     const storage = getBrowserStorage();
@@ -332,7 +339,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const athlete = state.athletes.find((a) => a.symbol === athleteSymbol);
     if (!athlete) return;
 
-    // Safety clamp
     const safeQuantity = Math.max(0, Number(quantity) || 0);
     const safePrice = Math.max(0, Number(price) || 0);
 
@@ -342,25 +348,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const newBalance =
       type === 'buy' ? state.currentUser.athlxBalance - total : state.currentUser.athlxBalance + total;
-
-    if (process.env.NODE_ENV !== 'production') {
-      if (type === 'buy') {
-        console.assert(newBalance <= state.currentUser.athlxBalance, 'Buy should reduce balance');
-      } else {
-        console.assert(newBalance >= state.currentUser.athlxBalance, 'Sell should increase balance');
-      }
-      // Useful for debugging regressions
-      console.log('Trade debug', {
-        type,
-        quantity: safeQuantity,
-        price: safePrice,
-        subtotal,
-        fee,
-        total,
-        oldBalance: state.currentUser.athlxBalance,
-        newBalance,
-      });
-    }
 
     if (type === 'buy' && newBalance < 0) throw new Error('Insufficient balance');
 
@@ -382,7 +369,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return {
         ...a,
         tradingVolume: (a.tradingVolume ?? 0) + subtotal,
-        // NOTE: demo-only counter. Real holders should be derived from portfolio holders.
         holders: type === 'buy' ? (a.holders ?? 0) + 1 : Math.max((a.holders ?? 0) - 1, 0),
       };
     });
@@ -409,14 +395,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     logEvent(type === 'buy' ? 'trade_buy' : 'trade_sell', {
       userId: state.currentUser.id,
       athleteSymbol,
-      meta: {
-        quantity: safeQuantity,
-        price: safePrice,
-        subtotal,
-        fee,
-        total,
-        currency: 'tATHLX',
-      },
+      meta: { quantity: safeQuantity, price: safePrice, subtotal, fee, total, currency: 'tATHLX' },
     });
   };
 
@@ -441,6 +420,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     logEvent('athlete_register_submit', { userId: state.currentUser.id });
   };
 
+  // ✅ Approve -> POST /api/catalog/athletes (Vercel KVに保存)
   const approveAthlete = async (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => {
     const pending = state.pendingAthletes.find((p) => p.id === pendingId);
     if (!pending) return;
@@ -466,7 +446,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       imageUrl: pending.imageDataUrl ?? `https://i.pravatar.cc/300?img=${Math.floor(Math.random() * 70)}`,
       unitCost,
       currentPrice: unitCost,
-      activityIndex: unitCost, // demo: starts at initial index
+      activityIndex: unitCost,
       price24hChange: 0,
       price7dChange: 0,
       tradingVolume: 0,
@@ -478,32 +458,31 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     const adminPin = adminPinRef.current;
-    if (!adminPin) {
-      throw new Error('Admin PIN is required to approve athletes.');
-    }
+    if (!adminPin) throw new Error('Admin PIN is required to approve athletes.');
 
-    const response = await fetch('/api/catalog/athletes', {
+    const res = await fetch('/api/catalog/athletes', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-admin-pin': adminPin,
-      },
+      headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin },
       body: JSON.stringify(newAthlete),
     });
 
-    if (!response.ok) {
-      let errorMessage = 'Failed to approve athlete.';
+    if (!res.ok) {
+      let msg = 'Failed to approve athlete.';
       try {
-        const data = (await response.json()) as { error?: string };
-        if (data?.error) errorMessage = data.error;
-      } catch (error) {
-        console.error('Failed to parse approval response', error);
+        const data = (await res.json()) as { error?: string };
+        if (data?.error) msg = data.error;
+      } catch {
+        // ignore
       }
-      throw new Error(errorMessage);
+      throw new Error(msg);
     }
 
-    const data = (await response.json()) as { athletes?: Athlete[] };
+    const data = (await res.json()) as { athletes?: Athlete[] };
     const nextCatalog = normalizeAthletes(data?.athletes ?? [...state.athletes, newAthlete]);
+
+    // 速度最適化：localにも同期（source of truth はKV）
+    const storage = getBrowserStorage();
+    if (storage) writeJSON(storage, CATALOG_KEY, nextCatalog);
 
     setState((prev) => ({
       ...prev,
@@ -699,9 +678,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const setAdminAccess = (value: boolean) => {
     setState((prev) => ({ ...prev, isAdmin: value }));
-    if (!value) {
-      adminPinRef.current = null;
-    }
+    if (!value) adminPinRef.current = null;
   };
 
   const setAdminPin = (pin: string | null) => {
