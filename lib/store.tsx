@@ -1,6 +1,13 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   type AppState,
   type User,
@@ -35,6 +42,7 @@ import {
 
 const STORAGE_KEY = 'athlx_state';
 const CATALOG_KEY = 'athlx_catalog_v1';
+const ADMIN_PIN_KEY = 'athlx_admin_pin_v1';
 
 const getDefaultUnitCost = (category?: Category) => {
   switch (category) {
@@ -127,6 +135,8 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AppState>(defaultState);
   const [isHydrated, setIsHydrated] = useState(false);
+
+  // ✅ Admin PIN: reloadしても消えないように永続化
   const adminPinRef = useRef<string | null>(null);
 
   const buildPortfolioFromTrades = (trades: Trade[], athletes: Athlete[]): Portfolio[] => {
@@ -176,10 +186,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     updateAccount(storage, email, updater);
   };
 
-  // ✅ 共通: Athlete 1件をKVに保存（symbol upsert）
+  // ✅ KVへ「単体アスリート」を upsert（全ユーザー共通にするため）
   const upsertAthleteToKV = async (athlete: Athlete) => {
     const pin = adminPinRef.current;
-    if (!pin) return; // Admin PINが無い時はKVに書かない（匿名ユーザー更新などを防ぐ）
+    if (!pin) {
+      console.warn('[KV] skip upsert: missing admin pin');
+      return;
+    }
 
     try {
       const res = await fetch('/api/catalog/athletes', {
@@ -188,17 +201,25 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         body: JSON.stringify(athlete),
       });
 
-      // 失敗してもUIは落とさない（デモ優先）
-      if (!res.ok) return;
+      if (!res.ok) {
+        let msg = `status=${res.status}`;
+        try {
+          const data = await res.json();
+          if (data?.error) msg += ` error=${data.error}`;
+        } catch {}
+        console.error('[KV] upsert failed:', msg);
+        return;
+      }
 
-      // 成功したらlocal catalogも同期（次回ロード高速化）
       const data = (await res.json()) as { athletes?: Athlete[] };
       if (Array.isArray(data?.athletes)) {
         const storage = getBrowserStorage();
         if (storage) writeJSON(storage, CATALOG_KEY, normalizeAthletes(data.athletes));
       }
-    } catch {
-      // ignore
+
+      console.log('[KV] upsert ok:', athlete.symbol);
+    } catch (e) {
+      console.error('[KV] upsert exception:', e);
     }
   };
 
@@ -208,6 +229,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!storage) {
       setIsHydrated(true);
       return;
+    }
+
+    // ✅ Restore persisted Admin PIN so KV writes survive reload
+    const savedPin = storage.getItem(ADMIN_PIN_KEY);
+    if (savedPin && savedPin.trim()) {
+      adminPinRef.current = savedPin.trim();
     }
 
     const stored = readJSON<Partial<AppState>>(storage, STORAGE_KEY, {});
@@ -239,19 +266,26 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     }
 
+    // ✅ まずローカルキャッシュ（CATALOG_KEY）があれば即反映（KVが落ちてもUIが空にならない）
+    const cachedCatalog = readJSON<Athlete[]>(storage, CATALOG_KEY, []);
+    if (Array.isArray(cachedCatalog) && cachedCatalog.length > 0) {
+      persistedState = { ...persistedState, athletes: normalizeAthletes(cachedCatalog) };
+    }
+
     setState({ ...persistedState, isAdmin: false });
     setIsHydrated(true);
 
     let isActive = true;
     const loadCatalog = async () => {
       try {
-        const response = await fetch('/api/catalog/athletes');
+        const response = await fetch('/api/catalog/athletes', { cache: 'no-store' });
         if (!response.ok) {
           console.error('Failed to load catalog athletes', response.status);
           return;
         }
         const data = (await response.json()) as { athletes?: Athlete[] };
         if (!isActive || !Array.isArray(data?.athletes)) return;
+
         const hydratedAthletes = normalizeAthletes(data.athletes);
         setState((prev) => ({ ...prev, athletes: hydratedAthletes }));
 
@@ -330,6 +364,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const storage = getBrowserStorage();
     setState((prev) => ({ ...prev, currentUser: null, trades: [], isAdmin: false }));
     adminPinRef.current = null;
+    if (storage) storage.removeItem(ADMIN_PIN_KEY);
     if (!storage) return;
     clearSession(storage);
   };
@@ -538,72 +573,68 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const getAthleteBySymbol = (symbol: string): Athlete | undefined => state.athletes.find((a) => a.symbol === symbol);
 
   const updateAthletePrice = (symbol: string, newPrice: number) => {
-    const target = state.athletes.find((a) => a.symbol === symbol);
-    if (!target) return;
+    setState((prev) => {
+      const nextAthletes = prev.athletes.map((a) => {
+        if (a.symbol !== symbol) return a;
+        const base = a.currentPrice || 0.0001;
+        const change24h = ((newPrice - base) / base) * 100;
+        const updated: Athlete = {
+          ...a,
+          currentPrice: newPrice,
+          unitCost: newPrice,
+          price24hChange: change24h,
+          priceHistory: [
+            ...(a.priceHistory ?? []),
+            { time: new Date().toISOString(), price: newPrice, volume: Math.floor(Math.random() * 10000) },
+          ],
+        };
+        // ✅ 全ユーザー共通化：KVへ保存（PINが入ってる場合のみ）
+        void upsertAthleteToKV(updated);
+        return updated;
+      });
 
-    const base = target.currentPrice || 0.0001;
-    const change24h = ((newPrice - base) / base) * 100;
-
-    const updated: Athlete = {
-      ...target,
-      currentPrice: newPrice,
-      unitCost: newPrice,
-      price24hChange: change24h,
-      priceHistory: [
-        ...(target.priceHistory ?? []),
-        { time: new Date().toISOString(), price: newPrice, volume: Math.floor(Math.random() * 10000) },
-      ],
-    };
-
-    setState((prev) => ({
-      ...prev,
-      athletes: prev.athletes.map((a) => (a.symbol !== symbol ? a : updated)),
-    }));
-
-    const storage = getBrowserStorage();
-    if (storage) writeJSON(storage, CATALOG_KEY, normalizeAthletes(state.athletes.map((a) => (a.symbol !== symbol ? a : updated))));
-
-    // ✅ 全ユーザー共通化：KVにも保存
-    void upsertAthleteToKV(updated);
+      return { ...prev, athletes: nextAthletes };
+    });
   };
 
-  const submitMatchUpdate = (athleteSymbol: string, nextMatch?: NextMatchInfo, lastMatch?: LastMatchInfo, approved = true) => {
-    const target = state.athletes.find((a) => a.symbol === athleteSymbol);
-    if (!target) return;
+  const submitMatchUpdate = (
+    athleteSymbol: string,
+    nextMatch?: NextMatchInfo,
+    lastMatch?: LastMatchInfo,
+    approved = true,
+  ) => {
+    setState((prev) => {
+      const nextAthletes = prev.athletes.map((athlete) => {
+        if (athlete.symbol !== athleteSymbol) return athlete;
 
-    const updateScore = computeEventScore(nextMatch, lastMatch);
-    const updatedActivityIndex = approved ? Math.max(0, target.activityIndex + updateScore) : target.activityIndex;
+        const updateScore = computeEventScore(nextMatch, lastMatch);
+        const updatedActivityIndex = approved ? Math.max(0, athlete.activityIndex + updateScore) : athlete.activityIndex;
 
-    const updatedUnitCost = approved
-      ? Math.max(getDefaultUnitCost(target.category), target.unitCost + updateScore * 0.01)
-      : target.unitCost;
+        const updatedUnitCost = approved
+          ? Math.max(getDefaultUnitCost(athlete.category), athlete.unitCost + updateScore * 0.01)
+          : athlete.unitCost;
 
-    const updated: Athlete = {
-      ...target,
-      nextMatch,
-      lastMatch,
-      activityIndex: updatedActivityIndex,
-      unitCost: updatedUnitCost,
-      currentPrice: updatedUnitCost,
-      lastUpdateReason: approved ? buildUpdateReason(nextMatch, lastMatch) : target.lastUpdateReason,
-      priceHistory: approved
-        ? [...(target.priceHistory ?? []), { time: new Date().toISOString(), price: updatedUnitCost, volume: 0 }]
-        : target.priceHistory,
-    };
+        const updated: Athlete = {
+          ...athlete,
+          nextMatch,
+          lastMatch,
+          activityIndex: updatedActivityIndex,
+          unitCost: updatedUnitCost,
+          currentPrice: updatedUnitCost,
+          lastUpdateReason: approved ? buildUpdateReason(nextMatch, lastMatch) : athlete.lastUpdateReason,
+          priceHistory: approved
+            ? [...(athlete.priceHistory ?? []), { time: new Date().toISOString(), price: updatedUnitCost, volume: 0 }]
+            : athlete.priceHistory,
+        };
 
-    setState((prev) => ({
-      ...prev,
-      athletes: prev.athletes.map((a) => (a.symbol !== athleteSymbol ? a : updated)),
-    }));
+        // ✅ 全ユーザー共通化：KVへ保存（PINが入ってる場合のみ）
+        if (approved) void upsertAthleteToKV(updated);
 
-    const storage = getBrowserStorage();
-    if (storage) {
-      const nextCatalog = normalizeAthletes(state.athletes.map((a) => (a.symbol !== athleteSymbol ? a : updated)));
-      writeJSON(storage, CATALOG_KEY, nextCatalog);
-    }
+        return updated;
+      });
 
-    // ✅ 全ユーザー共通化：KVにも保存（PINが入ってる時だけ）
-    void upsertAthleteToKV(updated);
+      return { ...prev, athletes: nextAthletes };
+    });
   };
 
   const submitAthletePerformanceUpdate = (payload: {
@@ -618,93 +649,95 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     injury: boolean;
     notes: string;
   }) => {
-    const target = state.athletes.find((a) => a.symbol === payload.athleteSymbol);
-    if (!target) return;
+    setState((prev) => {
+      const targetAthlete = prev.athletes.find((athlete) => athlete.symbol === payload.athleteSymbol);
+      if (!targetAthlete) return prev;
 
-    const minutesPlayed = Math.max(0, Math.min(90, Number(payload.minutesPlayed) || 0));
-    const goals = Math.max(0, Math.min(10, Number(payload.goals) || 0));
-    const assists = Math.max(0, Math.min(10, Number(payload.assists) || 0));
+      const minutesPlayed = Math.max(0, Math.min(90, Number(payload.minutesPlayed) || 0));
+      const goals = Math.max(0, Math.min(10, Number(payload.goals) || 0));
+      const assists = Math.max(0, Math.min(10, Number(payload.assists) || 0));
 
-    const resultDelta = payload.result === 'Win' ? 0.4 : payload.result === 'Draw' ? 0.1 : -0.2;
+      const resultDelta = payload.result === 'Win' ? 0.4 : payload.result === 'Draw' ? 0.1 : -0.2;
 
-    const baseDelta =
-      (minutesPlayed / 90) * 0.5 +
-      goals * 0.8 +
-      assists * 0.5 +
-      resultDelta +
-      (payload.injury ? -1.0 : 0);
+      const baseDelta =
+        (minutesPlayed / 90) * 0.5 +
+        goals * 0.8 +
+        assists * 0.5 +
+        resultDelta +
+        (payload.injury ? -1.0 : 0);
 
-    const noise = Math.random() * 0.02 - 0.01;
+      const noise = Math.random() * 0.02 - 0.01;
 
-    const updatedUnitCost = Math.min(5, Math.max(0.001, target.unitCost * (1 + baseDelta / 10 + noise)));
-    const updatedActivityIndex = Math.max(0, target.activityIndex + baseDelta);
+      const updatedUnitCost = Math.min(5, Math.max(0.001, targetAthlete.unitCost * (1 + baseDelta / 10 + noise)));
+      const updatedActivityIndex = Math.max(0, targetAthlete.activityIndex + baseDelta);
 
-    const minutesBucket =
-      minutesPlayed >= 61 ? '61-90' : minutesPlayed >= 31 ? '31-60' : minutesPlayed >= 1 ? '1-30' : '0';
+      const minutesBucket =
+        minutesPlayed >= 61 ? '61-90' : minutesPlayed >= 31 ? '31-60' : minutesPlayed >= 1 ? '1-30' : '0';
 
-    const updateReason =
-      payload.notes ||
-      buildUpdateReason(undefined, {
-        date: payload.matchDate,
-        minutesBucket,
+      const updateReason =
+        payload.notes ||
+        buildUpdateReason(undefined, {
+          date: payload.matchDate,
+          minutesBucket,
+          result: payload.result,
+          goals: goals || undefined,
+          assists: assists || undefined,
+          injury: payload.injury,
+        });
+
+      const updateRecord: AthleteUpdate = {
+        id: `update_${Date.now()}`,
+        athleteSymbol: payload.athleteSymbol,
+        matchDate: payload.matchDate,
+        opponent: payload.opponent,
+        homeAway: payload.homeAway,
+        minutesPlayed,
         result: payload.result,
-        goals: goals || undefined,
-        assists: assists || undefined,
+        goals,
+        assists,
         injury: payload.injury,
+        notes: payload.notes,
+        submittedAt: new Date().toISOString(),
+        baseDelta,
+        newUnitCost: updatedUnitCost,
+        newActivityIndex: updatedActivityIndex,
+      };
+
+      const nextAthletes = prev.athletes.map((athlete) => {
+        if (athlete.symbol !== payload.athleteSymbol) return athlete;
+
+        const updated: Athlete = {
+          ...athlete,
+          lastMatch: {
+            date: payload.matchDate,
+            minutesBucket,
+            result: payload.result,
+            goals: goals || undefined,
+            assists: assists || undefined,
+            injury: payload.injury,
+          },
+          activityIndex: updatedActivityIndex,
+          unitCost: updatedUnitCost,
+          currentPrice: updatedUnitCost,
+          lastUpdateReason: updateReason,
+          priceHistory: [
+            ...(athlete.priceHistory ?? []),
+            { time: new Date().toISOString(), price: updatedUnitCost, volume: Math.floor(Math.random() * 10000) },
+          ],
+        };
+
+        // ✅ 全ユーザー共通化：KVへ保存（PINが入ってる場合のみ）
+        void upsertAthleteToKV(updated);
+
+        return updated;
       });
 
-    const updatedAthlete: Athlete = {
-      ...target,
-      lastMatch: {
-        date: payload.matchDate,
-        minutesBucket,
-        result: payload.result,
-        goals: goals || undefined,
-        assists: assists || undefined,
-        injury: payload.injury,
-      },
-      activityIndex: updatedActivityIndex,
-      unitCost: updatedUnitCost,
-      currentPrice: updatedUnitCost,
-      lastUpdateReason: updateReason,
-      priceHistory: [
-        ...(target.priceHistory ?? []),
-        { time: new Date().toISOString(), price: updatedUnitCost, volume: Math.floor(Math.random() * 10000) },
-      ],
-    };
-
-    const updateRecord: AthleteUpdate = {
-      id: `update_${Date.now()}`,
-      athleteSymbol: payload.athleteSymbol,
-      matchDate: payload.matchDate,
-      opponent: payload.opponent,
-      homeAway: payload.homeAway,
-      minutesPlayed,
-      result: payload.result,
-      goals,
-      assists,
-      injury: payload.injury,
-      notes: payload.notes,
-      submittedAt: new Date().toISOString(),
-      baseDelta,
-      newUnitCost: updatedUnitCost,
-      newActivityIndex: updatedActivityIndex,
-    };
-
-    setState((prev) => ({
-      ...prev,
-      athletes: prev.athletes.map((a) => (a.symbol !== payload.athleteSymbol ? a : updatedAthlete)),
-      athleteUpdates: [...prev.athleteUpdates, updateRecord],
-    }));
-
-    const storage = getBrowserStorage();
-    if (storage) {
-      const nextCatalog = normalizeAthletes(state.athletes.map((a) => (a.symbol !== payload.athleteSymbol ? a : updatedAthlete)));
-      writeJSON(storage, CATALOG_KEY, nextCatalog);
-    }
-
-    // ✅ 全ユーザー共通化：KVにも保存（PINが入ってる時だけ）
-    void upsertAthleteToKV(updatedAthlete);
+      return {
+        ...prev,
+        athletes: nextAthletes,
+        athleteUpdates: [...prev.athleteUpdates, updateRecord],
+      };
+    });
 
     logEvent('athlete_update_submit', { userId: state.currentUser?.id, athleteSymbol: payload.athleteSymbol });
   };
@@ -721,19 +754,35 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!storage) return;
 
     storage.removeItem(STORAGE_KEY);
+    storage.removeItem(CATALOG_KEY);
+    storage.removeItem(ADMIN_PIN_KEY);
     storage.removeItem(EVENTS_KEY);
     resetDemoStorage(storage);
 
+    adminPinRef.current = null;
     setState(defaultState);
   };
 
   const setAdminAccess = (value: boolean) => {
     setState((prev) => ({ ...prev, isAdmin: value }));
-    if (!value) adminPinRef.current = null;
+    if (!value) {
+      adminPinRef.current = null;
+      const storage = getBrowserStorage();
+      if (storage) storage.removeItem(ADMIN_PIN_KEY);
+    }
   };
 
   const setAdminPin = (pin: string | null) => {
-    adminPinRef.current = pin;
+    const storage = getBrowserStorage();
+    const normalized = pin?.trim() || null;
+
+    adminPinRef.current = normalized;
+
+    // ✅ persist so reload won't lose it
+    if (storage) {
+      if (normalized) storage.setItem(ADMIN_PIN_KEY, normalized);
+      else storage.removeItem(ADMIN_PIN_KEY);
+    }
   };
 
   const setLanguage = (lang: 'EN' | 'ES') => {
