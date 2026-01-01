@@ -1,6 +1,13 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   type AppState,
   type User,
@@ -92,13 +99,18 @@ interface StoreContextType {
   getPortfolio: () => Portfolio[];
 
   submitAthleteRegistration: (data: Omit<PendingAthlete, 'id' | 'userId' | 'submittedAt' | 'status'>) => void;
-  approveAthlete: (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => void;
+  approveAthlete: (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => Promise<void>;
   rejectAthlete: (pendingId: string, reason: string) => void;
 
   getAthleteBySymbol: (symbol: string) => Athlete | undefined;
   updateAthletePrice: (symbol: string, newPrice: number) => void;
 
-  submitMatchUpdate: (athleteSymbol: string, nextMatch?: NextMatchInfo, lastMatch?: LastMatchInfo, approved?: boolean) => void;
+  submitMatchUpdate: (
+    athleteSymbol: string,
+    nextMatch?: NextMatchInfo,
+    lastMatch?: LastMatchInfo,
+    approved?: boolean,
+  ) => void;
 
   submitAthletePerformanceUpdate: (payload: {
     athleteSymbol: string;
@@ -115,6 +127,10 @@ interface StoreContextType {
 
   resetDemoData: () => void;
   setAdminAccess: (value: boolean) => void;
+
+  // 重要：Admin PIN を Store に渡して API へ転送する
+  setAdminPin: (pin: string | null) => void;
+
   setLanguage: (lang: 'EN' | 'ES') => void;
 }
 
@@ -123,6 +139,7 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AppState>(defaultState);
   const [isHydrated, setIsHydrated] = useState(false);
+  const adminPinRef = useRef<string | null>(null);
 
   const buildPortfolioFromTrades = (trades: Trade[], athletes: Athlete[]): Portfolio[] => {
     const portfolioMap = new Map<string, Portfolio>();
@@ -171,7 +188,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     updateAccount(storage, email, updater);
   };
 
-  // Hydrate from storage (state + session)
+  // Hydrate (local state + session) then hydrate catalog from API(KV)
   useEffect(() => {
     const storage = getBrowserStorage();
     if (!storage) {
@@ -181,8 +198,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const stored = readJSON<Partial<AppState>>(storage, STORAGE_KEY, {});
     const storedUser = loadSession(storage);
-    const hasCatalog = Boolean(storage.getItem(CATALOG_KEY));
 
+    // 初回だけ local catalog seed（過去互換）
+    const hasCatalog = Boolean(storage.getItem(CATALOG_KEY));
     if (!hasCatalog) {
       const seededCatalog = normalizeAthletes(
         ((stored as Partial<AppState>)?.athletes ?? defaultState.athletes) as Athlete[],
@@ -190,8 +208,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       writeJSON(storage, CATALOG_KEY, seededCatalog);
     }
 
-    const catalog = readJSON<Athlete[]>(storage, CATALOG_KEY, defaultState.athletes);
-    const hydratedAthletes = normalizeAthletes(catalog);
+    const localCatalog = readJSON<Athlete[]>(storage, CATALOG_KEY, defaultState.athletes);
+    const hydratedAthletes = normalizeAthletes(localCatalog);
 
     let persistedState: AppState = { ...defaultState, athletes: hydratedAthletes };
 
@@ -221,9 +239,35 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     setState({ ...persistedState, isAdmin: false });
     setIsHydrated(true);
+
+    // KV カタログをAPIから取得（成功したら全員共通のカタログに上書き）
+    let isActive = true;
+    const loadCatalogFromApi = async () => {
+      try {
+        const res = await fetch('/api/catalog/athletes', { method: 'GET' });
+        if (!res.ok) return;
+
+        const data = (await res.json()) as { athletes?: Athlete[] };
+        if (!isActive || !Array.isArray(data?.athletes)) return;
+
+        const apiAthletes = normalizeAthletes(data.athletes);
+        setState((prev) => ({ ...prev, athletes: apiAthletes }));
+
+        // local catalogも同期（以後の初期表示を速くするため）
+        writeJSON(storage, CATALOG_KEY, apiAthletes);
+      } catch {
+        // APIが落ちてもlocalで動く
+      }
+    };
+
+    void loadCatalogFromApi();
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
-  // Persist state
+  // Persist (state except athletes) to localStorage
   useEffect(() => {
     if (!isHydrated) return;
     const storage = getBrowserStorage();
@@ -284,6 +328,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const logout = () => {
     const storage = getBrowserStorage();
     setState((prev) => ({ ...prev, currentUser: null, trades: [], isAdmin: false }));
+    adminPinRef.current = null;
     if (!storage) return;
     clearSession(storage);
   };
@@ -330,25 +375,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const newBalance =
       type === 'buy' ? state.currentUser.athlxBalance - total : state.currentUser.athlxBalance + total;
 
-    if (process.env.NODE_ENV !== 'production') {
-      if (type === 'buy') {
-        console.assert(newBalance <= state.currentUser.athlxBalance, 'Buy should reduce balance');
-      } else {
-        console.assert(newBalance >= state.currentUser.athlxBalance, 'Sell should increase balance');
-      }
-      // Useful for debugging regressions
-      console.log('Trade debug', {
-        type,
-        quantity: safeQuantity,
-        price: safePrice,
-        subtotal,
-        fee,
-        total,
-        oldBalance: state.currentUser.athlxBalance,
-        newBalance,
-      });
-    }
-
     if (type === 'buy' && newBalance < 0) throw new Error('Insufficient balance');
 
     const trade: Trade = {
@@ -369,7 +395,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return {
         ...a,
         tradingVolume: (a.tradingVolume ?? 0) + subtotal,
-        // NOTE: demo-only counter. Real holders should be derived from portfolio holders.
         holders: type === 'buy' ? (a.holders ?? 0) + 1 : Math.max((a.holders ?? 0) - 1, 0),
       };
     });
@@ -428,7 +453,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     logEvent('athlete_register_submit', { userId: state.currentUser.id });
   };
 
-  const approveAthlete = (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => {
+  // ✅ Approve -> POST /api/catalog/athletes (Vercel KVに保存)
+  const approveAthlete = async (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => {
     const pending = state.pendingAthletes.find((p) => p.id === pendingId);
     if (!pending) return;
 
@@ -453,7 +479,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       imageUrl: pending.imageDataUrl ?? `https://i.pravatar.cc/300?img=${Math.floor(Math.random() * 70)}`,
       unitCost,
       currentPrice: unitCost,
-      activityIndex: unitCost, // demo: starts at initial index
+      activityIndex: unitCost,
       price24hChange: 0,
       price7dChange: 0,
       tradingVolume: 0,
@@ -464,27 +490,46 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       userId: pending.userId,
     };
 
-    const storage = getBrowserStorage();
-    const currentCatalog = storage
-      ? readJSON<Athlete[]>(storage, CATALOG_KEY, defaultState.athletes)
-      : defaultState.athletes;
-    const normalizedCatalog = normalizeAthletes(currentCatalog);
-    const existingIndex = normalizedCatalog.findIndex((athlete) => athlete.symbol === newAthlete.symbol);
-    const nextCatalog =
-      existingIndex >= 0
-        ? normalizedCatalog.map((athlete, index) => (index === existingIndex ? newAthlete : athlete))
-        : [...normalizedCatalog, newAthlete];
-
-    if (storage) {
-      writeJSON(storage, CATALOG_KEY, nextCatalog);
+    const adminPin = adminPinRef.current;
+    if (!adminPin) {
+      throw new Error('Admin PIN is required to approve athletes.');
     }
+
+    const res = await fetch('/api/catalog/athletes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-pin': adminPin,
+      },
+      body: JSON.stringify(newAthlete),
+    });
+
+    if (!res.ok) {
+      let msg = 'Failed to approve athlete.';
+      try {
+        const data = (await res.json()) as { error?: string };
+        if (data?.error) msg = data.error;
+      } catch {
+        // ignore
+      }
+      throw new Error(msg);
+    }
+
+    const data = (await res.json()) as { athletes?: Athlete[] };
+    const nextCatalog = normalizeAthletes(data?.athletes ?? [...state.athletes, newAthlete]);
+
+    // local catalogも同期
+    const storage = getBrowserStorage();
+    if (storage) writeJSON(storage, CATALOG_KEY, nextCatalog);
 
     setState((prev) => ({
       ...prev,
       athletes: nextCatalog,
       pendingAthletes: prev.pendingAthletes.map((p) => (p.id === pendingId ? { ...p, status: 'approved' as const } : p)),
       currentUser:
-        prev.currentUser?.id === pending.userId ? { ...prev.currentUser, linkedAthleteId: newAthlete.id } : prev.currentUser,
+        prev.currentUser?.id === pending.userId
+          ? { ...prev.currentUser, linkedAthleteId: newAthlete.id }
+          : prev.currentUser,
     }));
 
     if (pending.userId && state.currentUser?.id === pending.userId) {
@@ -504,7 +549,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     logEvent('admin_reject', { userId: state.currentUser?.id });
   };
 
-  const getAthleteBySymbol = (symbol: string): Athlete | undefined => state.athletes.find((a) => a.symbol === symbol);
+  const getAthleteBySymbol = (symbol: string): Athlete | undefined =>
+    state.athletes.find((a) => a.symbol === symbol);
 
   const updateAthletePrice = (symbol: string, newPrice: number) => {
     setState((prev) => ({
@@ -673,6 +719,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const setAdminAccess = (value: boolean) => {
     setState((prev) => ({ ...prev, isAdmin: value }));
+    if (!value) adminPinRef.current = null;
+  };
+
+  const setAdminPin = (pin: string | null) => {
+    adminPinRef.current = pin;
   };
 
   const setLanguage = (lang: 'EN' | 'ES') => {
@@ -699,6 +750,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         submitAthletePerformanceUpdate,
         resetDemoData,
         setAdminAccess,
+        setAdminPin,
         setLanguage,
       }}
     >
