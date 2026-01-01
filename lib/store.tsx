@@ -1,13 +1,6 @@
 'use client';
 
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   type AppState,
   type User,
@@ -22,7 +15,7 @@ import {
   type MatchHomeAway,
   type MatchResult,
 } from './types';
-import { initialAthletes, initialNews } from './data';
+import { initialNews } from './data';
 import { buildUpdateReason, computeEventScore } from './match';
 import { translations } from './translations';
 import { EVENTS_KEY, logEvent } from './analytics';
@@ -76,7 +69,7 @@ const normalizeAthletes = (athletes: Athlete[]): Athlete[] => {
 
 const defaultState: AppState = {
   currentUser: null,
-  athletes: normalizeAthletes(initialAthletes as Athlete[]),
+  athletes: [],
   pendingAthletes: [],
   trades: [],
   athleteUpdates: [],
@@ -105,12 +98,7 @@ interface StoreContextType {
   getAthleteBySymbol: (symbol: string) => Athlete | undefined;
   updateAthletePrice: (symbol: string, newPrice: number) => void;
 
-  submitMatchUpdate: (
-    athleteSymbol: string,
-    nextMatch?: NextMatchInfo,
-    lastMatch?: LastMatchInfo,
-    approved?: boolean,
-  ) => void;
+  submitMatchUpdate: (athleteSymbol: string, nextMatch?: NextMatchInfo, lastMatch?: LastMatchInfo, approved?: boolean) => void;
 
   submitAthletePerformanceUpdate: (payload: {
     athleteSymbol: string;
@@ -128,7 +116,7 @@ interface StoreContextType {
   resetDemoData: () => void;
   setAdminAccess: (value: boolean) => void;
 
-  // 重要：Admin PIN を Store に渡して API へ転送する
+  // Admin PIN を Store に渡して API へ転送する
   setAdminPin: (pin: string | null) => void;
 
   setLanguage: (lang: 'EN' | 'ES') => void;
@@ -199,22 +187,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const stored = readJSON<Partial<AppState>>(storage, STORAGE_KEY, {});
     const storedUser = loadSession(storage);
 
-    // 初回だけ local catalog seed（過去互換）
-    const hasCatalog = Boolean(storage.getItem(CATALOG_KEY));
-    if (!hasCatalog) {
-      const seededCatalog = normalizeAthletes(
-        ((stored as Partial<AppState>)?.athletes ?? defaultState.athletes) as Athlete[],
-      );
-      writeJSON(storage, CATALOG_KEY, seededCatalog);
-    }
-
-    const localCatalog = readJSON<Athlete[]>(storage, CATALOG_KEY, defaultState.athletes);
-    const hydratedAthletes = normalizeAthletes(localCatalog);
-
-    let persistedState: AppState = { ...defaultState, athletes: hydratedAthletes };
+    let persistedState: AppState = { ...defaultState, athletes: defaultState.athletes };
 
     if (stored && Object.keys(stored).length > 0) {
-      persistedState = { ...defaultState, ...stored, athletes: hydratedAthletes };
+      persistedState = { ...defaultState, ...stored, athletes: defaultState.athletes };
     }
 
     if (storedUser?.email) {
@@ -240,28 +216,27 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setState({ ...persistedState, isAdmin: false });
     setIsHydrated(true);
 
-    // KV カタログをAPIから取得（成功したら全員共通のカタログに上書き）
     let isActive = true;
-    const loadCatalogFromApi = async () => {
+    const loadCatalog = async () => {
       try {
-        const res = await fetch('/api/catalog/athletes', { method: 'GET' });
-        if (!res.ok) return;
-
-        const data = (await res.json()) as { athletes?: Athlete[] };
+        const response = await fetch('/api/catalog/athletes');
+        if (!response.ok) {
+          console.error('Failed to load catalog athletes', response.status);
+          return;
+        }
+        const data = (await response.json()) as { athletes?: Athlete[] };
         if (!isActive || !Array.isArray(data?.athletes)) return;
+        const hydratedAthletes = normalizeAthletes(data.athletes);
+        setState((prev) => ({ ...prev, athletes: hydratedAthletes }));
 
-        const apiAthletes = normalizeAthletes(data.athletes);
-        setState((prev) => ({ ...prev, athletes: apiAthletes }));
-
-        // local catalogも同期（以後の初期表示を速くするため）
-        writeJSON(storage, CATALOG_KEY, apiAthletes);
-      } catch {
-        // APIが落ちてもlocalで動く
+        // 速度最適化：localにも同期（ただし source of truth はKV）
+        writeJSON(storage, CATALOG_KEY, hydratedAthletes);
+      } catch (error) {
+        console.error('Catalog hydration failed', error);
       }
     };
 
-    void loadCatalogFromApi();
-
+    void loadCatalog();
     return () => {
       isActive = false;
     };
@@ -364,7 +339,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const athlete = state.athletes.find((a) => a.symbol === athleteSymbol);
     if (!athlete) return;
 
-    // Safety clamp
     const safeQuantity = Math.max(0, Number(quantity) || 0);
     const safePrice = Math.max(0, Number(price) || 0);
 
@@ -421,14 +395,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     logEvent(type === 'buy' ? 'trade_buy' : 'trade_sell', {
       userId: state.currentUser.id,
       athleteSymbol,
-      meta: {
-        quantity: safeQuantity,
-        price: safePrice,
-        subtotal,
-        fee,
-        total,
-        currency: 'tATHLX',
-      },
+      meta: { quantity: safeQuantity, price: safePrice, subtotal, fee, total, currency: 'tATHLX' },
     });
   };
 
@@ -491,16 +458,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     const adminPin = adminPinRef.current;
-    if (!adminPin) {
-      throw new Error('Admin PIN is required to approve athletes.');
-    }
+    if (!adminPin) throw new Error('Admin PIN is required to approve athletes.');
 
     const res = await fetch('/api/catalog/athletes', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-admin-pin': adminPin,
-      },
+      headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin },
       body: JSON.stringify(newAthlete),
     });
 
@@ -518,7 +480,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const data = (await res.json()) as { athletes?: Athlete[] };
     const nextCatalog = normalizeAthletes(data?.athletes ?? [...state.athletes, newAthlete]);
 
-    // local catalogも同期
+    // 速度最適化：localにも同期（source of truth はKV）
     const storage = getBrowserStorage();
     if (storage) writeJSON(storage, CATALOG_KEY, nextCatalog);
 
@@ -527,9 +489,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       athletes: nextCatalog,
       pendingAthletes: prev.pendingAthletes.map((p) => (p.id === pendingId ? { ...p, status: 'approved' as const } : p)),
       currentUser:
-        prev.currentUser?.id === pending.userId
-          ? { ...prev.currentUser, linkedAthleteId: newAthlete.id }
-          : prev.currentUser,
+        prev.currentUser?.id === pending.userId ? { ...prev.currentUser, linkedAthleteId: newAthlete.id } : prev.currentUser,
     }));
 
     if (pending.userId && state.currentUser?.id === pending.userId) {
@@ -549,8 +509,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     logEvent('admin_reject', { userId: state.currentUser?.id });
   };
 
-  const getAthleteBySymbol = (symbol: string): Athlete | undefined =>
-    state.athletes.find((a) => a.symbol === symbol);
+  const getAthleteBySymbol = (symbol: string): Athlete | undefined => state.athletes.find((a) => a.symbol === symbol);
 
   const updateAthletePrice = (symbol: string, newPrice: number) => {
     setState((prev) => ({

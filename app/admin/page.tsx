@@ -18,6 +18,7 @@ export default function AdminPage() {
   const [tokenSymbol, setTokenSymbol] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [view, setView] = useState<'dashboard' | 'pending' | 'review'>('dashboard');
+  const [approveError, setApproveError] = useState('');
 
   // Reset
   const [resetConfirm, setResetConfirm] = useState('');
@@ -98,13 +99,19 @@ export default function AdminPage() {
     setView('review');
   };
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
+    setApproveError('');
     if (selectedPending && tokenSymbol && initialPrice > 0) {
-      approveAthlete(selectedPending, finalCategory, initialPrice, tokenSymbol);
-      setView('pending');
-      setSelectedPending(null);
-      setTokenSymbol('');
-      setInitialPrice(100);
+      try {
+        await approveAthlete(selectedPending, finalCategory, initialPrice, tokenSymbol);
+        setView('pending');
+        setSelectedPending(null);
+        setTokenSymbol('');
+        setInitialPrice(100);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : t.importFailed;
+        setApproveError(message);
+      }
     }
   };
 
@@ -672,6 +679,12 @@ export default function AdminPage() {
                   <span>{t.approveAndAddToDirectory}</span>
                 </button>
               </div>
+
+              {approveError && (
+                <div className="mt-4 p-3 bg-red-500/20 border border-red-500 rounded-lg text-sm text-red-200">
+                  {approveError}
+                </div>
+              )}
             </div>
 
             {/* Rejection Form */}

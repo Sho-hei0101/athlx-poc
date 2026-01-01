@@ -5,31 +5,31 @@ export const runtime = 'nodejs';
 
 const KV_KEY = 'athlx:catalog:athletes:v1';
 
-type Athlete = Record<string, unknown>; // 型安全はフロント側で担保（APIは柔軟に）
+// APIは柔軟に受け、型安全はフロント側で担保
+type Athlete = Record<string, unknown>;
 
-function requireAdminPin(req: Request): string | null {
-  const expected = process.env.ADMIN_PIN;
-  if (!expected) return null;
+function isAuthorized(req: Request): boolean {
+  const expected = process.env.ATHLX_ADMIN_PIN;
+  if (!expected) return false;
   const provided = req.headers.get('x-admin-pin');
-  if (!provided) return null;
-  return provided === expected ? provided : null;
+  if (!provided) return false;
+  return provided === expected;
 }
 
 export async function GET() {
   try {
-    const athletes = (await kv.get<Athlete[]>(KV_KEY)) ?? null;
-    return NextResponse.json({ ok: true, athletes: athletes ?? [] });
+    const athletes = (await kv.get<Athlete[]>(KV_KEY)) ?? [];
+    return NextResponse.json({ ok: true, athletes: Array.isArray(athletes) ? athletes : [] });
   } catch (e) {
     console.error('GET /api/catalog/athletes failed', e);
-    return NextResponse.json({ ok: false, error: 'KV read failed' }, { status: 500 });
+    // 読めない時もUIが落ちないように空配列で返す
+    return NextResponse.json({ ok: true, athletes: [], warning: 'catalog_unavailable' });
   }
 }
 
 export async function POST(req: Request) {
   try {
-    // Admin PIN check
-    const okPin = requireAdminPin(req);
-    if (!okPin) {
+    if (!isAuthorized(req)) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -38,23 +38,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Bad payload' }, { status: 400 });
     }
 
-    // existing catalog
-    const existing = (await kv.get<Athlete[]>(KV_KEY)) ?? [];
-    const symbol = String(incoming['symbol'] ?? '').toUpperCase();
-
+    const symbol = String(incoming['symbol'] ?? '').toUpperCase().trim();
     if (!symbol) {
       return NextResponse.json({ ok: false, error: 'Missing symbol' }, { status: 400 });
     }
 
-    const next = (() => {
-      const idx = existing.findIndex((a) => String(a?.['symbol'] ?? '').toUpperCase() === symbol);
-      if (idx >= 0) {
-        const copy = [...existing];
-        copy[idx] = incoming;
-        return copy;
-      }
-      return [...existing, incoming];
-    })();
+    // symbolは常に大文字に正規化して保存
+    const athleteToSave: Athlete = { ...incoming, symbol };
+
+    const existing = (await kv.get<Athlete[]>(KV_KEY)) ?? [];
+    const list = Array.isArray(existing) ? existing : [];
+
+    const idx = list.findIndex((a) => String(a?.['symbol'] ?? '').toUpperCase() === symbol);
+    const next = idx >= 0 ? list.map((a, i) => (i === idx ? athleteToSave : a)) : [...list, athleteToSave];
 
     await kv.set(KV_KEY, next);
 
