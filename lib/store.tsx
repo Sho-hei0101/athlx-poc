@@ -106,6 +106,8 @@ interface StoreContextType {
   approveAthlete: (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => Promise<void>;
   rejectAthlete: (pendingId: string, reason: string) => void;
 
+  deleteAthlete: (symbol: string) => Promise<void>;
+
   getAthleteBySymbol: (symbol: string) => Athlete | undefined;
   updateAthletePrice: (symbol: string, newPrice: number) => void;
 
@@ -797,6 +799,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         getPortfolio,
         submitAthleteRegistration,
         approveAthlete,
+        deleteAthlete,
         rejectAthlete,
         getAthleteBySymbol,
         updateAthletePrice,
