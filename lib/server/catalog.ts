@@ -4,7 +4,7 @@ import { kv } from '@vercel/kv';
 import { initialAthletes } from '@/lib/data';
 import type { Athlete } from '@/lib/types';
 
-export const KV_KEY = 'catalog:athletes';
+export const KV_KEY = 'catalog:athletes:v1';
 
 const normalizeBasePrice = (value: unknown) => {
   const numeric = typeof value === 'number' && Number.isFinite(value) ? value : 0.01;
@@ -49,6 +49,12 @@ const ensureCatalogSeed = async (): Promise<Athlete[]> => {
 
 export const getCatalogAthletes = async (): Promise<Athlete[]> => ensureCatalogSeed();
 
+export const setCatalogAthletes = async (athletes: Athlete[]): Promise<Athlete[]> => {
+  const nextCatalog = normalizeSeedCatalog(athletes);
+  await kv.set(KV_KEY, nextCatalog);
+  return nextCatalog;
+};
+
 export const upsertCatalogAthlete = async (newAthlete: Athlete): Promise<Athlete[]> => {
   const current = await getCatalogAthletes();
   const nextSymbol = newAthlete.symbol.toUpperCase();
@@ -56,6 +62,38 @@ export const upsertCatalogAthlete = async (newAthlete: Athlete): Promise<Athlete
     ? current.map((athlete) => (athlete.symbol.toUpperCase() === nextSymbol ? { ...newAthlete, symbol: nextSymbol } : athlete))
     : [...current, { ...newAthlete, symbol: nextSymbol }];
 
+  await kv.set(KV_KEY, nextCatalog);
+  return nextCatalog;
+};
+
+export const updateCatalogAthlete = async (
+  symbol: string,
+  patch: Partial<Athlete>,
+): Promise<{ nextCatalog: Athlete[]; updated?: Athlete }> => {
+  const current = await getCatalogAthletes();
+  const targetSymbol = symbol.toUpperCase();
+  const index = current.findIndex((athlete) => athlete.symbol.toUpperCase() === targetSymbol);
+  if (index < 0) {
+    return { nextCatalog: current };
+  }
+  const existing = current[index];
+  const unitCost = normalizeBasePrice(patch.unitCost ?? existing.unitCost);
+  const updated: Athlete = {
+    ...existing,
+    ...patch,
+    symbol: existing.symbol,
+    unitCost,
+    currentPrice: unitCost,
+  };
+  const nextCatalog = current.map((athlete, idx) => (idx === index ? updated : athlete));
+  await kv.set(KV_KEY, nextCatalog);
+  return { nextCatalog, updated };
+};
+
+export const deleteCatalogAthlete = async (symbol: string): Promise<Athlete[]> => {
+  const current = await getCatalogAthletes();
+  const targetSymbol = symbol.toUpperCase();
+  const nextCatalog = current.filter((athlete) => athlete.symbol.toUpperCase() !== targetSymbol);
   await kv.set(KV_KEY, nextCatalog);
   return nextCatalog;
 };
