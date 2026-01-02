@@ -1,172 +1,114 @@
 import { NextResponse } from 'next/server';
-import type { Athlete } from '@/lib/types';
-import { deleteCatalogAthlete, getCatalogAthletes, updateCatalogAthlete, upsertCatalogAthlete } from '@/lib/server/catalog';
+import { kv } from '@vercel/kv';
 
 export const runtime = 'nodejs';
 
-const isValidAthletePayload = (payload: unknown): payload is Athlete => {
-  if (!payload || typeof payload !== 'object') return false;
-  const athlete = payload as Athlete;
-  const requiredStrings = [
-    athlete.id,
-    athlete.name,
-    athlete.symbol,
-    athlete.sport,
-    athlete.category,
-    athlete.nationality,
-    athlete.team,
-    athlete.position,
-    athlete.bio,
-    athlete.imageUrl,
-    athlete.createdAt,
-  ];
-  if (requiredStrings.some((value) => typeof value !== 'string' || value.length === 0)) {
-    return false;
-  }
-  if (
-    (athlete.profileUrl && typeof athlete.profileUrl !== 'string') ||
-    (athlete.highlightVideoUrl && typeof athlete.highlightVideoUrl !== 'string')
-  ) {
-    return false;
-  }
-  const requiredNumbers = [
-    athlete.unitCost,
-    athlete.activityIndex,
-    athlete.currentPrice,
-    athlete.price24hChange,
-    athlete.price7dChange,
-    athlete.tradingVolume,
-    athlete.holders,
-  ];
-  if (requiredNumbers.some((value) => typeof value !== 'number' || Number.isNaN(value))) {
-    return false;
-  }
-  if (!Array.isArray(athlete.tags) || !Array.isArray(athlete.priceHistory)) {
-    return false;
-  }
-  return true;
-};
+const KV_KEY = 'athlx:catalog:athletes:v1';
 
-const isValidPartialPayload = (payload: unknown): payload is Partial<Athlete> => {
-  if (!payload || typeof payload !== 'object') return false;
-  const athlete = payload as Partial<Athlete>;
-  const stringFields: Array<keyof Athlete> = [
-    'name',
-    'symbol',
-    'sport',
-    'category',
-    'nationality',
-    'team',
-    'position',
-    'bio',
-    'profileUrl',
-    'highlightVideoUrl',
-    'imageUrl',
-  ];
-  for (const field of stringFields) {
-    const value = athlete[field];
-    if (value !== undefined && typeof value !== 'string') return false;
-  }
-  const numberFields: Array<keyof Athlete> = [
-    'unitCost',
-    'currentPrice',
-    'activityIndex',
-    'price24hChange',
-    'price7dChange',
-    'tradingVolume',
-    'holders',
-    'age',
-  ];
-  for (const field of numberFields) {
-    const value = athlete[field];
-    if (value !== undefined && (typeof value !== 'number' || Number.isNaN(value))) return false;
-  }
-  if (athlete.tags !== undefined && !Array.isArray(athlete.tags)) return false;
-  if (athlete.priceHistory !== undefined && !Array.isArray(athlete.priceHistory)) return false;
-  return true;
-};
+// APIは柔軟に受け、型安全はフロント側で担保
+type Athlete = Record<string, unknown>;
+
+function isAuthorized(req: Request): boolean {
+  const expected = process.env.ATHLX_ADMIN_PIN;
+  if (!expected) return false;
+  const provided = req.headers.get('x-admin-pin');
+  if (!provided) return false;
+  return provided === expected;
+}
 
 export async function GET() {
   try {
-    const catalog = await getCatalogAthletes();
-    return NextResponse.json({ ok: true, athletes: catalog });
-  } catch (error) {
-    console.error('Catalog GET failed', error);
+    const athletes = (await kv.get<Athlete[]>(KV_KEY)) ?? [];
+    return NextResponse.json({ ok: true, athletes: Array.isArray(athletes) ? athletes : [] });
+  } catch (e) {
+    console.error('GET /api/catalog/athletes failed', e);
+    // 読めない時もUIが落ちないように空配列で返す
     return NextResponse.json({ ok: true, athletes: [], warning: 'catalog_unavailable' });
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const adminPin = req.headers.get('x-admin-pin');
-    if (!adminPin || adminPin !== process.env.ATHLX_ADMIN_PIN) {
+    if (!isAuthorized(req)) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const payload = (await req.json()) as unknown;
-    if (!isValidAthletePayload(payload)) {
-      return NextResponse.json({ ok: false, error: 'Invalid payload' }, { status: 400 });
+    const incoming = (await req.json()) as Athlete;
+    if (!incoming || typeof incoming !== 'object') {
+      return NextResponse.json({ ok: false, error: 'Bad payload' }, { status: 400 });
     }
 
-    const newAthlete = {
-      ...payload,
-      symbol: payload.symbol.toUpperCase(),
-    };
-
-    const catalog = await upsertCatalogAthlete(newAthlete);
-    return NextResponse.json({ ok: true, athletes: catalog });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Catalog update failed';
-    console.error('Catalog POST failed', error);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
-}
-
-export async function PUT(req: Request) {
-  try {
-    const adminPin = req.headers.get('x-admin-pin');
-    if (!adminPin || adminPin !== process.env.ATHLX_ADMIN_PIN) {
-      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(req.url);
-    const symbol = searchParams.get('symbol');
+    const symbol = String(incoming['symbol'] ?? '').toUpperCase().trim();
     if (!symbol) {
       return NextResponse.json({ ok: false, error: 'Missing symbol' }, { status: 400 });
     }
 
-    const payload = (await req.json()) as unknown;
-    if (!isValidPartialPayload(payload)) {
-      return NextResponse.json({ ok: false, error: 'Invalid payload' }, { status: 400 });
-    }
+    // symbolは常に大文字に正規化して保存
+    const athleteToSave: Athlete = { ...incoming, symbol };
 
-    const catalog = await updateCatalogAthlete(symbol, payload);
-    return NextResponse.json({ ok: true, athletes: catalog });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Catalog update failed';
-    console.error('Catalog PUT failed', error);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    const existing = (await kv.get<Athlete[]>(KV_KEY)) ?? [];
+    const list = Array.isArray(existing) ? existing : [];
+
+    const idx = list.findIndex((a) => String(a?.['symbol'] ?? '').toUpperCase() === symbol);
+    const next = idx >= 0 ? list.map((a, i) => (i === idx ? athleteToSave : a)) : [...list, athleteToSave];
+
+    await kv.set(KV_KEY, next);
+
+    return NextResponse.json({ ok: true, athletes: next });
+  } catch (e) {
+    console.error('POST /api/catalog/athletes failed', e);
+    return NextResponse.json({ ok: false, error: 'KV write failed' }, { status: 500 });
   }
 }
 
 export async function DELETE(req: Request) {
   try {
-    const adminPin = req.headers.get('x-admin-pin');
-    if (!adminPin || adminPin !== process.env.ATHLX_ADMIN_PIN) {
+    if (!isAuthorized(req)) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
-    const symbol = searchParams.get('symbol');
+    const symbol = String(searchParams.get('symbol') ?? '').toUpperCase().trim();
     if (!symbol) {
       return NextResponse.json({ ok: false, error: 'Missing symbol' }, { status: 400 });
     }
 
-    const catalog = await deleteCatalogAthlete(symbol);
-    return NextResponse.json({ ok: true, athletes: catalog });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Catalog delete failed';
-    console.error('Catalog DELETE failed', error);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    const existing = (await kv.get<Athlete[]>(KV_KEY)) ?? [];
+    const list = Array.isArray(existing) ? existing : [];
+
+    const next = list.filter((a) => String(a?.['symbol'] ?? '').toUpperCase() !== symbol);
+
+    await kv.set(KV_KEY, next);
+    return NextResponse.json({ ok: true, athletes: next, deleted: symbol });
+  } catch (e) {
+    console.error('DELETE /api/catalog/athletes failed', e);
+    return NextResponse.json({ ok: false, error: 'KV delete failed' }, { status: 500 });
+  }
+}
+
+
+export async function DELETE(req: Request) {
+  try {
+    if (!isAuthorized(req)) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const symbol = String(searchParams.get('symbol') ?? '').toUpperCase().trim();
+    if (!symbol) {
+      return NextResponse.json({ ok: false, error: 'Missing symbol' }, { status: 400 });
+    }
+
+    const existing = (await kv.get<Athlete[]>(KV_KEY)) ?? [];
+    const list = Array.isArray(existing) ? existing : [];
+
+    const next = list.filter((a) => String(a?.['symbol'] ?? '').toUpperCase() !== symbol);
+
+    await kv.set(KV_KEY, next);
+
+    return NextResponse.json({ ok: true, athletes: next, deleted: symbol });
+  } catch (e) {
+    console.error('DELETE /api/catalog/athletes failed', e);
+    return NextResponse.json({ ok: false, error: 'KV delete failed' }, { status: 500 });
   }
 }

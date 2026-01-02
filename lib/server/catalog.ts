@@ -25,25 +25,3 @@ export const upsertCatalogAthlete = async (newAthlete: Athlete): Promise<Athlete
   await kv.set(KV_KEY, nextCatalog);
   return nextCatalog;
 };
-
-export const updateCatalogAthlete = async (symbol: string, payload: Partial<Athlete>): Promise<Athlete[]> => {
-  const current = await getCatalogAthletes();
-  const targetSymbol = symbol.toUpperCase();
-  const index = current.findIndex((athlete) => athlete.symbol.toUpperCase() === targetSymbol);
-  if (index === -1) {
-    throw new Error('Athlete not found.');
-  }
-  const updated = { ...current[index], ...payload, symbol: targetSymbol };
-  const nextCatalog = [...current];
-  nextCatalog[index] = updated;
-  await kv.set(KV_KEY, nextCatalog);
-  return nextCatalog;
-};
-
-export const deleteCatalogAthlete = async (symbol: string): Promise<Athlete[]> => {
-  const current = await getCatalogAthletes();
-  const targetSymbol = symbol.toUpperCase();
-  const nextCatalog = current.filter((athlete) => athlete.symbol.toUpperCase() !== targetSymbol);
-  await kv.set(KV_KEY, nextCatalog);
-  return nextCatalog;
-};

@@ -35,68 +35,46 @@ import {
 } from './demoAccountStorage';
 
 const STORAGE_KEY = 'athlx_state';
+const CATALOG_KEY = 'athlx_catalog_v1';
 
-const getDefaultUnitCost = (category?: Category) => {
+/**
+ * ✅ 価格は全員共通で 0.01 を基準にする（カテゴリは伸び方/ブレ幅にだけ影響）
+ */
+const BASE_PRICE = 0.01;
+
+// カテゴリごとの「変動しやすさ」係数（大きいほど動きやすい）
+const categoryVolatility = (category?: Category) => {
   switch (category) {
     case 'Elite':
-      return ATHLX_BASE_PRICE * 20;
+      return 0.6;
     case 'Pro':
-      return ATHLX_BASE_PRICE * 10;
+      return 0.8;
     case 'Semi-pro':
-      return ATHLX_BASE_PRICE * 5;
+      return 1.0;
     case 'Amateur':
     default:
-      return ATHLX_BASE_PRICE;
+      return 1.2;
   }
 };
 
-const normalizeCatalogAthlete = (athlete: Athlete): Athlete => {
-  return {
-    ...athlete,
-    unitCost: toDisplayPrice(athlete.unitCost),
-    currentPrice: toDisplayPrice(athlete.currentPrice),
-    activityIndex: typeof athlete.activityIndex === 'number' ? toDisplayPrice(athlete.activityIndex) : 0,
-    tradingVolume: typeof athlete.tradingVolume === 'number' ? toDisplayPrice(athlete.tradingVolume) : 0,
-    priceHistory: Array.isArray(athlete.priceHistory)
-      ? athlete.priceHistory.map((point) => ({
-          ...point,
-          price: toDisplayPrice(point.price),
-        }))
-      : [],
-  };
-};
-
-const toCatalogAthlete = (athlete: Athlete): Athlete => {
-  return {
-    ...athlete,
-    unitCost: toRawPrice(athlete.unitCost),
-    currentPrice: toRawPrice(athlete.currentPrice),
-    activityIndex: typeof athlete.activityIndex === 'number' ? toRawPrice(athlete.activityIndex) : 0,
-    tradingVolume: typeof athlete.tradingVolume === 'number' ? toRawPrice(athlete.tradingVolume) : 0,
-    priceHistory: Array.isArray(athlete.priceHistory)
-      ? athlete.priceHistory.map((point) => ({
-          ...point,
-          price: toRawPrice(point.price),
-        }))
-      : [],
-  };
-};
+// 価格の下限・上限（デモ安全装置）
+const clampPrice = (p: number) => Math.min(1, Math.max(0.001, p));
 
 const normalizeAthletes = (athletes: Athlete[]): Athlete[] => {
   return athletes.map((a) => {
-    const catalogAthlete = normalizeCatalogAthlete(a);
     const unitCost =
-      catalogAthlete.unitCost && catalogAthlete.unitCost > 0 ? catalogAthlete.unitCost : getDefaultUnitCost(catalogAthlete.category);
-    const currentPrice = catalogAthlete.currentPrice && catalogAthlete.currentPrice > 0 ? catalogAthlete.currentPrice : unitCost;
+      typeof a.unitCost === 'number' && a.unitCost > 0 ? a.unitCost : BASE_PRICE;
+    const currentPrice =
+      typeof a.currentPrice === 'number' && a.currentPrice > 0 ? a.currentPrice : unitCost;
 
     return {
-      ...catalogAthlete,
-      unitCost,
-      currentPrice,
-      activityIndex: typeof catalogAthlete.activityIndex === 'number' ? catalogAthlete.activityIndex : 0,
-      tradingVolume: typeof catalogAthlete.tradingVolume === 'number' ? catalogAthlete.tradingVolume : 0,
-      holders: typeof catalogAthlete.holders === 'number' ? catalogAthlete.holders : 0,
-      priceHistory: Array.isArray(catalogAthlete.priceHistory) ? catalogAthlete.priceHistory : [],
+      ...a,
+      unitCost: clampPrice(unitCost),
+      currentPrice: clampPrice(currentPrice),
+      activityIndex: typeof a.activityIndex === 'number' ? a.activityIndex : 0,
+      tradingVolume: typeof a.tradingVolume === 'number' ? a.tradingVolume : 0,
+      holders: typeof a.holders === 'number' ? a.holders : 0,
+      priceHistory: Array.isArray(a.priceHistory) ? a.priceHistory : [],
     };
   });
 };
@@ -127,9 +105,9 @@ interface StoreContextType {
 
   submitAthleteRegistration: (data: Omit<PendingAthlete, 'id' | 'userId' | 'submittedAt' | 'status'>) => void;
   approveAthlete: (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => Promise<void>;
-  updateAthlete: (symbol: string, payload: Partial<Athlete>) => Promise<void>;
-  deleteAthlete: (symbol: string) => Promise<void>;
   rejectAthlete: (pendingId: string, reason: string) => void;
+
+  deleteAthlete: (symbol: string) => Promise<void>;
 
   getAthleteBySymbol: (symbol: string) => Athlete | undefined;
   updateAthletePrice: (symbol: string, newPrice: number) => void;
@@ -151,7 +129,9 @@ interface StoreContextType {
 
   resetDemoData: () => void;
   setAdminAccess: (value: boolean) => void;
+
   setAdminPin: (pin: string | null) => void;
+
   setLanguage: (lang: 'EN' | 'ES') => void;
 }
 
@@ -198,7 +178,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     return Array.from(portfolioMap.values()).map((p) => {
       const athlete = athletes.find((a) => a.symbol === p.athleteSymbol);
-      const fallback = athlete?.unitCost ?? p.currentPrice ?? 0;
+      const fallback = athlete?.unitCost ?? p.currentPrice ?? BASE_PRICE;
       return { ...p, currentPrice: athlete?.currentPrice ?? fallback };
     });
   };
@@ -229,7 +209,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     updateAccount(storage, email, updater);
   };
 
-  // Hydrate from storage (state + session)
+  // Hydrate (local state + session) then hydrate catalog from API(KV)
   useEffect(() => {
     const storage = getBrowserStorage();
     if (!storage) {
@@ -279,8 +259,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
         const data = (await response.json()) as { athletes?: Athlete[] };
         if (!isActive || !Array.isArray(data?.athletes)) return;
-        const hydratedAthletes = normalizeAthletes(data.athletes);
+
+        // ✅ KVをsource of truthとして正規化しつつ、価格は必ず0.01基準に寄せる
+        const hydratedAthletes = normalizeAthletes(
+          data.athletes.map((a) => {
+            const p = typeof a.currentPrice === 'number' && a.currentPrice > 0 ? a.currentPrice : BASE_PRICE;
+            return { ...a, unitCost: p, currentPrice: p };
+          }),
+        );
+
         setState((prev) => ({ ...prev, athletes: hydratedAthletes }));
+        writeJSON(storage, CATALOG_KEY, hydratedAthletes);
       } catch (error) {
         console.error('Catalog hydration failed', error);
       }
@@ -292,7 +281,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
   }, []);
 
-  // Persist state
+  // Persist (state except athletes) to localStorage
   useEffect(() => {
     if (!isHydrated) return;
     const storage = getBrowserStorage();
@@ -380,7 +369,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const executeTrade = (athleteSymbol: string, type: 'buy' | 'sell', quantity: number, price: number) => {
     if (!state.currentUser) return;
 
-    // Zero-ownership: athlete-linked accounts cannot trade (demo-enforced)
     if (state.currentUser.linkedAthleteId) {
       const tr = translations[state.language];
       throw new Error(tr.cannotTradeOwnUnits);
@@ -389,7 +377,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const athlete = state.athletes.find((a) => a.symbol === athleteSymbol);
     if (!athlete) return;
 
-    // Safety clamp
     const safeQuantity = Math.max(0, Number(quantity) || 0);
     const safePrice = Math.max(0, Number(price) || 0);
 
@@ -399,25 +386,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const newBalance =
       type === 'buy' ? state.currentUser.athlxBalance - total : state.currentUser.athlxBalance + total;
-
-    if (process.env.NODE_ENV !== 'production') {
-      if (type === 'buy') {
-        console.assert(newBalance <= state.currentUser.athlxBalance, 'Buy should reduce balance');
-      } else {
-        console.assert(newBalance >= state.currentUser.athlxBalance, 'Sell should increase balance');
-      }
-      // Useful for debugging regressions
-      console.log('Trade debug', {
-        type,
-        quantity: safeQuantity,
-        price: safePrice,
-        subtotal,
-        fee,
-        total,
-        oldBalance: state.currentUser.athlxBalance,
-        newBalance,
-      });
-    }
 
     if (type === 'buy' && newBalance < 0) throw new Error('Insufficient balance');
 
@@ -439,7 +407,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return {
         ...a,
         tradingVolume: (a.tradingVolume ?? 0) + subtotal,
-        // NOTE: demo-only counter. Real holders should be derived from portfolio holders.
         holders: type === 'buy' ? (a.holders ?? 0) + 1 : Math.max((a.holders ?? 0) - 1, 0),
       };
     });
@@ -466,14 +433,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     logEvent(type === 'buy' ? 'trade_buy' : 'trade_sell', {
       userId: state.currentUser.id,
       athleteSymbol,
-      meta: {
-        quantity: safeQuantity,
-        price: safePrice,
-        subtotal,
-        fee,
-        total,
-        currency: 'tATHLX',
-      },
+      meta: { quantity: safeQuantity, price: safePrice, subtotal, fee, total, currency: 'tATHLX' },
     });
   };
 
@@ -498,13 +458,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     logEvent('athlete_register_submit', { userId: state.currentUser.id });
   };
 
-  const approveAthlete = async (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => {
+  // ✅ Approve -> POST /api/catalog/athletes (Vercel KVに保存)
+  const approveAthlete = async (pendingId: string, finalCategory: string, _initialPrice: number, symbol: string) => {
     const pending = state.pendingAthletes.find((p) => p.id === pendingId);
     if (!pending) return;
 
     const normalizedCategory = finalCategory as Category;
-    const unitCost = initialPrice > 0 ? initialPrice : getDefaultUnitCost(normalizedCategory);
     const safeId = `athlete_${(crypto as any)?.randomUUID?.() ?? Date.now()}`;
+
+    // ✅ 初期価格は全員共通で 0.01
+    const unitCost = BASE_PRICE;
 
     const newAthlete: Athlete = {
       id: safeId,
@@ -523,7 +486,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       imageUrl: pending.imageDataUrl ?? `https://i.pravatar.cc/300?img=${Math.floor(Math.random() * 70)}`,
       unitCost,
       currentPrice: unitCost,
-      activityIndex: unitCost, // demo: starts at initial index
+
+      // ActivityIndexは価格とは別軸（初期はカテゴリで差をつけてもOK）
+      activityIndex: 0,
+
       price24hChange: 0,
       price7dChange: 0,
       tradingVolume: 0,
@@ -534,40 +500,86 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       userId: pending.userId,
     };
 
+      // ❌ Delete Athlete -> DELETE /api/catalog/athletes (Vercel KVから削除)
+  const deleteAthlete = async (symbol: string) => {
     const adminPin = adminPinRef.current;
-    if (!adminPin) {
-      throw new Error('Admin PIN is required to approve athletes.');
-    }
+    if (!adminPin) throw new Error('Admin PIN is required to delete athletes.');
 
-    const response = await fetch('/api/catalog/athletes', {
-      method: 'POST',
+    const targetSymbol = symbol.toUpperCase();
+
+    const res = await fetch('/api/catalog/athletes', {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         'x-admin-pin': adminPin,
       },
-      body: JSON.stringify(toCatalogAthlete(newAthlete)),
+      body: JSON.stringify({ symbol: targetSymbol }),
     });
 
-    if (!response.ok) {
-      let errorMessage = 'Failed to approve athlete.';
+    if (!res.ok) {
+      let msg = 'Failed to delete athlete.';
       try {
-        const data = (await response.json()) as { error?: string };
-        if (data?.error) errorMessage = data.error;
-      } catch (error) {
-        console.error('Failed to parse approval response', error);
-      }
-      throw new Error(errorMessage);
+        const data = (await res.json()) as { error?: string };
+        if (data?.error) msg = data.error;
+      } catch {}
+      throw new Error(msg);
     }
 
-    const data = (await response.json()) as { athletes?: Athlete[] };
-    const nextCatalog = normalizeAthletes(data?.athletes ?? [toCatalogAthlete(newAthlete)]);
+    const data = (await res.json()) as { athletes?: Athlete[] };
+    const nextCatalog = normalizeAthletes(data?.athletes ?? []);
+
+    // local cache 同期（source of truth はKV）
+    const storage = getBrowserStorage();
+    if (storage) writeJSON(storage, CATALOG_KEY, nextCatalog);
+
+    // state 更新
+    setState((prev) => ({
+      ...prev,
+      athletes: nextCatalog,
+      pendingAthletes: prev.pendingAthletes.filter(
+        (p) => p.symbol?.toUpperCase() !== targetSymbol,
+      ),
+    }));
+
+    logEvent('admin_delete', { athleteSymbol: targetSymbol });
+  };
+
+    const adminPin = adminPinRef.current;
+    if (!adminPin) throw new Error('Admin PIN is required to approve athletes.');
+
+    const res = await fetch('/api/catalog/athletes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin },
+      body: JSON.stringify(newAthlete),
+    });
+
+    if (!res.ok) {
+      let msg = 'Failed to approve athlete.';
+      try {
+        const data = (await res.json()) as { error?: string };
+        if (data?.error) msg = data.error;
+      } catch {
+        // ignore
+      }
+      throw new Error(msg);
+    }
+
+    const data = (await res.json()) as { athletes?: Athlete[] };
+    const nextCatalog = normalizeAthletes(data?.athletes ?? [...state.athletes, newAthlete]);
+
+    const storage = getBrowserStorage();
+    if (storage) writeJSON(storage, CATALOG_KEY, nextCatalog);
 
     setState((prev) => ({
       ...prev,
       athletes: nextCatalog,
-      pendingAthletes: prev.pendingAthletes.map((p) => (p.id === pendingId ? { ...p, status: 'approved' as const } : p)),
+      pendingAthletes: prev.pendingAthletes.map((p) =>
+        p.id === pendingId ? { ...p, status: 'approved' as const } : p,
+      ),
       currentUser:
-        prev.currentUser?.id === pending.userId ? { ...prev.currentUser, linkedAthleteId: newAthlete.id } : prev.currentUser,
+        prev.currentUser?.id === pending.userId
+          ? { ...prev.currentUser, linkedAthleteId: newAthlete.id }
+          : prev.currentUser,
     }));
 
     if (pending.userId && state.currentUser?.id === pending.userId) {
@@ -665,58 +677,75 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     logEvent('admin_reject', { userId: state.currentUser?.id });
   };
 
-  const getAthleteBySymbol = (symbol: string): Athlete | undefined => state.athletes.find((a) => a.symbol === symbol);
+  const getAthleteBySymbol = (symbol: string): Athlete | undefined =>
+    state.athletes.find((a) => a.symbol === symbol);
 
   const updateAthletePrice = (symbol: string, newPrice: number) => {
     setState((prev) => ({
       ...prev,
       athletes: prev.athletes.map((a) => {
         if (a.symbol !== symbol) return a;
-        const base = a.currentPrice || 0.0001;
-        const change24h = ((newPrice - base) / base) * 100;
+        const base = a.currentPrice || BASE_PRICE;
+        const next = clampPrice(newPrice);
+        const change24h = ((next - base) / base) * 100;
         return {
           ...a,
-          currentPrice: newPrice,
-          unitCost: newPrice,
+          currentPrice: next,
+          unitCost: next,
           price24hChange: change24h,
-          priceHistory: [
-            ...(a.priceHistory ?? []),
-            { time: new Date().toISOString(), price: newPrice, volume: Math.floor(Math.random() * 10000) },
-          ],
+          priceHistory: [...(a.priceHistory ?? []), { time: new Date().toISOString(), price: next, volume: 0 }],
         };
       }),
     }));
   };
 
-  const submitMatchUpdate = (athleteSymbol: string, nextMatch?: NextMatchInfo, lastMatch?: LastMatchInfo, approved = true) => {
+  /**
+   * ✅ Match Update: 価格は0.01基準で %変動（カテゴリでブレ幅だけ変える）
+   */
+  const submitMatchUpdate = (
+    athleteSymbol: string,
+    nextMatch?: NextMatchInfo,
+    lastMatch?: LastMatchInfo,
+    approved = true,
+  ) => {
     setState((prev) => ({
       ...prev,
       athletes: prev.athletes.map((athlete) => {
         if (athlete.symbol !== athleteSymbol) return athlete;
 
         const updateScore = computeEventScore(nextMatch, lastMatch);
+
+        // Activityは大きく動いてOK
         const updatedActivityIndex = approved ? Math.max(0, athlete.activityIndex + updateScore) : athlete.activityIndex;
 
-        const updatedUnitCost = approved
-          ? Math.max(getDefaultUnitCost(athlete.category), athlete.unitCost + updateScore * 0.01)
-          : athlete.unitCost;
+        // Priceは小さく動かす（0.01基準）
+        const vol = categoryVolatility(athlete.category);
+        const base = typeof athlete.currentPrice === 'number' && athlete.currentPrice > 0 ? athlete.currentPrice : BASE_PRICE;
+
+        // updateScore をそのまま価格に足さず、%に変換する
+        // 例：score 10 -> +0.5% * vol
+        const pct = approved ? Math.max(-0.03, Math.min(0.03, (updateScore / 200) * vol)) : 0;
+        const newPrice = clampPrice(base * (1 + pct));
 
         return {
           ...athlete,
           nextMatch,
           lastMatch,
           activityIndex: updatedActivityIndex,
-          unitCost: updatedUnitCost,
-          currentPrice: updatedUnitCost,
+          unitCost: newPrice,
+          currentPrice: newPrice,
           lastUpdateReason: approved ? buildUpdateReason(nextMatch, lastMatch) : athlete.lastUpdateReason,
           priceHistory: approved
-            ? [...(athlete.priceHistory ?? []), { time: new Date().toISOString(), price: updatedUnitCost, volume: 0 }]
+            ? [...(athlete.priceHistory ?? []), { time: new Date().toISOString(), price: newPrice, volume: 0 }]
             : athlete.priceHistory,
         };
       }),
     }));
   };
 
+  /**
+   * ✅ Performance Update: 価格は0.01基準で %変動（カテゴリでブレ幅だけ変える）
+   */
   const submitAthletePerformanceUpdate = (payload: {
     athleteSymbol: string;
     matchDate: string;
@@ -737,19 +766,30 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const goals = Math.max(0, Math.min(10, Number(payload.goals) || 0));
       const assists = Math.max(0, Math.min(10, Number(payload.assists) || 0));
 
-      const resultDelta = payload.result === 'Win' ? 0.4 : payload.result === 'Draw' ? 0.1 : -0.2;
+      const resultDelta = payload.result === 'Win' ? 1 : payload.result === 'Draw' ? 0.3 : -0.8;
 
       const baseDelta =
-        (minutesPlayed / 90) * 0.5 +
-        goals * 0.8 +
-        assists * 0.5 +
+        (minutesPlayed / 90) * 0.8 +
+        goals * 1.2 +
+        assists * 0.8 +
         resultDelta +
-        (payload.injury ? -1.0 : 0);
+        (payload.injury ? -2.0 : 0);
 
-      const noise = Math.random() * 0.02 - 0.01;
+      const noise = Math.random() * 0.4 - 0.2; // Activity用のノイズ
 
-      const updatedUnitCost = Math.min(5, Math.max(0.001, targetAthlete.unitCost * (1 + baseDelta / 10 + noise)));
-      const updatedActivityIndex = Math.max(0, targetAthlete.activityIndex + baseDelta);
+      const updatedActivityIndex = Math.max(0, targetAthlete.activityIndex + baseDelta + noise);
+
+      // Price: 小さな%変動
+      const vol = categoryVolatility(targetAthlete.category);
+      const base = typeof targetAthlete.currentPrice === 'number' && targetAthlete.currentPrice > 0 ? targetAthlete.currentPrice : BASE_PRICE;
+
+      // baseDelta を % に変換（最大±5%程度にクランプ）
+      const pctRaw =
+        (baseDelta / 200) * vol +
+        (Math.random() * 0.004 - 0.002); // -0.2%〜+0.2% ぶれ
+      const pct = Math.max(-0.05, Math.min(0.05, pctRaw));
+
+      const updatedUnitCost = clampPrice(base * (1 + pct));
 
       const minutesBucket =
         minutesPlayed >= 61 ? '61-90' : minutesPlayed >= 31 ? '31-60' : minutesPlayed >= 1 ? '1-30' : '0';
@@ -834,9 +874,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const setAdminAccess = (value: boolean) => {
     setState((prev) => ({ ...prev, isAdmin: value }));
-    if (!value) {
-      adminPinRef.current = null;
-    }
+    if (!value) adminPinRef.current = null;
   };
 
   const setAdminPin = (pin: string | null) => {
@@ -860,7 +898,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         getPortfolio,
         submitAthleteRegistration,
         approveAthlete,
-        updateAthlete,
         deleteAthlete,
         rejectAthlete,
         getAthleteBySymbol,

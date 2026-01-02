@@ -1,8 +1,8 @@
 'use client';
 
 import { useStore } from '@/lib/store';
-import { useState } from 'react';
-import { Users, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Users, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react';
 import { translations } from '@/lib/translations';
 import { Athlete, Category } from '@/lib/types';
 import { EVENTS_KEY, logEvent } from '@/lib/analytics';
@@ -10,7 +10,8 @@ import { getBrowserStorage } from '@/lib/storage';
 import { formatNumber } from '@/lib/format';
 
 export default function AdminPage() {
-  const { state, approveAthlete, rejectAthlete, resetDemoData, updateAthlete, deleteAthlete } = useStore();
+  const { state, approveAthlete, rejectAthlete, resetDemoData, updateAthlete, deleteAthlete } =
+    useStore();
   const t = translations[state.language];
 
   const [selectedPending, setSelectedPending] = useState<string | null>(null);
@@ -18,11 +19,9 @@ export default function AdminPage() {
   const [initialPrice, setInitialPrice] = useState(100);
   const [tokenSymbol, setTokenSymbol] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
+
   const [view, setView] = useState<'dashboard' | 'pending' | 'review' | 'athletes'>('dashboard');
   const [approveError, setApproveError] = useState('');
-  const [athleteError, setAthleteError] = useState('');
-  const [selectedAthlete, setSelectedAthlete] = useState<Athlete | null>(null);
-  const [athleteForm, setAthleteForm] = useState<Partial<Athlete>>({});
 
   // Reset
   const [resetConfirm, setResetConfirm] = useState('');
@@ -35,6 +34,12 @@ export default function AdminPage() {
   const [importError, setImportError] = useState('');
   const [importConfirm, setImportConfirm] = useState('');
   const [importFile, setImportFile] = useState<File | null>(null);
+
+  // Athletes edit/delete UI
+  const [athleteError, setAthleteError] = useState('');
+  const [selectedAthlete, setSelectedAthlete] = useState<Athlete | null>(null);
+  const [athleteForm, setAthleteForm] = useState<Partial<Athlete>>({});
+  const [deletingSymbol, setDeletingSymbol] = useState<string | null>(null);
 
   const pendingApplications = state.pendingAthletes.filter((p) => p.status === 'pending');
   const approvedCount = state.pendingAthletes.filter((p) => p.status === 'approved').length;
@@ -86,6 +91,16 @@ export default function AdminPage() {
     Other: t.genderOther,
   };
 
+  const ensureAdmin = () => {
+    if (!state.isAdmin) {
+      const error = new Error(t.adminOnly);
+      setImportError(error.message);
+      setResetError(error.message);
+      setAthleteError(error.message);
+      throw error;
+    }
+  };
+
   const handleReview = (pendingId: string) => {
     const pending = pendingApplications.find((p) => p.id === pendingId);
     if (!pending) return;
@@ -119,36 +134,6 @@ export default function AdminPage() {
     }
   };
 
-  const handleEditAthlete = (athlete: Athlete) => {
-    setAthleteError('');
-    setSelectedAthlete(athlete);
-    setAthleteForm({ ...athlete });
-  };
-
-  const handleUpdateAthlete = async () => {
-    if (!selectedAthlete) return;
-    setAthleteError('');
-    try {
-      await updateAthlete(selectedAthlete.symbol, athleteForm);
-      setSelectedAthlete(null);
-      setAthleteForm({});
-    } catch (error) {
-      const message = error instanceof Error ? error.message : t.importFailed;
-      setAthleteError(message);
-    }
-  };
-
-  const handleDeleteAthlete = async (symbol: string) => {
-    setAthleteError('');
-    if (!window.confirm(t.confirmDeleteAthlete ?? 'Delete this athlete?')) return;
-    try {
-      await deleteAthlete(symbol);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : t.importFailed;
-      setAthleteError(message);
-    }
-  };
-
   const handleReject = () => {
     if (selectedPending && rejectionReason) {
       rejectAthlete(selectedPending, rejectionReason);
@@ -178,15 +163,6 @@ export default function AdminPage() {
     }
   };
 
-  const ensureAdmin = () => {
-    if (!state.isAdmin) {
-      const error = new Error(t.adminOnly);
-      setImportError(error.message);
-      setResetError(error.message);
-      throw error;
-    }
-  };
-
   const handleExport = () => {
     ensureAdmin();
     setExportMessage('');
@@ -199,10 +175,7 @@ export default function AdminPage() {
 
     const requiredKeys = ['athlx_state', 'athlx_users', 'athlx_currentUser', EVENTS_KEY];
     const exportKeys = Array.from(
-      new Set([
-        ...requiredKeys,
-        ...Object.keys(storage).filter((key) => key.startsWith('athlx_')),
-      ]),
+      new Set([...requiredKeys, ...Object.keys(storage).filter((key) => key.startsWith('athlx_'))]),
     );
 
     const payload = {
@@ -266,34 +239,72 @@ export default function AdminPage() {
         return;
       }
 
-      // Backup only keys we will overwrite (for rollback)
       backup = Object.keys(parsed.localStorage).reduce<Record<string, string | null>>((acc, key) => {
         acc[key] = storage.getItem(key);
         return acc;
       }, {});
 
       Object.entries(parsed.localStorage as Record<string, string | null>).forEach(([key, value]) => {
-        if (value === null || value === undefined) {
-          storage.removeItem(key);
-        } else {
-          storage.setItem(key, value);
-        }
+        if (value === null || value === undefined) storage.removeItem(key);
+        else storage.setItem(key, value);
       });
 
       logEvent('import', { userId: state.currentUser?.id });
       setImportMessage(t.importSuccess);
       window.location.reload();
     } catch (_error: unknown) {
-      // Rollback
       Object.entries(backup).forEach(([key, value]) => {
-        if (value === null || value === undefined) {
-          storage.removeItem(key);
-        } else {
-          storage.setItem(key, value);
-        }
+        if (value === null || value === undefined) storage.removeItem(key);
+        else storage.setItem(key, value);
       });
-
       setImportError(t.importFailed);
+    }
+  };
+
+  const sortedAthletes = useMemo(() => {
+    const list = Array.isArray(state.athletes) ? [...state.athletes] : [];
+    return list.sort((a, b) => String(a.symbol ?? '').localeCompare(String(b.symbol ?? '')));
+  }, [state.athletes]);
+
+  const handleEditAthlete = (athlete: Athlete) => {
+    setAthleteError('');
+    setSelectedAthlete(athlete);
+    setAthleteForm({ ...athlete });
+  };
+
+  const handleUpdateAthlete = async () => {
+    if (!selectedAthlete) return;
+    setAthleteError('');
+    try {
+      ensureAdmin();
+      await updateAthlete(selectedAthlete.symbol, athleteForm);
+      setSelectedAthlete(null);
+      setAthleteForm({});
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t.importFailed;
+      setAthleteError(message);
+    }
+  };
+
+  const handleDeleteAthlete = async (symbol: string) => {
+    setAthleteError('');
+    try {
+      ensureAdmin();
+      const ok = window.confirm(`Delete athlete ${symbol}?`);
+      if (!ok) return;
+
+      setDeletingSymbol(symbol);
+      await deleteAthlete(symbol);
+
+      if (selectedAthlete?.symbol === symbol) {
+        setSelectedAthlete(null);
+        setAthleteForm({});
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t.importFailed;
+      setAthleteError(message);
+    } finally {
+      setDeletingSymbol(null);
     }
   };
 
@@ -302,10 +313,12 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-5xl font-bold mb-8 gradient-text">{t.adminPanel}</h1>
+        <h1 className="text-5xl font-bold mb-8 gradient-text">
+          {t.adminPanel} <span className="text-xs opacity-60">BUILD_MARK_20260102_0816</span>
+        </h1>
 
         {/* View Selector */}
-        <div className="flex gap-2 mb-8">
+        <div className="flex gap-2 mb-8 flex-wrap">
           <button
             onClick={() => setView('dashboard')}
             className={`px-6 py-3 rounded-lg font-semibold transition ${
@@ -337,11 +350,11 @@ export default function AdminPage() {
             onClick={() => setView('athletes')}
             className={`px-6 py-3 rounded-lg font-semibold transition ${
               view === 'athletes'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-emerald-600 text-white'
                 : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
             }`}
           >
-            {t.market}
+            {t.allAthletes}
           </button>
 
           <a
@@ -414,12 +427,15 @@ export default function AdminPage() {
                 </p>
               </button>
 
-              <div className="glass-effect rounded-xl p-8">
+              <button
+                onClick={() => setView('athletes')}
+                className="glass-effect rounded-xl p-8 hover-glow text-left"
+              >
                 <h3 className="text-xl font-bold mb-2">{t.allAthletes}</h3>
                 <p className="text-gray-400">
                   {state.athletes.length} {t.athletesInDirectory}
                 </p>
-              </div>
+              </button>
             </div>
 
             {/* Admin-only: Reset */}
@@ -508,6 +524,245 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Athletes View */}
+        {view === 'athletes' && (
+          <div className="space-y-6">
+            <div className="glass-effect rounded-xl p-6">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <h2 className="text-2xl font-bold">{t.allAthletes}</h2>
+                <div className="text-sm text-gray-400">
+                  {sortedAthletes.length} {t.athletesInDirectory}
+                </div>
+              </div>
+
+              {!state.isAdmin && (
+                <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500 rounded-lg text-sm text-yellow-200">
+                  {t.adminOnly}
+                </div>
+              )}
+
+              {athleteError && (
+                <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg text-sm text-red-200">
+                  {athleteError}
+                </div>
+              )}
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-400 border-b border-slate-700">
+                      <th className="py-2 pr-4">{t.tokenSymbolLabel}</th>
+                      <th className="py-2 pr-4">{t.name}</th>
+                      <th className="py-2 pr-4">{t.sportLabel}</th>
+                      <th className="py-2 pr-4">{t.finalCategory}</th>
+                      <th className="py-2 pr-4">{t.nationalityLabel}</th>
+                      <th className="py-2 pr-4">{t.unitCostShort ?? 'Price'}</th>
+                      <th className="py-2 pr-4">{t.actions ?? t.actionLabel}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedAthletes.map((athlete) => (
+                      <tr key={String(athlete.id ?? athlete.symbol)} className="border-b border-slate-800">
+                        <td className="py-2 pr-4 font-semibold text-blue-400">{String(athlete.symbol ?? '')}</td>
+                        <td className="py-2 pr-4">{String(athlete.name ?? '')}</td>
+                        <td className="py-2 pr-4">
+                          {sportLabels[String(athlete.sport ?? '')] ?? String(athlete.sport ?? '')}
+                        </td>
+                        <td className="py-2 pr-4">
+                          <span className={`badge badge-${String(athlete.category ?? '').toLowerCase().replace('-', '')}`}>
+                            {categoryLabels[athlete.category as Category] ?? String(athlete.category ?? '')}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-4">{String(athlete.nationality ?? '')}</td>
+                        <td className="py-2 pr-4">
+                          {formatNumber(Number(athlete.currentPrice ?? athlete.unitCost ?? 0))} tATHLX
+                        </td>
+                        <td className="py-2 pr-4 space-x-2">
+                          <button
+                            onClick={() => handleEditAthlete(athlete)}
+                            className="px-3 py-1 rounded bg-slate-700 hover:bg-slate-600"
+                          >
+                            {t.edit ?? 'Edit'}
+                          </button>
+                          <button
+                            disabled={!state.isAdmin || deletingSymbol === String(athlete.symbol ?? '')}
+                            onClick={() => handleDeleteAthlete(String(athlete.symbol ?? ''))}
+                            className="px-3 py-1 rounded bg-red-600/80 hover:bg-red-600 disabled:opacity-50 inline-flex items-center gap-2"
+                          >
+                            <Trash2 size={14} />
+                            <span>
+                              {deletingSymbol === String(athlete.symbol ?? '') ? 'Deleting...' : (t.delete ?? 'Delete')}
+                            </span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {sortedAthletes.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="py-10 text-center text-gray-400">
+                          <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                          No athletes
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {selectedAthlete && (
+              <div className="glass-effect rounded-xl p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold">
+                    {t.edit ?? 'Edit'} {selectedAthlete.name}
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setSelectedAthlete(null);
+                      setAthleteForm({});
+                      setAthleteError('');
+                    }}
+                    className="px-3 py-1 rounded bg-slate-700 hover:bg-slate-600"
+                  >
+                    {t.cancel ?? 'Cancel'}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input
+                    type="text"
+                    value={athleteForm.name ?? ''}
+                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, name: e.target.value }))}
+                    placeholder={t.fullName ?? 'Full name'}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                  />
+                  <input
+                    type="text"
+                    value={athleteForm.symbol ?? selectedAthlete.symbol}
+                    disabled
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-gray-400"
+                  />
+                  <input
+                    type="text"
+                    value={String(athleteForm.sport ?? '')}
+                    onChange={(e) =>
+                      setAthleteForm((prev) => ({ ...prev, sport: e.target.value as Athlete['sport'] }))
+                    }
+                    placeholder={t.sportLabel}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                  />
+                  <input
+                    type="text"
+                    value={String(athleteForm.category ?? '')}
+                    onChange={(e) =>
+                      setAthleteForm((prev) => ({ ...prev, category: e.target.value as Category }))
+                    }
+                    placeholder={t.finalCategory}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                  />
+                  <input
+                    type="text"
+                    value={athleteForm.nationality ?? ''}
+                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, nationality: e.target.value }))}
+                    placeholder={t.nationalityLabel}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                  />
+                  <input
+                    type="text"
+                    value={athleteForm.team ?? ''}
+                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, team: e.target.value }))}
+                    placeholder={t.teamLabel}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                  />
+                  <input
+                    type="text"
+                    value={athleteForm.position ?? ''}
+                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, position: e.target.value }))}
+                    placeholder={t.positionLabel}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                  />
+                  <input
+                    type="url"
+                    value={athleteForm.profileUrl ?? ''}
+                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, profileUrl: e.target.value }))}
+                    placeholder={t.profileUrlLabel}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                  />
+                  <input
+                    type="url"
+                    value={athleteForm.highlightVideoUrl ?? ''}
+                    onChange={(e) =>
+                      setAthleteForm((prev) => ({ ...prev, highlightVideoUrl: e.target.value }))
+                    }
+                    placeholder={t.highlightVideoLabel ?? t.highlightVideo ?? 'Highlight video URL'}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                  />
+                  <input
+                    type="url"
+                    value={athleteForm.imageUrl ?? ''}
+                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
+                    placeholder={t.profilePhotoLabel ?? 'Image URL'}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                  />
+                  <input
+                    type="number"
+                    value={Number(athleteForm.activityIndex ?? 0)}
+                    onChange={(e) =>
+                      setAthleteForm((prev) => ({ ...prev, activityIndex: Number(e.target.value) }))
+                    }
+                    placeholder={t.activityIndexLabel ?? 'Activity Index'}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                  />
+                  <input
+                    type="number"
+                    value={Number(athleteForm.unitCost ?? 0)}
+                    onChange={(e) =>
+                      setAthleteForm((prev) => ({ ...prev, unitCost: Number(e.target.value) }))
+                    }
+                    placeholder={t.unitCostLabel ?? 'Unit cost'}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                  />
+                  <input
+                    type="number"
+                    value={Number(athleteForm.currentPrice ?? 0)}
+                    onChange={(e) =>
+                      setAthleteForm((prev) => ({ ...prev, currentPrice: Number(e.target.value) }))
+                    }
+                    placeholder={t.currentPriceLabel ?? 'Current price'}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                  />
+                </div>
+
+                <textarea
+                  rows={4}
+                  value={athleteForm.bio ?? ''}
+                  onChange={(e) => setAthleteForm((prev) => ({ ...prev, bio: e.target.value }))}
+                  placeholder={t.shortBio ?? t.bioLabel ?? 'Bio'}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                />
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleUpdateAthlete}
+                    className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-semibold"
+                  >
+                    {t.saveChanges ?? 'Save'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedAthlete(null);
+                      setAthleteForm({});
+                    }}
+                    className="px-6 py-3 bg-slate-600 hover:bg-slate-500 rounded-lg font-semibold"
+                  >
+                    {t.cancel ?? 'Cancel'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Pending Applications View */}
         {view === 'pending' && (
           <div className="glass-effect rounded-xl p-6">
@@ -527,19 +782,12 @@ export default function AdminPage() {
                   </thead>
                   <tbody>
                     {pendingApplications.map((pending) => (
-                      <tr
-                        key={pending.id}
-                        className="border-b border-slate-700/50 hover:bg-slate-700/30"
-                      >
+                      <tr key={pending.id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
                         <td className="py-3 px-4 font-semibold">{pending.name}</td>
                         <td className="py-3 px-4">{sportLabels[pending.sport]}</td>
                         <td className="py-3 px-4">{pending.nationality}</td>
                         <td className="py-3 px-4">
-                          <span
-                            className={`badge badge-${pending.requestedCategory
-                              .toLowerCase()
-                              .replace('-', '')}`}
-                          >
+                          <span className={`badge badge-${pending.requestedCategory.toLowerCase().replace('-', '')}`}>
                             {categoryLabels[pending.requestedCategory as Category]}
                           </span>
                         </td>
@@ -571,10 +819,7 @@ export default function AdminPage() {
         {/* Review Application View */}
         {view === 'review' && selectedApplication && (
           <div className="space-y-6">
-            <button
-              onClick={() => setView('pending')}
-              className="text-blue-400 hover:text-blue-300 font-semibold"
-            >
+            <button onClick={() => setView('pending')} className="text-blue-400 hover:text-blue-300 font-semibold">
               ← {t.backToPending}
             </button>
 
@@ -600,8 +845,7 @@ export default function AdminPage() {
                       {genderLabels[selectedApplication.gender] ?? selectedApplication.gender}
                     </p>
                     <p>
-                      <span className="text-gray-400">{t.nationalityLabel}:</span>{' '}
-                      {selectedApplication.nationality}
+                      <span className="text-gray-400">{t.nationalityLabel}:</span> {selectedApplication.nationality}
                     </p>
                   </div>
                 </div>
@@ -617,16 +861,11 @@ export default function AdminPage() {
                       <span className="text-gray-400">{t.teamLabel}:</span> {selectedApplication.team}
                     </p>
                     <p>
-                      <span className="text-gray-400">{t.positionLabel}:</span>{' '}
-                      {selectedApplication.position}
+                      <span className="text-gray-400">{t.positionLabel}:</span> {selectedApplication.position}
                     </p>
                     <p>
                       <span className="text-gray-400">{t.requestedCategory}:</span>{' '}
-                      <span
-                        className={`badge badge-${selectedApplication.requestedCategory
-                          .toLowerCase()
-                          .replace('-', '')}`}
-                      >
+                      <span className={`badge badge-${selectedApplication.requestedCategory.toLowerCase().replace('-', '')}`}>
                         {categoryLabels[selectedApplication.requestedCategory as Category]}
                       </span>
                     </p>
@@ -636,9 +875,7 @@ export default function AdminPage() {
 
               <div className="mb-6">
                 <h3 className="font-semibold mb-2">{t.bioLabel}</h3>
-                <p className="text-gray-300 text-sm bg-slate-700/50 rounded-lg p-4">
-                  {selectedApplication.bio}
-                </p>
+                <p className="text-gray-300 text-sm bg-slate-700/50 rounded-lg p-4">{selectedApplication.bio}</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -756,201 +993,6 @@ export default function AdminPage() {
                 <span>{t.rejectApplication}</span>
               </button>
             </div>
-          </div>
-        )}
-
-        {view === 'athletes' && (
-          <div className="space-y-6">
-            <div className="glass-effect rounded-xl p-6">
-              <h2 className="text-2xl font-bold mb-4">{t.market}</h2>
-
-              {athleteError && (
-                <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg text-sm text-red-200">
-                  {athleteError}
-                </div>
-              )}
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-gray-400 border-b border-slate-700">
-                      <th className="py-2 pr-4">{t.tokenSymbolLabel}</th>
-                      <th className="py-2 pr-4">{t.fullName}</th>
-                      <th className="py-2 pr-4">{t.sportLabel}</th>
-                      <th className="py-2 pr-4">{t.finalCategory}</th>
-                      <th className="py-2 pr-4">{t.nationalityLabel}</th>
-                      <th className="py-2 pr-4">{t.unitCostShort}</th>
-                      <th className="py-2 pr-4">{t.actions}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {state.athletes.map((athlete) => (
-                      <tr key={athlete.id} className="border-b border-slate-800">
-                        <td className="py-2 pr-4 font-semibold text-blue-400">{athlete.symbol}</td>
-                        <td className="py-2 pr-4">{athlete.name}</td>
-                        <td className="py-2 pr-4">{athlete.sport}</td>
-                        <td className="py-2 pr-4">{athlete.category}</td>
-                        <td className="py-2 pr-4">{athlete.nationality}</td>
-                        <td className="py-2 pr-4">{formatNumber(athlete.unitCost)} tATHLX</td>
-                        <td className="py-2 pr-4 space-x-2">
-                          <button
-                            onClick={() => handleEditAthlete(athlete)}
-                            className="px-3 py-1 rounded bg-slate-700 hover:bg-slate-600"
-                          >
-                            {t.edit}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteAthlete(athlete.symbol)}
-                            className="px-3 py-1 rounded bg-red-600/80 hover:bg-red-600"
-                          >
-                            {t.delete}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {selectedAthlete && (
-              <div className="glass-effect rounded-xl p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-bold">
-                    {t.edit} {selectedAthlete.name}
-                  </h3>
-                  <button
-                    onClick={() => {
-                      setSelectedAthlete(null);
-                      setAthleteForm({});
-                      setAthleteError('');
-                    }}
-                    className="px-3 py-1 rounded bg-slate-700 hover:bg-slate-600"
-                  >
-                    {t.cancel}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input
-                    type="text"
-                    value={athleteForm.name ?? ''}
-                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, name: e.target.value }))}
-                    placeholder={t.fullName}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
-                  />
-                  <input
-                    type="text"
-                    value={athleteForm.symbol ?? selectedAthlete.symbol}
-                    disabled
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-gray-400"
-                  />
-                  <input
-                    type="text"
-                    value={athleteForm.sport ?? ''}
-                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, sport: e.target.value as Athlete['sport'] }))}
-                    placeholder={t.sportLabel}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
-                  />
-                  <input
-                    type="text"
-                    value={athleteForm.category ?? ''}
-                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, category: e.target.value as Category }))}
-                    placeholder={t.finalCategory}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
-                  />
-                  <input
-                    type="text"
-                    value={athleteForm.nationality ?? ''}
-                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, nationality: e.target.value }))}
-                    placeholder={t.nationalityLabel}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
-                  />
-                  <input
-                    type="text"
-                    value={athleteForm.team ?? ''}
-                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, team: e.target.value }))}
-                    placeholder={t.teamLabel}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
-                  />
-                  <input
-                    type="text"
-                    value={athleteForm.position ?? ''}
-                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, position: e.target.value }))}
-                    placeholder={t.positionLabel}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
-                  />
-                  <input
-                    type="url"
-                    value={athleteForm.profileUrl ?? ''}
-                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, profileUrl: e.target.value }))}
-                    placeholder={t.profileUrlLabel}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
-                  />
-                  <input
-                    type="url"
-                    value={athleteForm.highlightVideoUrl ?? ''}
-                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, highlightVideoUrl: e.target.value }))}
-                    placeholder={t.highlightVideoLabel}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
-                  />
-                  <input
-                    type="url"
-                    value={athleteForm.imageUrl ?? ''}
-                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
-                    placeholder={t.profilePhotoLabel}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
-                  />
-                  <input
-                    type="number"
-                    value={athleteForm.activityIndex ?? 0}
-                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, activityIndex: Number(e.target.value) }))}
-                    placeholder={t.activityIndexLabel}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
-                  />
-                  <input
-                    type="number"
-                    value={athleteForm.unitCost ?? 0}
-                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, unitCost: Number(e.target.value) }))}
-                    placeholder={t.unitCostLabel}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
-                  />
-                  <input
-                    type="number"
-                    value={athleteForm.currentPrice ?? 0}
-                    onChange={(e) => setAthleteForm((prev) => ({ ...prev, currentPrice: Number(e.target.value) }))}
-                    placeholder={t.unitCostLabel}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
-                  />
-                </div>
-
-                <textarea
-                  rows={4}
-                  value={athleteForm.bio ?? ''}
-                  onChange={(e) => setAthleteForm((prev) => ({ ...prev, bio: e.target.value }))}
-                  placeholder={t.shortBio}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
-                />
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleUpdateAthlete}
-                    className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-semibold"
-                  >
-                    {t.saveChanges}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedAthlete(null);
-                      setAthleteForm({});
-                    }}
-                    className="px-6 py-3 bg-slate-600 hover:bg-slate-500 rounded-lg font-semibold"
-                  >
-                    {t.cancel}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
