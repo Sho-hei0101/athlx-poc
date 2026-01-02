@@ -1,15 +1,16 @@
 'use client';
 
 import { useStore } from '@/lib/store';
-import { useState } from 'react';
-import { Users, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Users, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react';
 import { translations } from '@/lib/translations';
 import { Category } from '@/lib/types';
 import { EVENTS_KEY, logEvent } from '@/lib/analytics';
 import { getBrowserStorage } from '@/lib/storage';
 
 export default function AdminPage() {
-  const { state, approveAthlete, rejectAthlete, resetDemoData } = useStore();
+  // ✅ deleteAthlete を追加
+  const { state, approveAthlete, rejectAthlete, resetDemoData, deleteAthlete } = useStore();
   const t = translations[state.language];
 
   const [selectedPending, setSelectedPending] = useState<string | null>(null);
@@ -17,7 +18,10 @@ export default function AdminPage() {
   const [initialPrice, setInitialPrice] = useState(100);
   const [tokenSymbol, setTokenSymbol] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
-  const [view, setView] = useState<'dashboard' | 'pending' | 'review'>('dashboard');
+
+  // ✅ viewに athletes を追加
+  const [view, setView] = useState<'dashboard' | 'pending' | 'review' | 'athletes'>('dashboard');
+
   const [approveError, setApproveError] = useState('');
 
   // Reset
@@ -31,6 +35,10 @@ export default function AdminPage() {
   const [importError, setImportError] = useState('');
   const [importConfirm, setImportConfirm] = useState('');
   const [importFile, setImportFile] = useState<File | null>(null);
+
+  // ✅ delete UI state
+  const [deleteError, setDeleteError] = useState('');
+  const [deletingSymbol, setDeletingSymbol] = useState<string | null>(null);
 
   const pendingApplications = state.pendingAthletes.filter((p) => p.status === 'pending');
   const approvedCount = state.pendingAthletes.filter((p) => p.status === 'approved').length;
@@ -263,6 +271,29 @@ export default function AdminPage() {
     }
   };
 
+  // ✅ Admin Athletes List (sorted)
+  const sortedAthletes = useMemo(() => {
+    const list = Array.isArray(state.athletes) ? [...state.athletes] : [];
+    return list.sort((a, b) => String(a.symbol ?? '').localeCompare(String(b.symbol ?? '')));
+  }, [state.athletes]);
+
+  const handleDeleteAthlete = async (symbol: string) => {
+    setDeleteError('');
+    try {
+      ensureAdmin();
+      const ok = window.confirm(`Delete athlete ${symbol}?`);
+      if (!ok) return;
+
+      setDeletingSymbol(symbol);
+      await deleteAthlete(symbol);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to delete athlete';
+      setDeleteError(msg);
+    } finally {
+      setDeletingSymbol(null);
+    }
+  };
+
   const selectedApplication = pendingApplications.find((p) => p.id === selectedPending);
 
   return (
@@ -271,7 +302,7 @@ export default function AdminPage() {
         <h1 className="text-5xl font-bold mb-8 gradient-text">{t.adminPanel}</h1>
 
         {/* View Selector */}
-        <div className="flex gap-2 mb-8">
+        <div className="flex gap-2 mb-8 flex-wrap">
           <button
             onClick={() => setView('dashboard')}
             className={`px-6 py-3 rounded-lg font-semibold transition ${
@@ -297,6 +328,18 @@ export default function AdminPage() {
                 {pendingApplications.length}
               </span>
             )}
+          </button>
+
+          {/* ✅ Athletes tab */}
+          <button
+            onClick={() => setView('athletes')}
+            className={`px-6 py-3 rounded-lg font-semibold transition ${
+              view === 'athletes'
+                ? 'bg-emerald-600 text-white'
+                : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+            }`}
+          >
+            {t.allAthletes}
           </button>
 
           <a
@@ -369,12 +412,15 @@ export default function AdminPage() {
                 </p>
               </button>
 
-              <div className="glass-effect rounded-xl p-8">
+              <button
+                onClick={() => setView('athletes')}
+                className="glass-effect rounded-xl p-8 hover-glow text-left"
+              >
                 <h3 className="text-xl font-bold mb-2">{t.allAthletes}</h3>
                 <p className="text-gray-400">
                   {state.athletes.length} {t.athletesInDirectory}
                 </p>
-              </div>
+              </button>
             </div>
 
             {/* Admin-only: Reset */}
@@ -458,6 +504,86 @@ export default function AdminPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ✅ Athletes View */}
+        {view === 'athletes' && (
+          <div className="glass-effect rounded-xl p-6">
+            <div className="flex items-center justify-between gap-3 mb-6">
+              <h2 className="text-2xl font-bold">{t.allAthletes}</h2>
+              <div className="text-sm text-gray-400">
+                {sortedAthletes.length} {t.athletesInDirectory}
+              </div>
+            </div>
+
+            {!state.isAdmin && (
+              <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500 rounded-lg text-sm text-yellow-200">
+                {t.adminOnly}
+              </div>
+            )}
+
+            {deleteError && (
+              <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg text-sm text-red-200">
+                {deleteError}
+              </div>
+            )}
+
+            {sortedAthletes.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-600">
+                      <th className="text-left py-3 px-4">Symbol</th>
+                      <th className="text-left py-3 px-4">{t.name}</th>
+                      <th className="text-left py-3 px-4">{t.sportLabel}</th>
+                      <th className="text-left py-3 px-4">{t.requestedCategory}</th>
+                      <th className="text-left py-3 px-4">{t.nationalityLabel}</th>
+                      <th className="text-right py-3 px-4">Price</th>
+                      <th className="text-right py-3 px-4">{t.actionLabel}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedAthletes.map((a) => (
+                      <tr
+                        key={String(a.id ?? a.symbol)}
+                        className="border-b border-slate-700/50 hover:bg-slate-700/30"
+                      >
+                        <td className="py-3 px-4 font-mono font-semibold">{String(a.symbol ?? '')}</td>
+                        <td className="py-3 px-4 font-semibold">{String(a.name ?? '')}</td>
+                        <td className="py-3 px-4">{sportLabels[String(a.sport ?? '')] ?? String(a.sport ?? '')}</td>
+                        <td className="py-3 px-4">
+                          <span className={`badge badge-${String(a.category ?? '').toLowerCase().replace('-', '')}`}>
+                            {categoryLabels[a.category as Category] ?? String(a.category ?? '')}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">{String(a.nationality ?? '')}</td>
+                        <td className="py-3 px-4 text-right font-mono">
+                          {Number(a.currentPrice ?? a.unitCost ?? 0).toFixed(4)}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            disabled={!state.isAdmin || deletingSymbol === String(a.symbol ?? '')}
+                            onClick={() => handleDeleteAthlete(String(a.symbol ?? ''))}
+                            className="px-3 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-semibold transition disabled:opacity-50 inline-flex items-center gap-2"
+                          >
+                            <Trash2 size={16} />
+                            <span>
+                              {deletingSymbol === String(a.symbol ?? '') ? 'Deleting...' : 'Delete'}
+                            </span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-400">
+                <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <p>No athletes</p>
               </div>
             )}
           </div>
