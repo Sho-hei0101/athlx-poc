@@ -34,7 +34,6 @@ import {
 } from './demoAccountStorage';
 
 const STORAGE_KEY = 'athlx_state';
-const CATALOG_KEY = 'athlx_catalog_v1';
 
 /**
  * ✅ 価格は全員共通で 0.01 を基準にする（カテゴリは伸び方/ブレ幅にだけ影響）
@@ -181,6 +180,24 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return headers;
   };
 
+  const fetchCatalog = async (): Promise<Athlete[]> => {
+    const response = await fetch('/api/catalog/athletes', { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`Failed to load catalog athletes (${response.status})`);
+    }
+    const data = (await response.json()) as { athletes?: Athlete[] };
+    if (!Array.isArray(data?.athletes)) {
+      throw new Error('Catalog payload invalid');
+    }
+
+    return normalizeAthletes(
+      data.athletes.map((a) => {
+        const unitCost = typeof a.unitCost === 'number' && a.unitCost > 0 ? a.unitCost : BASE_PRICE;
+        return { ...a, unitCost, currentPrice: unitCost };
+      }),
+    );
+  };
+
   // Hydrate (local state + session) then hydrate catalog from API(KV)
   useEffect(() => {
     const storage = getBrowserStorage();
@@ -196,11 +213,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     if (stored && Object.keys(stored).length > 0) {
       persistedState = { ...defaultState, ...stored, athletes: defaultState.athletes };
-    }
-
-    const cachedCatalog = readJSON<Athlete[]>(storage, CATALOG_KEY, []);
-    if (Array.isArray(cachedCatalog) && cachedCatalog.length > 0) {
-      persistedState = { ...persistedState, athletes: normalizeAthletes(cachedCatalog) };
     }
 
     if (storedUser?.email) {
@@ -229,24 +241,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     let isActive = true;
     const loadCatalog = async () => {
       try {
-        const response = await fetch('/api/catalog/athletes');
-        if (!response.ok) {
-          console.error('Failed to load catalog athletes', response.status);
-          return;
-        }
-        const data = (await response.json()) as { athletes?: Athlete[] };
-        if (!isActive || !Array.isArray(data?.athletes)) return;
-
-        // ✅ KVをsource of truthとして正規化しつつ、価格は必ず0.01基準に寄せる
-        const hydratedAthletes = normalizeAthletes(
-          data.athletes.map((a) => {
-            const unitCost = typeof a.unitCost === 'number' && a.unitCost > 0 ? a.unitCost : BASE_PRICE;
-            return { ...a, unitCost, currentPrice: unitCost };
-          }),
-        );
-
+        const hydratedAthletes = await fetchCatalog();
+        if (!isActive) return;
         setState((prev) => ({ ...prev, athletes: hydratedAthletes }));
-        writeJSON(storage, CATALOG_KEY, hydratedAthletes);
       } catch (error) {
         console.error('Catalog hydration failed', error);
       }
@@ -479,7 +476,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const nextCatalog = normalizeAthletes([...state.athletes, newAthlete]);
 
-    const response = await fetch('/api/admin/athletes', {
+    const response = await fetch('/api/catalog/athletes', {
       method: 'POST',
       headers: getAdminHeaders(),
       body: JSON.stringify(newAthlete),
@@ -489,11 +486,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       throw new Error(`Failed to add athlete (${response.status})`);
     }
 
-    const payload = (await response.json()) as { athletes?: Athlete[] };
-    const serverCatalog = Array.isArray(payload.athletes) ? payload.athletes : nextCatalog;
-
-    const storage = getBrowserStorage();
-    if (storage) writeJSON(storage, CATALOG_KEY, serverCatalog);
+    const serverCatalog = await fetchCatalog().catch(() => normalizeAthletes(nextCatalog));
 
     setState((prev) => ({
       ...prev,
@@ -516,20 +509,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const deleteAthlete = async (symbol: string) => {
     const targetSymbol = symbol.toUpperCase();
-    const response = await fetch(`/api/admin/athletes/${encodeURIComponent(targetSymbol)}`, {
+    const response = await fetch('/api/catalog/athletes', {
       method: 'DELETE',
       headers: getAdminHeaders(),
+      body: JSON.stringify({ symbol: targetSymbol }),
     });
 
     if (!response.ok) {
       throw new Error(`Failed to delete athlete (${response.status})`);
     }
 
-    const payload = (await response.json()) as { athletes?: Athlete[] };
-    const nextCatalog = normalizeAthletes(Array.isArray(payload.athletes) ? payload.athletes : []);
-
-    const storage = getBrowserStorage();
-    if (storage) writeJSON(storage, CATALOG_KEY, nextCatalog);
+    const nextCatalog = await fetchCatalog();
 
     setState((prev) => ({
       ...prev,
@@ -541,21 +531,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const updateAthlete = async (symbol: string, patch: Partial<Athlete>) => {
     const targetSymbol = symbol.toUpperCase();
-    const response = await fetch(`/api/admin/athletes/${encodeURIComponent(targetSymbol)}`, {
+    const response = await fetch('/api/catalog/athletes', {
       method: 'PATCH',
       headers: getAdminHeaders(),
-      body: JSON.stringify(patch),
+      body: JSON.stringify({ ...patch, symbol: targetSymbol }),
     });
 
     if (!response.ok) {
       throw new Error(`Failed to update athlete (${response.status})`);
     }
 
-    const payload = (await response.json()) as { athletes?: Athlete[] };
-    const nextCatalog = normalizeAthletes(Array.isArray(payload.athletes) ? payload.athletes : []);
-
-    const storage = getBrowserStorage();
-    if (storage) writeJSON(storage, CATALOG_KEY, nextCatalog);
+    const nextCatalog = await fetchCatalog();
 
     setState((prev) => ({
       ...prev,
