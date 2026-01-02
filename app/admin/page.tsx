@@ -299,8 +299,9 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-5xl font-bold mb-8 gradient-text">{t.adminPanel}</h1>
-
+       <h1 className="text-5xl font-bold mb-8 gradient-text">
+  {t.adminPanel} <span className="text-xs opacity-60">BUILD_MARK_20260102_0816</span>
+</h1>
         {/* View Selector */}
         <div className="flex gap-2 mb-8 flex-wrap">
           <button
