@@ -7,6 +7,7 @@ import { translations } from '@/lib/translations';
 import { Category, Sport } from '@/lib/types';
 import { formatNumber } from '@/lib/format';
 import Link from 'next/link';
+import { getCurrentPseudoPrice, getPseudoSeries } from '@/lib/pricing/pseudoMarket';
 
 export default function MarketPage() {
   const { state } = useStore();
@@ -18,8 +19,47 @@ export default function MarketPage() {
   const [sortBy, setSortBy] = useState<'name' | 'price' | 'volume' | 'change'>('price');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
+  const step24h = 300;
+  const step7d = 900;
+  const pricingBucket = Math.floor(Date.now() / (step24h * 1000));
+
+  const calculateChange = (series: Array<{ price: number }>) => {
+    if (series.length < 2) return 0;
+    const first = series[0].price;
+    const last = series[series.length - 1].price;
+    return first ? ((last - first) / first) * 100 : 0;
+  };
+
+  const pricedAthletes = useMemo(() => {
+    const now = new Date();
+    const dayStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    return state.athletes.map((athlete) => {
+      const currentPrice = getCurrentPseudoPrice(athlete.symbol, athlete.unitCost, now);
+      const series24h = getPseudoSeries(athlete.symbol, athlete.unitCost, {
+        from: dayStart,
+        to: now,
+        stepSec: step24h,
+      });
+      const series7d = getPseudoSeries(athlete.symbol, athlete.unitCost, {
+        from: weekStart,
+        to: now,
+        stepSec: step7d,
+      });
+
+      return {
+        ...athlete,
+        pseudoPrice: currentPrice,
+        pseudoChange24h: calculateChange(series24h),
+        pseudoChange7d: calculateChange(series7d),
+        pseudoSeries: series24h,
+      };
+    });
+  }, [state.athletes, pricingBucket]);
+
   const filteredAthletes = useMemo(() => {
-    return state.athletes
+    return pricedAthletes
       .filter((athlete) => {
         const matchesSearch =
           athlete.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -38,13 +78,13 @@ export default function MarketPage() {
             compareValue = a.name.localeCompare(b.name);
             break;
           case 'price':
-            compareValue = a.unitCost - b.unitCost;
+            compareValue = a.pseudoPrice - b.pseudoPrice;
             break;
           case 'volume':
             compareValue = a.tradingVolume - b.tradingVolume;
             break;
           case 'change':
-            compareValue = a.price24hChange - b.price24hChange;
+            compareValue = a.pseudoChange24h - b.pseudoChange24h;
             break;
           default:
             compareValue = 0;
@@ -282,23 +322,23 @@ export default function MarketPage() {
                   <div className="flex justify-between items-center mb-2 text-sm">
                     <span className="text-gray-400">{t.unitCostShort}</span>
                     <span className="font-semibold price-display">
-                      {formatNumber(athlete.unitCost)} tATHLX
+                      {formatNumber(athlete.pseudoPrice)} tATHLX
                     </span>
                   </div>
 
                   <div className="flex justify-between items-center text-sm">
                     <div>
                       <span className="text-gray-400">{t.indexDelta24hShort} </span>
-                      <span className={athlete.price24hChange >= 0 ? 'price-up' : 'price-down'}>
-                        {athlete.price24hChange >= 0 ? '+' : ''}
-                        {athlete.price24hChange.toFixed(1)}%
+                      <span className={athlete.pseudoChange24h >= 0 ? 'price-up' : 'price-down'}>
+                        {athlete.pseudoChange24h >= 0 ? '+' : ''}
+                        {athlete.pseudoChange24h.toFixed(1)}%
                       </span>
                     </div>
                     <div>
                       <span className="text-gray-400">{t.indexDelta7dShort} </span>
-                      <span className={athlete.price7dChange >= 0 ? 'price-up' : 'price-down'}>
-                        {athlete.price7dChange >= 0 ? '+' : ''}
-                        {athlete.price7dChange.toFixed(1)}%
+                      <span className={athlete.pseudoChange7d >= 0 ? 'price-up' : 'price-down'}>
+                        {athlete.pseudoChange7d >= 0 ? '+' : ''}
+                        {athlete.pseudoChange7d.toFixed(1)}%
                       </span>
                     </div>
                   </div>
@@ -317,14 +357,14 @@ export default function MarketPage() {
 
                 {/* Mini Sparkline */}
                 <div className="mt-3 h-12 flex items-end space-x-1">
-                  {athlete.priceHistory.slice(-10).map((point, i) => {
-                    const recent = athlete.priceHistory.slice(-10);
+                  {athlete.pseudoSeries.slice(-10).map((point) => {
+                    const recent = athlete.pseudoSeries.slice(-10);
                     const maxPrice = Math.max(...recent.map((p) => p.price));
                     const height = maxPrice ? (point.price / maxPrice) * 100 : 0;
 
                     return (
                       <div
-                        key={i}
+                        key={point.t}
                         className="flex-1 bg-blue-500/30 rounded-t"
                         style={{ height: `${height}%` }}
                       />

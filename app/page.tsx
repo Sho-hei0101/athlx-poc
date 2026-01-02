@@ -1,10 +1,12 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useStore } from '@/lib/store';
 import Link from 'next/link';
 import { TrendingUp, Shield, Users, Rocket, ArrowRight, DollarSign, Heart, Target } from 'lucide-react';
 import { translations } from '@/lib/translations';
 import { formatNumber } from '@/lib/format';
+import { getCurrentPseudoPrice, getPseudoSeries } from '@/lib/pricing/pseudoMarket';
 
 export default function Home() {
   const { state } = useStore();
@@ -41,11 +43,49 @@ export default function Home() {
     Elite: t.elite
   };
 
-  const newAthletes = state.athletes
+  const step24h = 300;
+  const step7d = 900;
+  const pricingBucket = Math.floor(Date.now() / (step24h * 1000));
+
+  const calculateChange = (series: Array<{ price: number }>) => {
+    if (series.length < 2) return 0;
+    const first = series[0].price;
+    const last = series[series.length - 1].price;
+    return first ? ((last - first) / first) * 100 : 0;
+  };
+
+  const pricedAthletes = useMemo(() => {
+    const now = new Date();
+    const dayStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    return state.athletes.map((athlete) => {
+      const currentPrice = getCurrentPseudoPrice(athlete.symbol, athlete.unitCost, now);
+      const series24h = getPseudoSeries(athlete.symbol, athlete.unitCost, {
+        from: dayStart,
+        to: now,
+        stepSec: step24h,
+      });
+      const series7d = getPseudoSeries(athlete.symbol, athlete.unitCost, {
+        from: weekStart,
+        to: now,
+        stepSec: step7d,
+      });
+
+      return {
+        ...athlete,
+        pseudoPrice: currentPrice,
+        pseudoChange24h: calculateChange(series24h),
+        pseudoChange7d: calculateChange(series7d),
+      };
+    });
+  }, [state.athletes, pricingBucket]);
+
+  const newAthletes = pricedAthletes
     .filter(a => a.tags.includes('New'))
     .slice(0, 3);
 
-  const fastGrowing = state.athletes
+  const fastGrowing = pricedAthletes
     .filter(a => a.tags.includes('Fast Growing'))
     .slice(0, 3);
 
@@ -217,10 +257,10 @@ export default function Home() {
                   <div className="flex justify-between items-center mt-4">
                     <div>
                       <p className="text-sm text-gray-400">{t.unitCostShort}</p>
-                      <p className="text-lg font-bold price-display">{formatNumber(athlete.unitCost)} tATHLX</p>
+                      <p className="text-lg font-bold price-display">{formatNumber(athlete.pseudoPrice)} tATHLX</p>
                     </div>
-                    <div className={`text-lg font-bold ${athlete.price24hChange >= 0 ? 'price-up' : 'price-down'}`}>
-                      {t.indexDelta24hShort} {athlete.price24hChange >= 0 ? '+' : ''}{athlete.price24hChange.toFixed(1)}%
+                    <div className={`text-lg font-bold ${athlete.pseudoChange24h >= 0 ? 'price-up' : 'price-down'}`}>
+                      {t.indexDelta24hShort} {athlete.pseudoChange24h >= 0 ? '+' : ''}{athlete.pseudoChange24h.toFixed(1)}%
                     </div>
                   </div>
                 </Link>
@@ -266,10 +306,10 @@ export default function Home() {
                   <div className="flex justify-between items-center mt-4">
                     <div>
                       <p className="text-sm text-gray-400">{t.unitCostShort}</p>
-                      <p className="text-lg font-bold price-display">{formatNumber(athlete.unitCost)} tATHLX</p>
+                      <p className="text-lg font-bold price-display">{formatNumber(athlete.pseudoPrice)} tATHLX</p>
                     </div>
-                    <div className="text-lg font-bold price-up">
-                      {t.indexDelta7dShort} +{athlete.price7dChange.toFixed(1)}%
+                    <div className={`text-lg font-bold ${athlete.pseudoChange7d >= 0 ? 'price-up' : 'price-down'}`}>
+                      {t.indexDelta7dShort} {athlete.pseudoChange7d >= 0 ? '+' : ''}{athlete.pseudoChange7d.toFixed(1)}%
                     </div>
                   </div>
                 </Link>

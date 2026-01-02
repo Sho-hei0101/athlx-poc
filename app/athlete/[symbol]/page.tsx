@@ -10,6 +10,7 @@ import { Category } from '@/lib/types';
 import dynamic from 'next/dynamic';
 import type { ChartData, ChartOptions } from 'chart.js';
 import { formatNumber } from '@/lib/format';
+import { getCurrentPseudoPrice, getPseudoSeries } from '@/lib/pricing/pseudoMarket';
 
 const AthletePriceChart = dynamic(() => import('@/components/AthletePriceChart'), { ssr: false });
 
@@ -71,26 +72,39 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
   };
 
   const chartData = useMemo<ChartData<'line'>>(() => {
-    let dataPoints = athlete.priceHistory;
-    
-    if (timeframe === '1D') dataPoints = athlete.priceHistory.slice(-1);
-    if (timeframe === '1W') dataPoints = athlete.priceHistory.slice(-7);
-    if (timeframe === '1M') dataPoints = athlete.priceHistory.slice(-30);
+    const now = new Date();
+    const timeframeConfig = {
+      '1D': { days: 1, stepSec: 300, label: 'time' as const },
+      '1W': { days: 7, stepSec: 900, label: 'date' as const },
+      '1M': { days: 30, stepSec: 3600, label: 'date' as const },
+    };
+    const config = timeframeConfig[timeframe];
+    const from = new Date(now.getTime() - config.days * 24 * 60 * 60 * 1000);
+    const series = getPseudoSeries(athlete.symbol, athlete.unitCost, {
+      from,
+      to: now,
+      stepSec: config.stepSec,
+    });
+    const labels = series.map((point) =>
+      config.label === 'time'
+        ? new Date(point.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : new Date(point.t).toLocaleDateString(),
+    );
 
     return {
-      labels: dataPoints.map(p => new Date(p.time).toLocaleDateString()),
+      labels,
       datasets: [
         {
-          label: t.activityIndexWithPoints,
-          data: dataPoints.map(p => p.price),
+          label: t.unitCostLabel,
+          data: series.map((point) => point.price),
           borderColor: 'rgb(59, 130, 246)',
           backgroundColor: 'rgba(59, 130, 246, 0.1)',
           fill: true,
-          tension: 0.4
-        }
-      ]
+          tension: 0.4,
+        },
+      ],
     };
-  }, [athlete.priceHistory, timeframe, t.activityIndexWithPoints]);
+  }, [athlete.symbol, athlete.unitCost, timeframe, t.unitCostLabel]);
 
   const chartOptions: ChartOptions<'line'> = {
     responsive: true,
@@ -130,6 +144,36 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
       }
     }
   };
+
+  const calculateChange = (series: Array<{ price: number }>) => {
+    if (series.length < 2) return 0;
+    const first = series[0].price;
+    const last = series[series.length - 1].price;
+    return first ? ((last - first) / first) * 100 : 0;
+  };
+
+  const pricingBucket = Math.floor(Date.now() / (300 * 1000));
+  const pricingSnapshot = useMemo(() => {
+    const now = new Date();
+    const currentPrice = getCurrentPseudoPrice(athlete.symbol, athlete.unitCost, now);
+    const series24h = getPseudoSeries(athlete.symbol, athlete.unitCost, {
+      from: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+      to: now,
+      stepSec: 300,
+    });
+    const series7d = getPseudoSeries(athlete.symbol, athlete.unitCost, {
+      from: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+      to: now,
+      stepSec: 900,
+    });
+
+    return {
+      currentPrice,
+      change24h: calculateChange(series24h),
+      change7d: calculateChange(series7d),
+    };
+  }, [athlete.symbol, athlete.unitCost, pricingBucket]);
+  const tradeAthlete = { ...athlete, unitCost: pricingSnapshot.currentPrice, currentPrice: pricingSnapshot.currentPrice };
 
   const openTrade = (mode: 'buy' | 'sell') => {
     setTradeMode(mode);
@@ -207,21 +251,21 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
                 <div className="mb-4">
                   <p className="text-sm text-gray-400 mb-1">{t.unitCostLabel}</p>
                   <p className="text-4xl font-bold price-display">
-                    {formatNumber(athlete.unitCost)} tATHLX
+                    {formatNumber(pricingSnapshot.currentPrice)} tATHLX
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
                     <p className="text-xs text-gray-400">{t.indexDelta24h}</p>
-                    <p className={`text-lg font-bold ${athlete.price24hChange >= 0 ? 'price-up' : 'price-down'}`}>
-                      {athlete.price24hChange >= 0 ? '+' : ''}{athlete.price24hChange.toFixed(1)}%
+                    <p className={`text-lg font-bold ${pricingSnapshot.change24h >= 0 ? 'price-up' : 'price-down'}`}>
+                      {pricingSnapshot.change24h >= 0 ? '+' : ''}{pricingSnapshot.change24h.toFixed(1)}%
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400">{t.indexDelta7d}</p>
-                    <p className={`text-lg font-bold ${athlete.price7dChange >= 0 ? 'price-up' : 'price-down'}`}>
-                      {athlete.price7dChange >= 0 ? '+' : ''}{athlete.price7dChange.toFixed(1)}%
+                    <p className={`text-lg font-bold ${pricingSnapshot.change7d >= 0 ? 'price-up' : 'price-down'}`}>
+                      {pricingSnapshot.change7d >= 0 ? '+' : ''}{pricingSnapshot.change7d.toFixed(1)}%
                     </p>
                   </div>
                 </div>
@@ -327,7 +371,7 @@ export default function AthletePage({ params }: { params: { symbol: string } }) 
           <TradeModal
             isOpen={tradeModalOpen}
             onClose={() => setTradeModalOpen(false)}
-            athlete={athlete}
+            athlete={tradeAthlete}
             initialMode={tradeMode}
           />
         </div>

@@ -10,6 +10,8 @@ export type AnalyticsEventType =
   | 'athlete_register_submit'
   | 'athlete_update_submit'
   | 'admin_approve'
+  | 'admin_delete'
+  | 'admin_edit'
   | 'admin_reject'
   | 'export'
   | 'import'
