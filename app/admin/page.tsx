@@ -8,6 +8,7 @@ import { Category, Sport } from '@/lib/types';
 import { EVENTS_KEY, logEvent } from '@/lib/analytics';
 import { getBrowserStorage } from '@/lib/storage';
 import { getCurrentPseudoPrice } from '@/lib/pricing/pseudoMarket';
+import { formatNumber } from '@/lib/format';
 
 export default function AdminPage() {
   // ✅ deleteAthlete を追加
@@ -74,6 +75,7 @@ export default function AdminPage() {
   const pendingApplications = state.pendingAthletes.filter((p) => p.status === 'pending');
   const approvedCount = state.pendingAthletes.filter((p) => p.status === 'approved').length;
   const rejectedCount = state.pendingAthletes.filter((p) => p.status === 'rejected').length;
+  const totalFeesCollected = state.trades.reduce((sum, trade) => sum + (trade.fee ?? 0), 0);
 
   const categoryBreakdown = {
     Amateur: state.athletes.filter((a) => a.category === 'Amateur').length,
@@ -454,7 +456,7 @@ export default function AdminPage() {
         {/* Dashboard View */}
         {view === 'dashboard' && (
           <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
               <div className="glass-effect rounded-xl p-6">
                 <div className="flex items-center space-x-3 mb-3">
                   <Clock className="text-yellow-400" size={24} />
@@ -486,6 +488,12 @@ export default function AdminPage() {
                 </div>
                 <p className="text-4xl font-bold">{state.athletes.length}</p>
               </div>
+            </div>
+
+            <div className="glass-effect rounded-xl p-6">
+              <h3 className="font-semibold mb-2">{t.totalFeesCollectedLabel}</h3>
+              <p className="text-3xl font-bold price-display">{formatNumber(totalFeesCollected)} tATHLX</p>
+              <p className="text-xs text-gray-400 mt-2">{t.totalFeesCollectedNote}</p>
             </div>
 
             <div className="glass-effect rounded-xl p-6">

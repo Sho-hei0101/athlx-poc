@@ -48,8 +48,7 @@ const normalizeAthletes = (athletes: Athlete[]): Athlete[] => {
   return athletes.map((a) => {
     const unitCost =
       typeof a.unitCost === 'number' && a.unitCost > 0 ? a.unitCost : BASE_PRICE;
-    const currentPrice =
-      typeof a.currentPrice === 'number' && a.currentPrice > 0 ? a.currentPrice : unitCost;
+    const currentPrice = unitCost;
 
     return {
       ...a,
@@ -172,6 +171,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const storage = getBrowserStorage();
     if (!storage) return;
     updateAccount(storage, email, updater);
+  };
+
+  const getAdminHeaders = () => {
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (adminPinRef.current) {
+      headers['x-admin-pin'] = adminPinRef.current;
+    }
+    return headers;
   };
 
   // Hydrate (local state + session) then hydrate catalog from API(KV)
@@ -472,12 +479,25 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const nextCatalog = normalizeAthletes([...state.athletes, newAthlete]);
 
+    const response = await fetch('/api/admin/athletes', {
+      method: 'POST',
+      headers: getAdminHeaders(),
+      body: JSON.stringify(newAthlete),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to add athlete (${response.status})`);
+    }
+
+    const payload = (await response.json()) as { athletes?: Athlete[] };
+    const serverCatalog = Array.isArray(payload.athletes) ? payload.athletes : nextCatalog;
+
     const storage = getBrowserStorage();
-    if (storage) writeJSON(storage, CATALOG_KEY, nextCatalog);
+    if (storage) writeJSON(storage, CATALOG_KEY, serverCatalog);
 
     setState((prev) => ({
       ...prev,
-      athletes: nextCatalog,
+      athletes: normalizeAthletes(serverCatalog),
       pendingAthletes: prev.pendingAthletes.map((p) =>
         p.id === pendingId ? { ...p, status: 'approved' as const } : p,
       ),
@@ -496,9 +516,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const deleteAthlete = async (symbol: string) => {
     const targetSymbol = symbol.toUpperCase();
-    const nextCatalog = normalizeAthletes(
-      state.athletes.filter((athlete) => athlete.symbol.toUpperCase() !== targetSymbol),
-    );
+    const response = await fetch(`/api/admin/athletes/${encodeURIComponent(targetSymbol)}`, {
+      method: 'DELETE',
+      headers: getAdminHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete athlete (${response.status})`);
+    }
+
+    const payload = (await response.json()) as { athletes?: Athlete[] };
+    const nextCatalog = normalizeAthletes(Array.isArray(payload.athletes) ? payload.athletes : []);
 
     const storage = getBrowserStorage();
     if (storage) writeJSON(storage, CATALOG_KEY, nextCatalog);
@@ -513,16 +541,18 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const updateAthlete = async (symbol: string, patch: Partial<Athlete>) => {
     const targetSymbol = symbol.toUpperCase();
-    const nextCatalog = normalizeAthletes(
-      state.athletes.map((athlete) => {
-        if (athlete.symbol.toUpperCase() !== targetSymbol) return athlete;
-        return {
-          ...athlete,
-          ...patch,
-          symbol: athlete.symbol,
-        };
-      }),
-    );
+    const response = await fetch(`/api/admin/athletes/${encodeURIComponent(targetSymbol)}`, {
+      method: 'PATCH',
+      headers: getAdminHeaders(),
+      body: JSON.stringify(patch),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update athlete (${response.status})`);
+    }
+
+    const payload = (await response.json()) as { athletes?: Athlete[] };
+    const nextCatalog = normalizeAthletes(Array.isArray(payload.athletes) ? payload.athletes : []);
 
     const storage = getBrowserStorage();
     if (storage) writeJSON(storage, CATALOG_KEY, nextCatalog);
