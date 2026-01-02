@@ -2,15 +2,16 @@
 
 import { useStore } from '@/lib/store';
 import { useMemo, useState } from 'react';
-import { Users, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Clock, Trash2, Pencil } from 'lucide-react';
 import { translations } from '@/lib/translations';
-import { Category } from '@/lib/types';
+import { Category, Sport } from '@/lib/types';
 import { EVENTS_KEY, logEvent } from '@/lib/analytics';
 import { getBrowserStorage } from '@/lib/storage';
+import { getCurrentPseudoPrice } from '@/lib/pricing/pseudoMarket';
 
 export default function AdminPage() {
   // ✅ deleteAthlete を追加
-  const { state, approveAthlete, rejectAthlete, resetDemoData, deleteAthlete } = useStore();
+  const { state, approveAthlete, rejectAthlete, resetDemoData, deleteAthlete, updateAthlete } = useStore();
   const t = translations[state.language];
 
   const [selectedPending, setSelectedPending] = useState<string | null>(null);
@@ -39,6 +40,36 @@ export default function AdminPage() {
   // ✅ delete UI state
   const [deleteError, setDeleteError] = useState('');
   const [deletingSymbol, setDeletingSymbol] = useState<string | null>(null);
+  const [editingSymbol, setEditingSymbol] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{
+    name: string;
+    sport: Sport;
+    category: Category;
+    nationality: string;
+    team: string;
+    position: string;
+    age: number;
+    height: string;
+    bio: string;
+    imageUrl: string;
+    unitCost: number;
+    tags: string;
+  }>({
+    name: '',
+    sport: 'Football',
+    category: 'Amateur',
+    nationality: '',
+    team: '',
+    position: '',
+    age: 0,
+    height: '',
+    bio: '',
+    imageUrl: '',
+    unitCost: 0.01,
+    tags: '',
+  });
+  const [editError, setEditError] = useState('');
+  const [editSuccess, setEditSuccess] = useState('');
 
   const pendingApplications = state.pendingAthletes.filter((p) => p.status === 'pending');
   const approvedCount = state.pendingAthletes.filter((p) => p.status === 'approved').length;
@@ -277,6 +308,14 @@ export default function AdminPage() {
     return list.sort((a, b) => String(a.symbol ?? '').localeCompare(String(b.symbol ?? '')));
   }, [state.athletes]);
 
+  const pricingBucket = Math.floor(Date.now() / (300 * 1000));
+  const pricedAthletes = useMemo(() => {
+    return sortedAthletes.map((athlete) => ({
+      ...athlete,
+      pseudoPrice: getCurrentPseudoPrice(athlete.symbol, athlete.unitCost),
+    }));
+  }, [sortedAthletes, pricingBucket]);
+
   const handleDeleteAthlete = async (symbol: string) => {
     setDeleteError('');
     try {
@@ -292,6 +331,67 @@ export default function AdminPage() {
     } finally {
       setDeletingSymbol(null);
     }
+  };
+
+  const handleEditStart = (athlete: (typeof state.athletes)[number]) => {
+    setEditError('');
+    setEditSuccess('');
+    setEditingSymbol(String(athlete.symbol ?? ''));
+    setEditForm({
+      name: String(athlete.name ?? ''),
+      sport: athlete.sport ?? 'Football',
+      category: athlete.category ?? 'Amateur',
+      nationality: String(athlete.nationality ?? ''),
+      team: String(athlete.team ?? ''),
+      position: String(athlete.position ?? ''),
+      age: Number(athlete.age ?? 0),
+      height: String(athlete.height ?? ''),
+      bio: String(athlete.bio ?? ''),
+      imageUrl: String(athlete.imageUrl ?? ''),
+      unitCost: Number(athlete.unitCost ?? 0.01),
+      tags: Array.isArray(athlete.tags) ? athlete.tags.join(', ') : '',
+    });
+  };
+
+  const handleEditSave = async () => {
+    if (!editingSymbol) return;
+    setEditError('');
+    setEditSuccess('');
+    try {
+      ensureAdmin();
+      const unitCost = Number(editForm.unitCost) || 0.01;
+      const age = Math.max(0, Number(editForm.age) || 0);
+      const tags = editForm.tags
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+
+      await updateAthlete(editingSymbol, {
+        name: editForm.name.trim() || editingSymbol,
+        sport: editForm.sport,
+        category: editForm.category,
+        nationality: editForm.nationality.trim(),
+        team: editForm.team.trim(),
+        position: editForm.position.trim(),
+        age,
+        height: editForm.height.trim(),
+        bio: editForm.bio.trim(),
+        imageUrl: editForm.imageUrl.trim(),
+        unitCost,
+        currentPrice: unitCost,
+        tags,
+      });
+      setEditSuccess('Athlete updated.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update athlete';
+      setEditError(message);
+    }
+  };
+
+  const handleEditCancel = () => {
+    setEditingSymbol(null);
+    setEditError('');
+    setEditSuccess('');
   };
 
   const selectedApplication = pendingApplications.find((p) => p.id === selectedPending);
@@ -516,7 +616,7 @@ export default function AdminPage() {
             <div className="flex items-center justify-between gap-3 mb-6">
               <h2 className="text-2xl font-bold">{t.allAthletes}</h2>
               <div className="text-sm text-gray-400">
-                {sortedAthletes.length} {t.athletesInDirectory}
+                {pricedAthletes.length} {t.athletesInDirectory}
               </div>
             </div>
 
@@ -532,7 +632,7 @@ export default function AdminPage() {
               </div>
             )}
 
-            {sortedAthletes.length > 0 ? (
+            {pricedAthletes.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -547,7 +647,7 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedAthletes.map((a) => (
+                    {pricedAthletes.map((a) => (
                       <tr
                         key={String(a.id ?? a.symbol)}
                         className="border-b border-slate-700/50 hover:bg-slate-700/30"
@@ -562,19 +662,29 @@ export default function AdminPage() {
                         </td>
                         <td className="py-3 px-4">{String(a.nationality ?? '')}</td>
                         <td className="py-3 px-4 text-right font-mono">
-                          {Number(a.currentPrice ?? a.unitCost ?? 0).toFixed(4)}
+                          {Number(a.pseudoPrice ?? 0).toFixed(4)}
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <button
-                            disabled={!state.isAdmin || deletingSymbol === String(a.symbol ?? '')}
-                            onClick={() => handleDeleteAthlete(String(a.symbol ?? ''))}
-                            className="px-3 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-semibold transition disabled:opacity-50 inline-flex items-center gap-2"
-                          >
-                            <Trash2 size={16} />
-                            <span>
-                              {deletingSymbol === String(a.symbol ?? '') ? 'Deleting...' : 'Delete'}
-                            </span>
-                          </button>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              disabled={!state.isAdmin}
+                              onClick={() => handleEditStart(a)}
+                              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition disabled:opacity-50 inline-flex items-center gap-2"
+                            >
+                              <Pencil size={16} />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              disabled={!state.isAdmin || deletingSymbol === String(a.symbol ?? '')}
+                              onClick={() => handleDeleteAthlete(String(a.symbol ?? ''))}
+                              className="px-3 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-semibold transition disabled:opacity-50 inline-flex items-center gap-2"
+                            >
+                              <Trash2 size={16} />
+                              <span>
+                                {deletingSymbol === String(a.symbol ?? '') ? 'Deleting...' : 'Delete'}
+                              </span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -841,6 +951,184 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+
+      {editingSymbol && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 rounded-2xl max-w-3xl w-full p-6 relative">
+            <button
+              onClick={handleEditCancel}
+              className="absolute top-4 right-4 p-2 hover:bg-slate-700 rounded-lg transition"
+            >
+              <XCircle size={20} />
+            </button>
+            <h2 className="text-2xl font-bold mb-4">Edit Athlete: {editingSymbol}</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">{t.name}</label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, name: event.target.value }))}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">{t.sportLabel}</label>
+                <select
+                  value={editForm.sport}
+                  onChange={(event) =>
+                    setEditForm((prev) => ({ ...prev, sport: event.target.value as Sport }))
+                  }
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                >
+                  {Object.keys(sportLabels).map((sport) => (
+                    <option key={sport} value={sport}>
+                      {sportLabels[sport]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">{t.requestedCategory}</label>
+                <select
+                  value={editForm.category}
+                  onChange={(event) =>
+                    setEditForm((prev) => ({ ...prev, category: event.target.value as Category }))
+                  }
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                >
+                  <option value="Amateur">{t.amateur}</option>
+                  <option value="Semi-pro">{t.semiPro}</option>
+                  <option value="Pro">{t.pro}</option>
+                  <option value="Elite">{t.elite}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">{t.nationalityLabel}</label>
+                <input
+                  type="text"
+                  value={editForm.nationality}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, nationality: event.target.value }))}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">{t.teamLabel}</label>
+                <input
+                  type="text"
+                  value={editForm.team}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, team: event.target.value }))}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">{t.positionLabel}</label>
+                <input
+                  type="text"
+                  value={editForm.position}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, position: event.target.value }))}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">{t.ageLabel}</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editForm.age}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, age: Number(event.target.value) }))}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">{t.heightLabel}</label>
+                <input
+                  type="text"
+                  value={editForm.height}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, height: event.target.value }))}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">{t.unitCostLabel}</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.0001"
+                  value={editForm.unitCost}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, unitCost: Number(event.target.value) }))}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Tags</label>
+                <input
+                  type="text"
+                  value={editForm.tags}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, tags: event.target.value }))}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-2">Image URL</label>
+                <input
+                  type="text"
+                  value={editForm.imageUrl}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, imageUrl: event.target.value }))}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-2">{t.bioLabel}</label>
+                <textarea
+                  rows={3}
+                  value={editForm.bio}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, bio: event.target.value }))}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                />
+              </div>
+            </div>
+
+            {editError && (
+              <div className="mt-4 p-3 bg-red-500/20 border border-red-500 rounded-lg text-sm text-red-200">
+                {editError}
+              </div>
+            )}
+            {editSuccess && (
+              <div className="mt-4 p-3 bg-green-500/20 border border-green-500 rounded-lg text-sm text-green-200">
+                {editSuccess}
+              </div>
+            )}
+
+            <div className="mt-6 flex gap-3 justify-end">
+              <button
+                onClick={handleEditCancel}
+                className="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg font-semibold transition"
+              >
+                {t.cancel}
+              </button>
+              <button
+                onClick={handleEditSave}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition"
+              >
+                {t.confirm}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

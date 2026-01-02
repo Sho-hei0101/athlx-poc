@@ -1,13 +1,14 @@
 'use client';
 
 import { useStore } from '@/lib/store';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, useMemo } from 'react';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, DollarSign, Users, Activity } from 'lucide-react';
 import TradeModal from '@/components/TradeModal';
 import { translations } from '@/lib/translations';
 import { Category, MatchHomeAway, MatchResult } from '@/lib/types';
 import { formatNumber } from '@/lib/format';
+import { getCurrentPseudoPrice } from '@/lib/pricing/pseudoMarket';
 
 type UpdateFormState = {
   matchDate: string;
@@ -51,6 +52,16 @@ export default function MyPage() {
 
   if (!state.currentUser) return null;
 
+  const pricingBucket = Math.floor(Date.now() / (300 * 1000));
+  const pseudoPriceBySymbol = useMemo(() => {
+    const now = new Date();
+    const map = new Map<string, number>();
+    state.athletes.forEach((athlete) => {
+      map.set(athlete.symbol, getCurrentPseudoPrice(athlete.symbol, athlete.unitCost, now));
+    });
+    return map;
+  }, [state.athletes, pricingBucket]);
+
   const portfolio = getPortfolio();
   const userTrades = state.trades
     .filter((tr) => tr.userId === state.currentUser!.id)
@@ -58,8 +69,7 @@ export default function MyPage() {
     .reverse();
 
   const portfolioValue = portfolio.reduce((sum, p) => {
-    const fallbackUnitCost = state.athletes.find((a) => a.symbol === p.athleteSymbol)?.unitCost ?? 0;
-    const unitCost = (p.currentPrice ?? 0) > 0 ? (p.currentPrice ?? 0) : fallbackUnitCost;
+    const unitCost = pseudoPriceBySymbol.get(p.athleteSymbol) ?? 0;
     return sum + (p.quantity ?? 0) * unitCost;
   }, 0);
 
@@ -78,6 +88,17 @@ export default function MyPage() {
     : null;
 
   const isAthleteAccount = Boolean(state.currentUser.linkedAthleteId);
+
+  const linkedAthletePrice = linkedAthlete
+    ? pseudoPriceBySymbol.get(linkedAthlete.symbol) ?? linkedAthlete.unitCost
+    : 0;
+  const tradeAthlete = selectedAthlete
+    ? {
+        ...selectedAthlete,
+        unitCost: pseudoPriceBySymbol.get(selectedAthlete.symbol) ?? selectedAthlete.unitCost,
+        currentPrice: pseudoPriceBySymbol.get(selectedAthlete.symbol) ?? selectedAthlete.currentPrice,
+      }
+    : null;
 
   const recentUpdates = linkedAthlete
     ? state.athleteUpdates
@@ -218,13 +239,8 @@ export default function MyPage() {
                       <tbody>
                         {portfolio.map((p) => {
                           const avgBuyPrice = p.avgBuyPrice ?? 0;
-                          const currentPrice = p.currentPrice ?? 0;
                           const quantity = p.quantity ?? 0;
-
-                          const fallbackUnitCost =
-                            state.athletes.find((a) => a.symbol === p.athleteSymbol)?.unitCost ?? 0;
-
-                          const displayUnitCost = currentPrice > 0 ? currentPrice : fallbackUnitCost;
+                          const displayUnitCost = pseudoPriceBySymbol.get(p.athleteSymbol) ?? 0;
 
                           const pnl = (displayUnitCost - avgBuyPrice) * quantity;
                           const pnlPercent = avgBuyPrice
@@ -377,7 +393,7 @@ export default function MyPage() {
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.unitCostLabel}</p>
                         <p className="text-xl font-bold price-display">
-                          {formatNumber(linkedAthlete.unitCost)} tATHLX
+                          {formatNumber(linkedAthletePrice)} tATHLX
                         </p>
                       </div>
 
@@ -579,7 +595,7 @@ export default function MyPage() {
                     <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.unitCostLabel}</p>
-                        <p className="text-xl font-bold price-display">{formatNumber(linkedAthlete.unitCost)} tATHLX</p>
+                        <p className="text-xl font-bold price-display">{formatNumber(linkedAthletePrice)} tATHLX</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{t.activityIndexLabel}</p>
@@ -644,14 +660,14 @@ export default function MyPage() {
         </div>
       </div>
 
-      {selectedAthlete && (
+      {tradeAthlete && (
         <TradeModal
           isOpen={tradeModalOpen}
           onClose={() => {
             setTradeModalOpen(false);
             setSelectedAthlete(null);
           }}
-          athlete={selectedAthlete}
+          athlete={tradeAthlete}
           initialMode="sell"
         />
       )}

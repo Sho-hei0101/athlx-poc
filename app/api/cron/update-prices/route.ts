@@ -1,11 +1,6 @@
 import { NextResponse } from 'next/server';
-import { kv } from '@vercel/kv';
 
 export const runtime = 'nodejs';
-
-const KV_KEY = 'athlx:catalog:athletes:v1';
-
-type Athlete = Record<string, any>;
 
 function extractBearerToken(req: Request): string | null {
   // Web標準では headers.get はケース非依存だが、念のため両方試す
@@ -54,31 +49,12 @@ export async function POST(req: Request) {
         { status: 401 },
       );
     }
-
-    const athletes = ((await kv.get<Athlete[]>(KV_KEY)) ?? []).filter(Boolean);
-
-    const now = new Date().toISOString();
-
-    const next = athletes.map((a) => {
-      const currentPrice = Number(a.currentPrice ?? a.unitCost ?? 0.01);
-      const base = Number.isFinite(currentPrice) && currentPrice > 0 ? currentPrice : 0.01;
-
-      const noise = Math.random() * 0.02 - 0.01; // -1%〜+1%
-      const newPrice = Math.max(0.001, base * (1 + noise));
-
-      const priceHistory = Array.isArray(a.priceHistory) ? a.priceHistory : [];
-
-      return {
-        ...a,
-        currentPrice: newPrice,
-        unitCost: newPrice,
-        priceHistory: [...priceHistory, { time: now, price: newPrice, volume: 0 }],
-      };
+    return NextResponse.json({
+      ok: true,
+      disabled: true,
+      auth: { via: auth.via },
+      message: 'Pseudo-market pricing is generated deterministically on the client.',
     });
-
-    await kv.set(KV_KEY, next);
-
-    return NextResponse.json({ ok: true, updated: next.length, auth: { via: auth.via } });
   } catch (e) {
     console.error('cron update failed', e);
     return NextResponse.json({ ok: false, error: 'Cron update failed' }, { status: 500 });
