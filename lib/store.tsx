@@ -21,6 +21,7 @@ import { translations } from './translations';
 import { EVENTS_KEY, logEvent } from './analytics';
 import { calcTradingFee } from './fees';
 import { getBrowserStorage, readJSON, writeJSON } from './storage';
+import { ATHLX_BASE_PRICE, toDisplayPrice, toRawPrice } from './pricing';
 import {
   authenticateAccount,
   clearSession,
@@ -182,6 +183,26 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     });
   };
 
+  const toDisplayTrade = (trade: Trade): Trade => ({
+    ...trade,
+    price: toDisplayPrice(trade.price),
+    fee: toDisplayPrice(trade.fee),
+    total: toDisplayPrice(trade.total),
+  });
+
+  const toRawTrade = (trade: Trade): Trade => ({
+    ...trade,
+    price: toRawPrice(trade.price),
+    fee: toRawPrice(trade.fee),
+    total: toRawPrice(trade.total),
+  });
+
+  const toRawPortfolio = (portfolio: Portfolio): Portfolio => ({
+    ...portfolio,
+    avgBuyPrice: toRawPrice(portfolio.avgBuyPrice),
+    currentPrice: toRawPrice(portfolio.currentPrice),
+  });
+
   const persistCurrentAccount = (email: string, updater: (account: StoredAccount) => StoredAccount) => {
     const storage = getBrowserStorage();
     if (!storage) return;
@@ -215,11 +236,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             id: account.id,
             email: account.email,
             name: account.name,
-            athlxBalance: account.athlxBalance,
+            athlxBalance: toDisplayPrice(account.athlxBalance),
             metaMaskAddress: undefined,
             linkedAthleteId: account.linkedAthleteId,
           },
-          trades: account.trades ?? [],
+          trades: (account.trades ?? []).map(toDisplayTrade),
           isAdmin: false,
         };
       }
@@ -280,7 +301,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       id: account.id,
       email: account.email,
       name: account.name,
-      athlxBalance: account.athlxBalance,
+      athlxBalance: toDisplayPrice(account.athlxBalance),
       metaMaskAddress: undefined,
       linkedAthleteId: account.linkedAthleteId,
     };
@@ -307,7 +328,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       id: newAccount.id,
       email: newAccount.email,
       name: newAccount.name,
-      athlxBalance: newAccount.athlxBalance,
+      athlxBalance: toDisplayPrice(newAccount.athlxBalance),
       metaMaskAddress: undefined,
       linkedAthleteId: undefined,
     };
@@ -403,9 +424,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const updatedPortfolio = buildPortfolioFromTrades(updatedTrades, updatedAthletes);
       return {
         ...account,
-        athlxBalance: newBalance,
-        trades: updatedTrades,
-        portfolio: updatedPortfolio,
+        athlxBalance: toRawPrice(newBalance),
+        trades: updatedTrades.map(toRawTrade),
+        portfolio: updatedPortfolio.map(toRawPortfolio),
       };
     });
 
@@ -566,6 +587,84 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
 
     logEvent('admin_approve', { userId: pending.userId, athleteSymbol: newAthlete.symbol });
+  };
+
+  const updateAthlete = async (symbol: string, payload: Partial<Athlete>) => {
+    const adminPin = adminPinRef.current;
+    if (!adminPin) {
+      throw new Error('Admin PIN is required to update athletes.');
+    }
+
+    const rawPayload: Partial<Athlete> = { ...payload };
+    if (typeof payload.unitCost === 'number') rawPayload.unitCost = toRawPrice(payload.unitCost);
+    if (typeof payload.currentPrice === 'number') rawPayload.currentPrice = toRawPrice(payload.currentPrice);
+    if (typeof payload.activityIndex === 'number') rawPayload.activityIndex = toRawPrice(payload.activityIndex);
+    if (typeof payload.tradingVolume === 'number') rawPayload.tradingVolume = toRawPrice(payload.tradingVolume);
+    if (Array.isArray(payload.priceHistory)) {
+      rawPayload.priceHistory = payload.priceHistory.map((point) => ({
+        ...point,
+        price: toRawPrice(point.price),
+      }));
+    }
+
+    const response = await fetch(`/api/catalog/athletes?symbol=${encodeURIComponent(symbol)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-pin': adminPin,
+      },
+      body: JSON.stringify(rawPayload),
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to update athlete.';
+      try {
+        const data = (await response.json()) as { error?: string };
+        if (data?.error) errorMessage = data.error;
+      } catch (error) {
+        console.error('Failed to parse update response', error);
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = (await response.json()) as { athletes?: Athlete[] };
+    const nextCatalog = normalizeAthletes(data?.athletes ?? []);
+    setState((prev) => ({
+      ...prev,
+      athletes: nextCatalog,
+    }));
+  };
+
+  const deleteAthlete = async (symbol: string) => {
+    const adminPin = adminPinRef.current;
+    if (!adminPin) {
+      throw new Error('Admin PIN is required to delete athletes.');
+    }
+
+    const response = await fetch(`/api/catalog/athletes?symbol=${encodeURIComponent(symbol)}`, {
+      method: 'DELETE',
+      headers: {
+        'x-admin-pin': adminPin,
+      },
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to delete athlete.';
+      try {
+        const data = (await response.json()) as { error?: string };
+        if (data?.error) errorMessage = data.error;
+      } catch (error) {
+        console.error('Failed to parse delete response', error);
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = (await response.json()) as { athletes?: Athlete[] };
+    const nextCatalog = normalizeAthletes(data?.athletes ?? []);
+    setState((prev) => ({
+      ...prev,
+      athletes: nextCatalog,
+    }));
   };
 
   const rejectAthlete = (pendingId: string, reason: string) => {
