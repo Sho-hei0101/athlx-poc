@@ -85,3 +85,30 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ ok: false, error: 'KV delete failed' }, { status: 500 });
   }
 }
+
+
+export async function DELETE(req: Request) {
+  try {
+    if (!isAuthorized(req)) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const symbol = String(searchParams.get('symbol') ?? '').toUpperCase().trim();
+    if (!symbol) {
+      return NextResponse.json({ ok: false, error: 'Missing symbol' }, { status: 400 });
+    }
+
+    const existing = (await kv.get<Athlete[]>(KV_KEY)) ?? [];
+    const list = Array.isArray(existing) ? existing : [];
+
+    const next = list.filter((a) => String(a?.['symbol'] ?? '').toUpperCase() !== symbol);
+
+    await kv.set(KV_KEY, next);
+
+    return NextResponse.json({ ok: true, athletes: next, deleted: symbol });
+  } catch (e) {
+    console.error('DELETE /api/catalog/athletes failed', e);
+    return NextResponse.json({ ok: false, error: 'KV delete failed' }, { status: 500 });
+  }
+}
