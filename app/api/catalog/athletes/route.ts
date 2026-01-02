@@ -72,7 +72,7 @@ export async function POST(req: Request) {
       ...(incoming as Athlete),
       symbol: symbol.toUpperCase(),
       name,
-      sport,
+      sport: sport as Athlete['sport'],
       category: category as Athlete['category'],
       nationality,
       unitCost,
