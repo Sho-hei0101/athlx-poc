@@ -477,6 +477,50 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       userId: pending.userId,
     };
 
+      // ❌ Delete Athlete -> DELETE /api/catalog/athletes (Vercel KVから削除)
+  const deleteAthlete = async (symbol: string) => {
+    const adminPin = adminPinRef.current;
+    if (!adminPin) throw new Error('Admin PIN is required to delete athletes.');
+
+    const targetSymbol = symbol.toUpperCase();
+
+    const res = await fetch('/api/catalog/athletes', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-pin': adminPin,
+      },
+      body: JSON.stringify({ symbol: targetSymbol }),
+    });
+
+    if (!res.ok) {
+      let msg = 'Failed to delete athlete.';
+      try {
+        const data = (await res.json()) as { error?: string };
+        if (data?.error) msg = data.error;
+      } catch {}
+      throw new Error(msg);
+    }
+
+    const data = (await res.json()) as { athletes?: Athlete[] };
+    const nextCatalog = normalizeAthletes(data?.athletes ?? []);
+
+    // local cache 同期（source of truth はKV）
+    const storage = getBrowserStorage();
+    if (storage) writeJSON(storage, CATALOG_KEY, nextCatalog);
+
+    // state 更新
+    setState((prev) => ({
+      ...prev,
+      athletes: nextCatalog,
+      pendingAthletes: prev.pendingAthletes.filter(
+        (p) => p.symbol?.toUpperCase() !== targetSymbol,
+      ),
+    }));
+
+    logEvent('admin_delete', { athleteSymbol: targetSymbol });
+  };
+
     const adminPin = adminPinRef.current;
     if (!adminPin) throw new Error('Admin PIN is required to approve athletes.');
 
