@@ -1,4 +1,5 @@
 import { Athlete, Category, NewsItem } from './types';
+import { ATHLX_BASE_PRICE } from './pricing';
 
 const REFERENCE_TIME = Date.UTC(2024, 0, 1, 12, 0, 0);
 
@@ -15,14 +16,14 @@ const seededRandom = (seed: number) => {
 const getDefaultUnitCost = (category?: Category) => {
   switch (category) {
     case 'Elite':
-      return 0.2;
+      return ATHLX_BASE_PRICE * 20;
     case 'Pro':
-      return 0.1;
+      return ATHLX_BASE_PRICE * 10;
     case 'Semi-pro':
-      return 0.05;
+      return ATHLX_BASE_PRICE * 5;
     case 'Amateur':
     default:
-      return 0.01;
+      return ATHLX_BASE_PRICE;
   }
 };
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   type AppState,
   type User,
@@ -15,12 +15,13 @@ import {
   type MatchHomeAway,
   type MatchResult,
 } from './types';
-import { initialAthletes, initialNews } from './data';
+import { initialNews } from './data';
 import { buildUpdateReason, computeEventScore } from './match';
 import { translations } from './translations';
 import { EVENTS_KEY, logEvent } from './analytics';
 import { calcTradingFee } from './fees';
 import { getBrowserStorage, readJSON, writeJSON } from './storage';
+import { ATHLX_BASE_PRICE, toDisplayPrice, toRawPrice } from './pricing';
 import {
   authenticateAccount,
   clearSession,
@@ -38,37 +39,71 @@ const STORAGE_KEY = 'athlx_state';
 const getDefaultUnitCost = (category?: Category) => {
   switch (category) {
     case 'Elite':
-      return 0.2;
+      return ATHLX_BASE_PRICE * 20;
     case 'Pro':
-      return 0.1;
+      return ATHLX_BASE_PRICE * 10;
     case 'Semi-pro':
-      return 0.05;
+      return ATHLX_BASE_PRICE * 5;
     case 'Amateur':
     default:
-      return 0.01;
+      return ATHLX_BASE_PRICE;
   }
+};
+
+const normalizeCatalogAthlete = (athlete: Athlete): Athlete => {
+  return {
+    ...athlete,
+    unitCost: toDisplayPrice(athlete.unitCost),
+    currentPrice: toDisplayPrice(athlete.currentPrice),
+    activityIndex: typeof athlete.activityIndex === 'number' ? toDisplayPrice(athlete.activityIndex) : 0,
+    tradingVolume: typeof athlete.tradingVolume === 'number' ? toDisplayPrice(athlete.tradingVolume) : 0,
+    priceHistory: Array.isArray(athlete.priceHistory)
+      ? athlete.priceHistory.map((point) => ({
+          ...point,
+          price: toDisplayPrice(point.price),
+        }))
+      : [],
+  };
+};
+
+const toCatalogAthlete = (athlete: Athlete): Athlete => {
+  return {
+    ...athlete,
+    unitCost: toRawPrice(athlete.unitCost),
+    currentPrice: toRawPrice(athlete.currentPrice),
+    activityIndex: typeof athlete.activityIndex === 'number' ? toRawPrice(athlete.activityIndex) : 0,
+    tradingVolume: typeof athlete.tradingVolume === 'number' ? toRawPrice(athlete.tradingVolume) : 0,
+    priceHistory: Array.isArray(athlete.priceHistory)
+      ? athlete.priceHistory.map((point) => ({
+          ...point,
+          price: toRawPrice(point.price),
+        }))
+      : [],
+  };
 };
 
 const normalizeAthletes = (athletes: Athlete[]): Athlete[] => {
   return athletes.map((a) => {
-    const unitCost = a.unitCost && a.unitCost > 0 ? a.unitCost : getDefaultUnitCost(a.category);
-    const currentPrice = a.currentPrice && a.currentPrice > 0 ? a.currentPrice : unitCost;
+    const catalogAthlete = normalizeCatalogAthlete(a);
+    const unitCost =
+      catalogAthlete.unitCost && catalogAthlete.unitCost > 0 ? catalogAthlete.unitCost : getDefaultUnitCost(catalogAthlete.category);
+    const currentPrice = catalogAthlete.currentPrice && catalogAthlete.currentPrice > 0 ? catalogAthlete.currentPrice : unitCost;
 
     return {
-      ...a,
+      ...catalogAthlete,
       unitCost,
       currentPrice,
-      activityIndex: typeof a.activityIndex === 'number' ? a.activityIndex : 0,
-      tradingVolume: typeof a.tradingVolume === 'number' ? a.tradingVolume : 0,
-      holders: typeof a.holders === 'number' ? a.holders : 0,
-      priceHistory: Array.isArray(a.priceHistory) ? a.priceHistory : [],
+      activityIndex: typeof catalogAthlete.activityIndex === 'number' ? catalogAthlete.activityIndex : 0,
+      tradingVolume: typeof catalogAthlete.tradingVolume === 'number' ? catalogAthlete.tradingVolume : 0,
+      holders: typeof catalogAthlete.holders === 'number' ? catalogAthlete.holders : 0,
+      priceHistory: Array.isArray(catalogAthlete.priceHistory) ? catalogAthlete.priceHistory : [],
     };
   });
 };
 
 const defaultState: AppState = {
   currentUser: null,
-  athletes: normalizeAthletes(initialAthletes as Athlete[]),
+  athletes: [],
   pendingAthletes: [],
   trades: [],
   athleteUpdates: [],
@@ -91,7 +126,9 @@ interface StoreContextType {
   getPortfolio: () => Portfolio[];
 
   submitAthleteRegistration: (data: Omit<PendingAthlete, 'id' | 'userId' | 'submittedAt' | 'status'>) => void;
-  approveAthlete: (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => void;
+  approveAthlete: (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => Promise<void>;
+  updateAthlete: (symbol: string, payload: Partial<Athlete>) => Promise<void>;
+  deleteAthlete: (symbol: string) => Promise<void>;
   rejectAthlete: (pendingId: string, reason: string) => void;
 
   getAthleteBySymbol: (symbol: string) => Athlete | undefined;
@@ -114,6 +151,7 @@ interface StoreContextType {
 
   resetDemoData: () => void;
   setAdminAccess: (value: boolean) => void;
+  setAdminPin: (pin: string | null) => void;
   setLanguage: (lang: 'EN' | 'ES') => void;
 }
 
@@ -122,6 +160,7 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AppState>(defaultState);
   const [isHydrated, setIsHydrated] = useState(false);
+  const adminPinRef = useRef<string | null>(null);
 
   const buildPortfolioFromTrades = (trades: Trade[], athletes: Athlete[]): Portfolio[] => {
     const portfolioMap = new Map<string, Portfolio>();
@@ -164,6 +203,26 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     });
   };
 
+  const toDisplayTrade = (trade: Trade): Trade => ({
+    ...trade,
+    price: toDisplayPrice(trade.price),
+    fee: toDisplayPrice(trade.fee),
+    total: toDisplayPrice(trade.total),
+  });
+
+  const toRawTrade = (trade: Trade): Trade => ({
+    ...trade,
+    price: toRawPrice(trade.price),
+    fee: toRawPrice(trade.fee),
+    total: toRawPrice(trade.total),
+  });
+
+  const toRawPortfolio = (portfolio: Portfolio): Portfolio => ({
+    ...portfolio,
+    avgBuyPrice: toRawPrice(portfolio.avgBuyPrice),
+    currentPrice: toRawPrice(portfolio.currentPrice),
+  });
+
   const persistCurrentAccount = (email: string, updater: (account: StoredAccount) => StoredAccount) => {
     const storage = getBrowserStorage();
     if (!storage) return;
@@ -181,11 +240,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const stored = readJSON<Partial<AppState>>(storage, STORAGE_KEY, {});
     const storedUser = loadSession(storage);
 
-    let persistedState: AppState = defaultState;
+    let persistedState: AppState = { ...defaultState, athletes: defaultState.athletes };
 
     if (stored && Object.keys(stored).length > 0) {
-      const hydratedAthletes = normalizeAthletes((stored.athletes ?? defaultState.athletes) as Athlete[]);
-      persistedState = { ...defaultState, ...stored, athletes: hydratedAthletes };
+      persistedState = { ...defaultState, ...stored, athletes: defaultState.athletes };
     }
 
     if (storedUser?.email) {
@@ -198,11 +256,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             id: account.id,
             email: account.email,
             name: account.name,
-            athlxBalance: account.athlxBalance,
+            athlxBalance: toDisplayPrice(account.athlxBalance),
             metaMaskAddress: undefined,
             linkedAthleteId: account.linkedAthleteId,
           },
-          trades: account.trades ?? [],
+          trades: (account.trades ?? []).map(toDisplayTrade),
           isAdmin: false,
         };
       }
@@ -210,6 +268,28 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     setState({ ...persistedState, isAdmin: false });
     setIsHydrated(true);
+
+    let isActive = true;
+    const loadCatalog = async () => {
+      try {
+        const response = await fetch('/api/catalog/athletes');
+        if (!response.ok) {
+          console.error('Failed to load catalog athletes', response.status);
+          return;
+        }
+        const data = (await response.json()) as { athletes?: Athlete[] };
+        if (!isActive || !Array.isArray(data?.athletes)) return;
+        const hydratedAthletes = normalizeAthletes(data.athletes);
+        setState((prev) => ({ ...prev, athletes: hydratedAthletes }));
+      } catch (error) {
+        console.error('Catalog hydration failed', error);
+      }
+    };
+
+    void loadCatalog();
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   // Persist state
@@ -217,7 +297,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!isHydrated) return;
     const storage = getBrowserStorage();
     if (!storage) return;
-    writeJSON(storage, STORAGE_KEY, state);
+    const { athletes, ...stateWithoutAthletes } = state;
+    writeJSON(storage, STORAGE_KEY, stateWithoutAthletes as Partial<AppState>);
   }, [state, isHydrated]);
 
   const login = async (email: string, password: string): Promise<User> => {
@@ -231,7 +312,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       id: account.id,
       email: account.email,
       name: account.name,
-      athlxBalance: account.athlxBalance,
+      athlxBalance: toDisplayPrice(account.athlxBalance),
       metaMaskAddress: undefined,
       linkedAthleteId: account.linkedAthleteId,
     };
@@ -258,7 +339,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       id: newAccount.id,
       email: newAccount.email,
       name: newAccount.name,
-      athlxBalance: newAccount.athlxBalance,
+      athlxBalance: toDisplayPrice(newAccount.athlxBalance),
       metaMaskAddress: undefined,
       linkedAthleteId: undefined,
     };
@@ -272,6 +353,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const logout = () => {
     const storage = getBrowserStorage();
     setState((prev) => ({ ...prev, currentUser: null, trades: [], isAdmin: false }));
+    adminPinRef.current = null;
     if (!storage) return;
     clearSession(storage);
   };
@@ -375,9 +457,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const updatedPortfolio = buildPortfolioFromTrades(updatedTrades, updatedAthletes);
       return {
         ...account,
-        athlxBalance: newBalance,
-        trades: updatedTrades,
-        portfolio: updatedPortfolio,
+        athlxBalance: toRawPrice(newBalance),
+        trades: updatedTrades.map(toRawTrade),
+        portfolio: updatedPortfolio.map(toRawPortfolio),
       };
     });
 
@@ -416,15 +498,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     logEvent('athlete_register_submit', { userId: state.currentUser.id });
   };
 
-  const approveAthlete = (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => {
+  const approveAthlete = async (pendingId: string, finalCategory: string, initialPrice: number, symbol: string) => {
     const pending = state.pendingAthletes.find((p) => p.id === pendingId);
     if (!pending) return;
 
     const normalizedCategory = finalCategory as Category;
     const unitCost = initialPrice > 0 ? initialPrice : getDefaultUnitCost(normalizedCategory);
+    const safeId = `athlete_${(crypto as any)?.randomUUID?.() ?? Date.now()}`;
 
     const newAthlete: Athlete = {
-      id: `athlete_${Date.now()}`,
+      id: safeId,
       name: pending.name,
       symbol: symbol.toUpperCase(),
       sport: pending.sport,
@@ -451,9 +534,37 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       userId: pending.userId,
     };
 
+    const adminPin = adminPinRef.current;
+    if (!adminPin) {
+      throw new Error('Admin PIN is required to approve athletes.');
+    }
+
+    const response = await fetch('/api/catalog/athletes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-pin': adminPin,
+      },
+      body: JSON.stringify(toCatalogAthlete(newAthlete)),
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to approve athlete.';
+      try {
+        const data = (await response.json()) as { error?: string };
+        if (data?.error) errorMessage = data.error;
+      } catch (error) {
+        console.error('Failed to parse approval response', error);
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = (await response.json()) as { athletes?: Athlete[] };
+    const nextCatalog = normalizeAthletes(data?.athletes ?? [toCatalogAthlete(newAthlete)]);
+
     setState((prev) => ({
       ...prev,
-      athletes: [...prev.athletes, newAthlete],
+      athletes: nextCatalog,
       pendingAthletes: prev.pendingAthletes.map((p) => (p.id === pendingId ? { ...p, status: 'approved' as const } : p)),
       currentUser:
         prev.currentUser?.id === pending.userId ? { ...prev.currentUser, linkedAthleteId: newAthlete.id } : prev.currentUser,
@@ -464,6 +575,84 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
 
     logEvent('admin_approve', { userId: pending.userId, athleteSymbol: newAthlete.symbol });
+  };
+
+  const updateAthlete = async (symbol: string, payload: Partial<Athlete>) => {
+    const adminPin = adminPinRef.current;
+    if (!adminPin) {
+      throw new Error('Admin PIN is required to update athletes.');
+    }
+
+    const rawPayload: Partial<Athlete> = { ...payload };
+    if (typeof payload.unitCost === 'number') rawPayload.unitCost = toRawPrice(payload.unitCost);
+    if (typeof payload.currentPrice === 'number') rawPayload.currentPrice = toRawPrice(payload.currentPrice);
+    if (typeof payload.activityIndex === 'number') rawPayload.activityIndex = toRawPrice(payload.activityIndex);
+    if (typeof payload.tradingVolume === 'number') rawPayload.tradingVolume = toRawPrice(payload.tradingVolume);
+    if (Array.isArray(payload.priceHistory)) {
+      rawPayload.priceHistory = payload.priceHistory.map((point) => ({
+        ...point,
+        price: toRawPrice(point.price),
+      }));
+    }
+
+    const response = await fetch(`/api/catalog/athletes?symbol=${encodeURIComponent(symbol)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-pin': adminPin,
+      },
+      body: JSON.stringify(rawPayload),
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to update athlete.';
+      try {
+        const data = (await response.json()) as { error?: string };
+        if (data?.error) errorMessage = data.error;
+      } catch (error) {
+        console.error('Failed to parse update response', error);
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = (await response.json()) as { athletes?: Athlete[] };
+    const nextCatalog = normalizeAthletes(data?.athletes ?? []);
+    setState((prev) => ({
+      ...prev,
+      athletes: nextCatalog,
+    }));
+  };
+
+  const deleteAthlete = async (symbol: string) => {
+    const adminPin = adminPinRef.current;
+    if (!adminPin) {
+      throw new Error('Admin PIN is required to delete athletes.');
+    }
+
+    const response = await fetch(`/api/catalog/athletes?symbol=${encodeURIComponent(symbol)}`, {
+      method: 'DELETE',
+      headers: {
+        'x-admin-pin': adminPin,
+      },
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to delete athlete.';
+      try {
+        const data = (await response.json()) as { error?: string };
+        if (data?.error) errorMessage = data.error;
+      } catch (error) {
+        console.error('Failed to parse delete response', error);
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = (await response.json()) as { athletes?: Athlete[] };
+    const nextCatalog = normalizeAthletes(data?.athletes ?? []);
+    setState((prev) => ({
+      ...prev,
+      athletes: nextCatalog,
+    }));
   };
 
   const rejectAthlete = (pendingId: string, reason: string) => {
@@ -645,6 +834,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const setAdminAccess = (value: boolean) => {
     setState((prev) => ({ ...prev, isAdmin: value }));
+    if (!value) {
+      adminPinRef.current = null;
+    }
+  };
+
+  const setAdminPin = (pin: string | null) => {
+    adminPinRef.current = pin;
   };
 
   const setLanguage = (lang: 'EN' | 'ES') => {
@@ -664,6 +860,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         getPortfolio,
         submitAthleteRegistration,
         approveAthlete,
+        updateAthlete,
+        deleteAthlete,
         rejectAthlete,
         getAthleteBySymbol,
         updateAthletePrice,
@@ -671,6 +869,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         submitAthletePerformanceUpdate,
         resetDemoData,
         setAdminAccess,
+        setAdminPin,
         setLanguage,
       }}
     >

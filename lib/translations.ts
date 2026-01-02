@@ -29,6 +29,11 @@ export const translations: Record<Language, Record<string, string>> = {
     // Common
     confirm: 'Confirm',
     cancel: 'Cancel',
+    actions: 'Actions',
+    edit: 'Edit',
+    delete: 'Delete',
+    saveChanges: 'Save Changes',
+    confirmDeleteAthlete: 'Delete this athlete?',
     acquireUnits: 'Acquire Units',
     releaseUnits: 'Release Units',
     acquiredVerb: 'acquired',
@@ -344,7 +349,7 @@ export const translations: Record<Language, Record<string, string>> = {
     adminPin: 'Admin PIN',
     enterAdminPin: 'Enter admin PIN',
     accessAdminPanel: 'Access Admin Panel',
-    adminPinHelp: 'Contact repository owner to set NEXT_PUBLIC_ADMIN_PIN environment variable.',
+    adminPinHelp: 'Contact repository owner to set ATHLX_ADMIN_PIN environment variable.',
     incorrectPin: 'Incorrect PIN',
 
     // Registration
@@ -459,6 +464,11 @@ export const translations: Record<Language, Record<string, string>> = {
     // Common
     confirm: 'Confirmar',
     cancel: 'Cancelar',
+    actions: 'Acciones',
+    edit: 'Editar',
+    delete: 'Eliminar',
+    saveChanges: 'Guardar cambios',
+    confirmDeleteAthlete: '¿Eliminar este atleta?',
     acquireUnits: 'Adquirir Unidades',
     releaseUnits: 'Liberar Unidades',
     acquiredVerb: 'adquirido',
@@ -777,7 +787,7 @@ export const translations: Record<Language, Record<string, string>> = {
     adminPin: 'PIN de Admin',
     enterAdminPin: 'Introducir PIN de Admin',
     accessAdminPanel: 'Acceder al Panel de Administración',
-    adminPinHelp: 'Contacta al propietario del repositorio para configurar la variable NEXT_PUBLIC_ADMIN_PIN.',
+    adminPinHelp: 'Contacta al propietario del repositorio para configurar la variable ATHLX_ADMIN_PIN.',
     incorrectPin: 'PIN incorrecto',
 
     // Registration

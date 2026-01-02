@@ -12,29 +12,23 @@ interface AdminPasswordModalProps {
 }
 
 export default function AdminPasswordModal({ isOpen, onClose }: AdminPasswordModalProps) {
-  const { state, setAdminAccess } = useStore();
+  const { state, setAdminAccess, setAdminPin } = useStore();
   const t = translations[state.language];
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
-
-  // Get admin PIN from environment variable or use fallback
-  const ADMIN_PIN = process.env.NEXT_PUBLIC_ADMIN_PIN || '1234';
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (password === ADMIN_PIN) {
-      setAdminAccess(true);
-      onClose();
-      router.push('/admin');
-      setPassword('');
-      setError('');
-    } else {
-      setError(t.incorrectPin);
-    }
+    setAdminPin(password);
+    setAdminAccess(true);
+    onClose();
+    router.push('/admin');
+    setPassword('');
+    setError('');
   };
 
   return (
