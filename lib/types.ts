@@ -68,6 +68,7 @@ export interface Athlete {
   highlightVideoUrl: string;
   imageUrl: string;
   unitCost: number;
+  unitCostOverride?: boolean;
   activityIndex: number;
   currentPrice: number;
   nextMatch?: NextMatchInfo;

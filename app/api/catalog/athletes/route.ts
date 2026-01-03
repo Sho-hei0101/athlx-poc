@@ -4,6 +4,7 @@ import {
   updateCatalogAthlete,
   upsertCatalogAthlete,
 } from '@/lib/server/catalog';
+import { clampBasePrice } from '@/lib/pricing/basePrice';
 import type { Athlete } from '@/lib/types';
 import { NextResponse } from 'next/server';
 
@@ -21,7 +22,7 @@ const jsonResponse = (data: Record<string, unknown>, init?: ResponseInit) =>
 
 const normalizeBasePrice = (value: unknown) => {
   const numeric = typeof value === 'number' && Number.isFinite(value) ? value : 0.01;
-  return Math.min(0.02, Math.max(0.001, numeric));
+  return clampBasePrice(numeric);
 };
 
 const isAuthorized = (req: Request) => {
@@ -77,6 +78,7 @@ export async function POST(req: Request) {
       nationality,
       unitCost,
       currentPrice: unitCost,
+      unitCostOverride: incoming.unitCostOverride ?? false,
     };
 
     const athletes = await upsertCatalogAthlete(athleteToSave);

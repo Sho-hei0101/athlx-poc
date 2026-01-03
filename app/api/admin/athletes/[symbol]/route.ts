@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import type { Athlete } from '@/lib/types';
 import { getCatalogAthletes, KV_KEY } from '@/lib/server/catalog';
+import { clampBasePrice } from '@/lib/pricing/basePrice';
 
 export const runtime = 'nodejs';
 
 const normalizeBasePrice = (value: unknown) => {
   const numeric = typeof value === 'number' && Number.isFinite(value) ? value : 0.01;
-  return Math.min(0.02, Math.max(0.001, numeric));
+  return clampBasePrice(numeric);
 };
 
 const isAuthorized = (req: Request) => {
@@ -47,6 +48,7 @@ export async function PATCH(req: Request, context: { params: { symbol: string } 
       symbol: current.symbol,
       unitCost: nextUnitCost,
       currentPrice: nextUnitCost,
+      unitCostOverride: patch.unitCostOverride ?? current.unitCostOverride,
     };
 
     const next = existing.map((athlete, idx) => (idx === index ? nextAthlete : athlete));

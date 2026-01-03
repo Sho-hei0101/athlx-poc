@@ -1,7 +1,7 @@
 'use client';
 
 import { useStore } from '@/lib/store';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Users, CheckCircle, XCircle, Clock, Trash2, Pencil } from 'lucide-react';
 import { translations } from '@/lib/translations';
 import { Category, Sport } from '@/lib/types';
@@ -75,7 +75,36 @@ export default function AdminPage() {
   const pendingApplications = state.pendingAthletes.filter((p) => p.status === 'pending');
   const approvedCount = state.pendingAthletes.filter((p) => p.status === 'approved').length;
   const rejectedCount = state.pendingAthletes.filter((p) => p.status === 'rejected').length;
-  const totalFeesCollected = state.trades.reduce((sum, trade) => sum + (trade.fee ?? 0), 0);
+  const [opsFeesTotal, setOpsFeesTotal] = useState<number | null>(null);
+  const [opsFeesLoading, setOpsFeesLoading] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadOpsFees = async () => {
+      setOpsFeesLoading(true);
+      try {
+        const response = await fetch('/api/fees/ops3', { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ops fees (${response.status})`);
+        }
+        const payload = (await response.json()) as { total?: number };
+        if (!isActive) return;
+        setOpsFeesTotal(typeof payload.total === 'number' ? payload.total : 0);
+      } catch (error) {
+        console.error('Failed to load ops fee total', error);
+        if (isActive) setOpsFeesTotal(0);
+      } finally {
+        if (isActive) setOpsFeesLoading(false);
+      }
+    };
+
+    void loadOpsFees();
+
+    return () => {
+      isActive = false;
+    };
+  }, [state.trades.length]);
 
   const categoryBreakdown = {
     Amateur: state.athletes.filter((a) => a.category === 'Amateur').length,
@@ -208,7 +237,7 @@ export default function AdminPage() {
     const exportKeys = Array.from(
       new Set([
         ...requiredKeys,
-        ...Object.keys(storage).filter((key) => key.startsWith('athlx_')),
+        ...Object.keys(storage).filter((key) => key.startsWith('athlx_') || key.startsWith('athlx:')),
       ]),
     );
 
@@ -381,6 +410,7 @@ export default function AdminPage() {
         imageUrl: editForm.imageUrl.trim(),
         unitCost,
         currentPrice: unitCost,
+        unitCostOverride: true,
         tags,
       });
       setEditSuccess('Athlete updated.');
@@ -492,7 +522,9 @@ export default function AdminPage() {
 
             <div className="glass-effect rounded-xl p-6">
               <h3 className="font-semibold mb-2">{t.totalFeesCollectedLabel}</h3>
-              <p className="text-3xl font-bold price-display">{formatNumber(totalFeesCollected)} tATHLX</p>
+              <p className="text-3xl font-bold price-display">
+                {opsFeesLoading && opsFeesTotal === null ? '—' : formatNumber(opsFeesTotal ?? 0)} tATHLX
+              </p>
               <p className="text-xs text-gray-400 mt-2">{t.totalFeesCollectedNote}</p>
             </div>
 

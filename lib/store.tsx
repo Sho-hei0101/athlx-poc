@@ -21,6 +21,8 @@ import { translations } from './translations';
 import { EVENTS_KEY, logEvent } from './analytics';
 import { calcTradingFee } from './fees';
 import { getBrowserStorage, readJSON, writeJSON } from './storage';
+import { getOrCreateDemoSessionId, getStoredDemoSessionId } from './demoSession';
+import { clampBasePrice, getCategoryBasePrice, resolveAthleteUnitCost } from './pricing/basePrice';
 import {
   authenticateAccount,
   clearSession,
@@ -38,15 +40,12 @@ const STORAGE_KEY = 'athlx_state';
 /**
  * ✅ 価格は全員共通で 0.01 を基準にする（カテゴリは伸び方/ブレ幅にだけ影響）
  */
-const BASE_PRICE = 0.01;
-
 // 価格の下限・上限（デモ安全装置）
-const clampPrice = (p: number) => Math.min(1, Math.max(0.001, p));
+const clampPrice = (p: number) => clampBasePrice(p);
 
 const normalizeAthletes = (athletes: Athlete[]): Athlete[] => {
   return athletes.map((a) => {
-    const unitCost =
-      typeof a.unitCost === 'number' && a.unitCost > 0 ? a.unitCost : BASE_PRICE;
+    const unitCost = resolveAthleteUnitCost(a);
     const currentPrice = unitCost;
 
     return {
@@ -161,7 +160,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     return Array.from(portfolioMap.values()).map((p) => {
       const athlete = athletes.find((a) => a.symbol === p.athleteSymbol);
-      const fallback = athlete?.unitCost ?? p.currentPrice ?? BASE_PRICE;
+      const fallback = athlete?.unitCost ?? p.currentPrice ?? getCategoryBasePrice(athlete?.category);
       return { ...p, currentPrice: athlete?.currentPrice ?? fallback };
     });
   };
@@ -192,7 +191,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     return normalizeAthletes(
       data.athletes.map((a) => {
-        const unitCost = typeof a.unitCost === 'number' && a.unitCost > 0 ? a.unitCost : BASE_PRICE;
+        const unitCost = resolveAthleteUnitCost(a);
         return { ...a, unitCost, currentPrice: unitCost };
       }),
     );
@@ -208,6 +207,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const stored = readJSON<Partial<AppState>>(storage, STORAGE_KEY, {});
     const storedUser = loadSession(storage);
+    getOrCreateDemoSessionId(storage);
+    const storedDemoSessionId = getStoredDemoSessionId(storage);
 
     let persistedState: AppState = { ...defaultState, athletes: defaultState.athletes };
 
@@ -226,7 +227,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             email: account.email,
             name: account.name,
             athlxBalance: account.athlxBalance,
-            metaMaskAddress: undefined,
+            metaMaskAddress: storedDemoSessionId ?? undefined,
             linkedAthleteId: account.linkedAthleteId,
           },
           trades: account.trades ?? [],
@@ -271,12 +272,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const account = authenticateAccount(storage, { email, password });
     if (!account) throw new Error('Invalid credentials');
 
+    const demoSessionId = getOrCreateDemoSessionId(storage);
     const loggedInUser: User = {
       id: account.id,
       email: account.email,
       name: account.name,
       athlxBalance: account.athlxBalance,
-      metaMaskAddress: undefined,
+      metaMaskAddress: demoSessionId,
       linkedAthleteId: account.linkedAthleteId,
     };
 
@@ -297,13 +299,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!storage) throw new Error('Storage unavailable');
 
     const newAccount = createAccount(storage, { email, password, name });
+    const demoSessionId = getOrCreateDemoSessionId(storage);
 
     const loggedInUser: User = {
       id: newAccount.id,
       email: newAccount.email,
       name: newAccount.name,
       athlxBalance: newAccount.athlxBalance,
-      metaMaskAddress: undefined,
+      metaMaskAddress: demoSessionId,
       linkedAthleteId: undefined,
     };
 
@@ -323,9 +326,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const connectMetaMask = () => {
     if (!state.currentUser) return;
-    const address = `0x${Math.random().toString(16).substring(2, 10)}...${Math.random()
-      .toString(16)
-      .substring(2, 6)}`;
+    const address = getOrCreateDemoSessionId();
     setState((prev) => ({
       ...prev,
       currentUser: prev.currentUser ? { ...prev.currentUser, metaMaskAddress: address } : null,
@@ -409,6 +410,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       athleteSymbol,
       meta: { quantity: safeQuantity, price: safePrice, subtotal, fee, total, currency: 'tATHLX' },
     });
+
+    void fetch('/api/fees/ops3', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ delta: subtotal * 0.03 }),
+    }).catch((error) => {
+      console.error('Failed to increment ops fee total', error);
+    });
   };
 
   const getPortfolio = (): Portfolio[] => {
@@ -441,7 +450,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const safeId = `athlete_${(crypto as any)?.randomUUID?.() ?? Date.now()}`;
 
     // ✅ 初期価格は全員共通で 0.01
-    const unitCost = BASE_PRICE;
+    const unitCost = getCategoryBasePrice(normalizedCategory);
 
     const newAthlete: Athlete = {
       id: safeId,
@@ -460,6 +469,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       imageUrl: pending.imageDataUrl ?? `https://i.pravatar.cc/300?img=${Math.floor(Math.random() * 70)}`,
       unitCost,
       currentPrice: unitCost,
+      unitCostOverride: false,
 
       // ActivityIndexは価格とは別軸（初期はカテゴリで差をつけてもOK）
       activityIndex: 0,
@@ -569,13 +579,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       ...prev,
       athletes: prev.athletes.map((a) => {
         if (a.symbol !== symbol) return a;
-        const base = a.currentPrice || BASE_PRICE;
+        const base = a.currentPrice || getCategoryBasePrice(a.category);
         const next = clampPrice(newPrice);
         const change24h = ((next - base) / base) * 100;
         return {
           ...a,
           currentPrice: next,
           unitCost: next,
+          unitCostOverride: true,
           price24hChange: change24h,
           priceHistory: [...(a.priceHistory ?? []), { time: new Date().toISOString(), price: next, volume: 0 }],
         };
@@ -646,7 +657,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (payload.injury ? -2.0 : 0);
 
       const updatedActivityIndex = Math.max(0, targetAthlete.activityIndex + baseDelta);
-      const base = typeof targetAthlete.currentPrice === 'number' && targetAthlete.currentPrice > 0 ? targetAthlete.currentPrice : BASE_PRICE;
+      const base =
+        typeof targetAthlete.currentPrice === 'number' && targetAthlete.currentPrice > 0
+          ? targetAthlete.currentPrice
+          : getCategoryBasePrice(targetAthlete.category);
       const updatedUnitCost = clampPrice(base);
 
       const minutesBucket =
