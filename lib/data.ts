@@ -1,4 +1,5 @@
 import { Athlete, Category, NewsItem } from './types';
+import { getCategoryBasePrice } from './pricing/basePrice';
 
 const REFERENCE_TIME = Date.UTC(2024, 0, 1, 12, 0, 0);
 
@@ -12,19 +13,7 @@ const seededRandom = (seed: number) => {
   };
 };
 
-const getDefaultUnitCost = (category?: Category) => {
-  switch (category) {
-    case 'Elite':
-      return 0.2;
-    case 'Pro':
-      return 0.1;
-    case 'Semi-pro':
-      return 0.05;
-    case 'Amateur':
-    default:
-      return 0.01;
-  }
-};
+const getDefaultUnitCost = (category?: Category) => getCategoryBasePrice(category);
 
 // Generate deterministic price history for consistent SSR/CSR hydration.
 const generatePriceHistory = (basePrice: number, volatility: number = 0.1, seed: number = 1) => {
@@ -81,7 +70,7 @@ const baseAthletes = [
 export const initialAthletes: Athlete[] = baseAthletes.map((athlete) => ({
   ...athlete,
   activityIndex: athlete.currentPrice,
-  unitCost: Math.max(getDefaultUnitCost(athlete.category), (athlete.currentPrice || 0) * 0.001),
+  unitCost: getDefaultUnitCost(athlete.category),
 }));
 
 export const initialNews: NewsItem[] = [

@@ -2,13 +2,14 @@ import 'server-only';
 
 import { kv } from '@vercel/kv';
 import { initialAthletes } from '@/lib/data';
+import { clampBasePrice, resolveAthleteUnitCost } from '@/lib/pricing/basePrice';
 import type { Athlete } from '@/lib/types';
 
 export const KV_KEY = 'catalog:athletes:v1';
 
 const normalizeBasePrice = (value: unknown) => {
   const numeric = typeof value === 'number' && Number.isFinite(value) ? value : 0.01;
-  return Math.min(0.02, Math.max(0.001, numeric));
+  return clampBasePrice(numeric);
 };
 
 const normalizeCatalogPayload = (payload: unknown): Athlete[] => {
@@ -16,24 +17,26 @@ const normalizeCatalogPayload = (payload: unknown): Athlete[] => {
   return payload
     .filter((item): item is Athlete => Boolean(item && typeof item === 'object'))
     .map((athlete) => {
-      const unitCost = normalizeBasePrice((athlete as Athlete).unitCost);
+      const unitCost = resolveAthleteUnitCost(athlete as Athlete);
       return {
         ...athlete,
         symbol: athlete.symbol.toUpperCase(),
         unitCost,
         currentPrice: unitCost,
+        unitCostOverride: (athlete as Athlete).unitCostOverride,
       };
     });
 };
 
 const normalizeSeedCatalog = (athletes: Athlete[]): Athlete[] =>
   athletes.map((athlete) => {
-    const unitCost = normalizeBasePrice(athlete.unitCost);
+    const unitCost = resolveAthleteUnitCost(athlete);
     return {
       ...athlete,
       symbol: athlete.symbol.toUpperCase(),
       unitCost,
       currentPrice: unitCost,
+      unitCostOverride: athlete.unitCostOverride,
     };
   });
 
@@ -84,6 +87,7 @@ export const updateCatalogAthlete = async (
     symbol: existing.symbol,
     unitCost,
     currentPrice: unitCost,
+    unitCostOverride: patch.unitCostOverride ?? existing.unitCostOverride,
   };
   const nextCatalog = current.map((athlete, idx) => (idx === index ? updated : athlete));
   await kv.set(KV_KEY, nextCatalog);

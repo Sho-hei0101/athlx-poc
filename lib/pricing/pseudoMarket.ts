@@ -1,14 +1,12 @@
+import { clampBasePrice } from '@/lib/pricing/basePrice';
+
 const DEFAULT_BASE_PRICE = 0.01;
-const MIN_BASE_PRICE = 0.001;
-const MAX_BASE_PRICE = 0.02;
 const DEFAULT_STEP_SEC = 300;
 const ORIGIN_MS = Date.UTC(2024, 0, 1, 0, 0, 0);
 
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-
 const normalizeBasePrice = (basePrice: number) => {
   const safe = Number.isFinite(basePrice) && basePrice > 0 ? basePrice : DEFAULT_BASE_PRICE;
-  return clamp(safe, MIN_BASE_PRICE, MAX_BASE_PRICE);
+  return clampBasePrice(safe);
 };
 
 const hash32 = (value: string) => {
@@ -43,7 +41,7 @@ const applyDelta = (price: number, basePrice: number, symbol: string, bucket: nu
   const next = price * (1 + delta);
   const min = basePrice * 0.6;
   const max = basePrice * 1.4;
-  return clamp(next, min, max);
+  return Math.min(max, Math.max(min, next));
 };
 
 const getPriceAtBucket = (symbol: string, basePrice: number, bucket: number, stepSec: number) => {
