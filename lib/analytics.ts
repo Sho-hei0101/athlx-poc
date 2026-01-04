@@ -50,12 +50,20 @@ const getOrCreateAnalyticsUserId = () => {
 
 const insertSupabaseEvent = async (event: AnalyticsEvent) => {
   try {
-    await fetch('/api/analytics/event', {
+    const response = await fetch('/api/analytics/event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(event),
       keepalive: true,
     });
+    if (!response.ok) {
+      const details = await response.json().catch(() => ({}));
+      console.error('Analytics ingest failed', {
+        status: response.status,
+        statusText: response.statusText,
+        details,
+      });
+    }
   } catch (error) {
     // analytics insert should never break the app
     console.error('Failed to insert analytics event into Supabase', error);

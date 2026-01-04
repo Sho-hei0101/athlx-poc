@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { resolveSupabaseServerEnv } from '@/lib/server/supabase';
+import { getSupabaseServerClient, isSupabaseEnvError } from '@/lib/server/supabase';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -31,13 +30,7 @@ export async function POST(req: Request) {
       return jsonResponse({ ok: false, error: 'Missing type' }, { status: 400 });
     }
 
-    const { url, serviceKey, missing } = resolveSupabaseServerEnv();
-    if (!url || !serviceKey) {
-      console.error('Supabase env vars missing for analytics insert', { missing });
-      return jsonResponse({ ok: false, error: 'Missing Supabase env' }, { status: 500 });
-    }
-
-    const supabase = createClient(url, serviceKey);
+    const supabase = getSupabaseServerClient();
 
     const eventId = payload.id ?? crypto.randomUUID();
     const eventAt = payload.at ?? new Date().toISOString();
@@ -54,13 +47,26 @@ export async function POST(req: Request) {
     });
 
     if (error) {
-      console.error('Supabase analytics insert failed', error);
+      console.error('Supabase analytics insert failed', {
+        error,
+        eventId,
+        type: payload.type,
+        athleteSymbol: payload.athleteSymbol ?? null,
+        userId: payload.userId ?? null,
+      });
       return jsonResponse({ ok: false, error: 'Insert failed' }, { status: 500 });
     }
 
     return jsonResponse({ ok: true });
-  } catch (e) {
-    console.error('Analytics event route error', e);
+  } catch (error) {
+    if (isSupabaseEnvError(error)) {
+      return jsonResponse(
+        { ok: false, error: 'Missing Supabase env', missing: error.missing },
+        { status: 500 },
+      );
+    }
+
+    console.error('Analytics event route error', error);
     return jsonResponse({ ok: false, error: 'Bad request' }, { status: 400 });
   }
 }
