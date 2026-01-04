@@ -18,11 +18,16 @@ const normalizeCatalogPayload = (payload: unknown): Athlete[] => {
     .filter((item): item is Athlete => Boolean(item && typeof item === 'object'))
     .map((athlete) => {
       const unitCost = resolveAthleteUnitCost(athlete as Athlete);
+      const existingPrice =
+        typeof (athlete as Athlete).currentPrice === 'number' &&
+        Number.isFinite((athlete as Athlete).currentPrice)
+          ? (athlete as Athlete).currentPrice
+          : unitCost;
       return {
         ...athlete,
         symbol: athlete.symbol.toUpperCase(),
         unitCost,
-        currentPrice: unitCost,
+        currentPrice: existingPrice,
         unitCostOverride: (athlete as Athlete).unitCostOverride,
       };
     });
@@ -39,6 +44,12 @@ const normalizeSeedCatalog = (athletes: Athlete[]): Athlete[] =>
       unitCostOverride: athlete.unitCostOverride,
     };
   });
+
+const mergeSeedAthletes = (existing: Athlete[], seed: Athlete[]): Athlete[] => {
+  const existingSymbols = new Set(existing.map((athlete) => athlete.symbol.toUpperCase()));
+  const additions = seed.filter((athlete) => !existingSymbols.has(athlete.symbol.toUpperCase()));
+  return additions.length ? [...existing, ...additions] : existing;
+};
 
 const extractCatalogArray = (stored: unknown): Athlete[] | null => {
   if (Array.isArray(stored)) {
@@ -61,8 +72,16 @@ const ensureCatalogSeed = async (): Promise<Athlete[]> => {
     return seed;
   }
   const extracted = extractCatalogArray(stored);
-  if (extracted) return extracted;
-  return [];
+  if (extracted) {
+    const seed = normalizeSeedCatalog(initialAthletes);
+    const merged = mergeSeedAthletes(extracted, seed);
+    if (merged.length !== extracted.length) {
+      await kv.set(KV_KEY, merged);
+    }
+    return merged;
+  }
+  console.warn('Catalog payload invalid; returning seed catalog without overwriting.');
+  return normalizeSeedCatalog(initialAthletes);
 };
 
 export const getCatalogAthletes = async (): Promise<Athlete[]> => ensureCatalogSeed();
