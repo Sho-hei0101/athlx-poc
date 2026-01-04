@@ -80,6 +80,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     let isActive = true;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
 
     const loadOpsFees = async () => {
       setOpsFeesLoading(true);
@@ -100,9 +101,11 @@ export default function AdminPage() {
     };
 
     void loadOpsFees();
+    intervalId = setInterval(loadOpsFees, 15000);
 
     return () => {
       isActive = false;
+      if (intervalId) clearInterval(intervalId);
     };
   }, [state.trades.length]);
 

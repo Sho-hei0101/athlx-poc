@@ -40,14 +40,29 @@ const normalizeSeedCatalog = (athletes: Athlete[]): Athlete[] =>
     };
   });
 
+const extractCatalogArray = (stored: unknown): Athlete[] | null => {
+  if (Array.isArray(stored)) {
+    return normalizeCatalogPayload(stored);
+  }
+  if (stored && typeof stored === 'object') {
+    const nested = (stored as { athletes?: unknown }).athletes;
+    if (Array.isArray(nested)) {
+      return normalizeCatalogPayload(nested);
+    }
+  }
+  return null;
+};
+
 const ensureCatalogSeed = async (): Promise<Athlete[]> => {
   const stored = await kv.get<unknown>(KV_KEY);
-  if (stored === null || stored === undefined || !Array.isArray(stored)) {
+  if (stored === null || stored === undefined) {
     const seed = normalizeSeedCatalog(initialAthletes);
     await kv.set(KV_KEY, seed);
     return seed;
   }
-  return normalizeCatalogPayload(stored);
+  const extracted = extractCatalogArray(stored);
+  if (extracted) return extracted;
+  return [];
 };
 
 export const getCatalogAthletes = async (): Promise<Athlete[]> => ensureCatalogSeed();

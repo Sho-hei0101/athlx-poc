@@ -1,8 +1,10 @@
 import { getBrowserStorage, readJSON, writeJSON } from './storage';
 
 export const EVENTS_KEY = 'athlx_events';
+const ANALYTICS_USER_KEY = 'athlx_demo_user_id';
 
 export type AnalyticsEventType =
+  | 'page_view'
   | 'login'
   | 'signup'
   | 'trade_buy'
@@ -33,43 +35,26 @@ const createEventId = () => `evt_${Date.now()}_${Math.random().toString(16).slic
 const lastEventByKey = new Map<string, number>();
 const THROTTLE_MS = 500;
 
-const getSupabaseConfig = () => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-  return { url, key };
+const getOrCreateAnalyticsUserId = () => {
+  const storage = getBrowserStorage();
+  if (!storage) return undefined;
+  const existing = storage.getItem(ANALYTICS_USER_KEY);
+  if (existing) return existing;
+  const id =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? `demo_${crypto.randomUUID()}`
+      : `demo_${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
+  storage.setItem(ANALYTICS_USER_KEY, id);
+  return id;
 };
 
 const insertSupabaseEvent = async (event: AnalyticsEvent) => {
-  const config = getSupabaseConfig();
-  if (!config) return;
-
-  // NOTE:
-  // - We intentionally use REST here to avoid importing a Supabase client into a shared module.
-  // - Table "analytics_events" columns used here:
-  //   id (text), type (text), at (timestamptz), athlete_symbol (text), meta (jsonb)
-  // - userId is embedded into meta to avoid relying on a user_id column.
   try {
-    const meta =
-      event.userId != null
-        ? { ...(event.meta ?? {}), userId: event.userId }
-        : (event.meta ?? null);
-
-    await fetch(`${config.url}/rest/v1/analytics_events`, {
+    await fetch('/api/analytics/event', {
       method: 'POST',
-      headers: {
-        apikey: config.key,
-        Authorization: `Bearer ${config.key}`,
-        'Content-Type': 'application/json',
-        Prefer: 'return=minimal',
-      },
-      body: JSON.stringify({
-        id: event.id,
-        type: event.type,
-        at: event.at,
-        athlete_symbol: event.athleteSymbol ?? null,
-        meta,
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(event),
+      keepalive: true,
     });
   } catch (error) {
     // analytics insert should never break the app
@@ -91,8 +76,9 @@ export const logEvent = (
   try {
     const storage = getBrowserStorage();
     if (!storage) return;
+    const resolvedUserId = payload.userId ?? getOrCreateAnalyticsUserId();
 
-    const throttleKey = `${type}:${payload.userId ?? ''}:${payload.athleteSymbol ?? ''}`;
+    const throttleKey = `${type}:${resolvedUserId ?? ''}:${payload.athleteSymbol ?? ''}`;
     const now = Date.now();
     const lastSeen = lastEventByKey.get(throttleKey);
     if (lastSeen && now - lastSeen < THROTTLE_MS) return;
@@ -103,6 +89,7 @@ export const logEvent = (
       type,
       at: new Date().toISOString(),
       ...payload,
+      userId: resolvedUserId ?? payload.userId,
     };
 
     const events = readJSON<AnalyticsEvent[]>(storage, EVENTS_KEY, []);

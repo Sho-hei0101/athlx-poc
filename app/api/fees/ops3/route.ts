@@ -20,6 +20,19 @@ const getTotal = async () => {
   return typeof current === 'number' && Number.isFinite(current) ? current : 0;
 };
 
+const incrementTotal = async (delta: number) => {
+  try {
+    const nextTotal = await kv.incrbyfloat(KV_KEY, delta);
+    return typeof nextTotal === 'number' && Number.isFinite(nextTotal) ? nextTotal : getTotal();
+  } catch (error) {
+    console.error('KV incrbyfloat failed, falling back to set', error);
+    const current = await getTotal();
+    const nextTotal = current + delta;
+    await kv.set(KV_KEY, nextTotal);
+    return nextTotal;
+  }
+};
+
 export async function GET() {
   try {
     const total = await getTotal();
@@ -38,10 +51,7 @@ export async function POST(req: Request) {
       return jsonResponse({ ok: false, error: 'Invalid delta' }, { status: 400 });
     }
 
-    const current = await getTotal();
-    const nextTotal = current + delta;
-    await kv.set(KV_KEY, nextTotal);
-
+    const nextTotal = await incrementTotal(delta);
     return jsonResponse({ ok: true, total: nextTotal });
   } catch (error) {
     console.error('POST /api/fees/ops3 failed', error);
