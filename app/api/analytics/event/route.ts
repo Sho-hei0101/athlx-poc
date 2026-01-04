@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { resolveSupabaseServerEnv } from '@/lib/server/supabase';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,14 +31,13 @@ export async function POST(req: Request) {
       return jsonResponse({ ok: false, error: 'Missing type' }, { status: 400 });
     }
 
-    const url = process.env.SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !key) {
-      console.error('Supabase env vars missing for analytics insert');
+    const { url, serviceKey, missing } = resolveSupabaseServerEnv();
+    if (!url || !serviceKey) {
+      console.error('Supabase env vars missing for analytics insert', { missing });
       return jsonResponse({ ok: false, error: 'Missing Supabase env' }, { status: 500 });
     }
 
-    const supabase = createClient(url, key);
+    const supabase = createClient(url, serviceKey);
 
     const eventId = payload.id ?? crypto.randomUUID();
     const eventAt = payload.at ?? new Date().toISOString();
